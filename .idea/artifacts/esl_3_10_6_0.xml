@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="esl-3.10.6.0">
+    <output-path>$PROJECT_DIR$/export</output-path>
+    <root id="archive" name="esl-3.10.6.0.jar">
+      <element id="module-output" name="Esl-3" />
+    </root>
+  </artifact>
+</component>

@@ -1,0 +1,111 @@
+/*
+ * Copyright 2012 The Netty Project
+ *
+ * The Netty Project licenses this file to you under the Apache License,
+ * version 2.0 (the "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at:
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+package com.freeswitch.netty.handler.codec.http;
+
+import java.util.Map;
+
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.buffer.ChannelBuffers;
+import com.freeswitch.netty.util.internal.StringUtil;
+
+/**
+ * The default {@link HttpChunkTrailer} implementation.
+ */
+public class DefaultHttpChunkTrailer implements HttpChunkTrailer {
+
+	private final HttpHeaders trailingHeaders = new TrailingHeaders(true);
+
+	public boolean isLast() {
+		return true;
+	}
+
+	public ChannelBuffer getContent() {
+		return ChannelBuffers.EMPTY_BUFFER;
+	}
+
+	public void setContent(ChannelBuffer content) {
+		throw new IllegalStateException("read-only");
+	}
+
+	public HttpHeaders trailingHeaders() {
+		return trailingHeaders;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder buf = new StringBuilder(super.toString());
+		buf.append(StringUtil.NEWLINE);
+		appendHeaders(buf);
+
+		// Remove the last newline.
+		buf.setLength(buf.length() - StringUtil.NEWLINE.length());
+		return buf.toString();
+	}
+
+	private void appendHeaders(StringBuilder buf) {
+		for (Map.Entry<String, String> e : trailingHeaders()) {
+			buf.append(e.getKey());
+			buf.append(": ");
+			buf.append(e.getValue());
+			buf.append(StringUtil.NEWLINE);
+		}
+	}
+
+	private static final class TrailingHeaders extends DefaultHttpHeaders {
+
+		TrailingHeaders(boolean validateHeaders) {
+			super(validateHeaders);
+		}
+
+		@Override
+		public HttpHeaders add(String name, Object value) {
+			if (validate) {
+				validateName(name);
+			}
+			return super.add(name, value);
+		}
+
+		@Override
+		public HttpHeaders add(String name, Iterable<?> values) {
+			if (validate) {
+				validateName(name);
+			}
+			return super.add(name, values);
+		}
+
+		@Override
+		public HttpHeaders set(String name, Iterable<?> values) {
+			if (validate) {
+				validateName(name);
+			}
+			return super.set(name, values);
+		}
+
+		@Override
+		public HttpHeaders set(String name, Object value) {
+			if (validate) {
+				validateName(name);
+			}
+			return super.set(name, value);
+		}
+
+		private static void validateName(String name) {
+			if (name.equalsIgnoreCase(HttpHeaders.Names.CONTENT_LENGTH) || name.equalsIgnoreCase(HttpHeaders.Names.TRANSFER_ENCODING) || name.equalsIgnoreCase(HttpHeaders.Names.TRAILER)) {
+				throw new IllegalArgumentException("prohibited trailing header: " + name);
+			}
+		}
+	}
+}
