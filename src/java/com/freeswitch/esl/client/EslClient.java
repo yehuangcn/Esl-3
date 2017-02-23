@@ -89,6 +89,7 @@ public class EslClient {
 		}
 	}
 
+    ClientBootstrap bootstrap;
 	/**
 	 * Attempt to establish an authenticated connection to the nominated
 	 * FreeSWITCH ESL server socket. This call will block, waiting for an
@@ -113,8 +114,8 @@ public class EslClient {
 			close();
 		}
 
-		// Configure this client
-		ClientBootstrap bootstrap = new ClientBootstrap(
+        // Configure this client
+		 bootstrap = new ClientBootstrap(
 		        new NioClientSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool()));
 
 		// Add ESL handler and factory
@@ -460,12 +461,23 @@ public class EslClient {
 	}
 
 
-
+    private String host;
+	private int port;
+	private String password;
+	private int timeoutSeconds;
 	public void start(){
-
+        try {
+            connect("172.16.74.13", 8021,"ClueCon", 3000);
+//            connect(this.host,this.port,this.password,this.timeoutSeconds);
+        } catch (EslConnectionFailure eslConnectionFailure) {
+            System.out.println("=========================");
+            eslConnectionFailure.printStackTrace();
+        }
     }
 
     public void stop() {
         //TODO:
+        bootstrap.releaseExternalResources();
     }
+
 }
