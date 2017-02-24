@@ -15,17 +15,6 @@
  */
 package com.freeswitch.netty.channel.group;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelFuture;
 import com.freeswitch.netty.channel.ChannelFutureListener;
@@ -33,334 +22,338 @@ import com.freeswitch.netty.logging.InternalLogger;
 import com.freeswitch.netty.logging.InternalLoggerFactory;
 import com.freeswitch.netty.util.internal.DeadLockProofWorker;
 
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 /**
  * The default {@link ChannelGroupFuture} implementation.
  */
 public class DefaultChannelGroupFuture implements ChannelGroupFuture {
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(DefaultChannelGroupFuture.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(DefaultChannelGroupFuture.class);
+    final Map<Integer, ChannelFuture> futures;
+    private final ChannelGroup group;
+    int successCount;
+    int failureCount;
+    private ChannelGroupFutureListener firstListener;
+    private List<ChannelGroupFutureListener> otherListeners;
+    private boolean done;
+    private int waiters;
 
-	private final ChannelGroup group;
-	final Map<Integer, ChannelFuture> futures;
-	private ChannelGroupFutureListener firstListener;
-	private List<ChannelGroupFutureListener> otherListeners;
-	private boolean done;
-	int successCount;
-	int failureCount;
-	private int waiters;
+    private final ChannelFutureListener childListener = new ChannelFutureListener() {
+        public void operationComplete(ChannelFuture future) throws Exception {
+            boolean success = future.isSuccess();
+            boolean callSetDone;
+            synchronized (DefaultChannelGroupFuture.this) {
+                if (success) {
+                    successCount++;
+                } else {
+                    failureCount++;
+                }
 
-	private final ChannelFutureListener childListener = new ChannelFutureListener() {
-		public void operationComplete(ChannelFuture future) throws Exception {
-			boolean success = future.isSuccess();
-			boolean callSetDone;
-			synchronized (DefaultChannelGroupFuture.this) {
-				if (success) {
-					successCount++;
-				} else {
-					failureCount++;
-				}
+                callSetDone = successCount + failureCount == futures.size();
+                assert successCount + failureCount <= futures.size();
+            }
 
-				callSetDone = successCount + failureCount == futures.size();
-				assert successCount + failureCount <= futures.size();
-			}
+            if (callSetDone) {
+                setDone();
+            }
+        }
+    };
 
-			if (callSetDone) {
-				setDone();
-			}
-		}
-	};
+    /**
+     * Creates a new instance.
+     */
+    public DefaultChannelGroupFuture(ChannelGroup group, Collection<ChannelFuture> futures) {
+        if (group == null) {
+            throw new NullPointerException("group");
+        }
+        if (futures == null) {
+            throw new NullPointerException("futures");
+        }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public DefaultChannelGroupFuture(ChannelGroup group, Collection<ChannelFuture> futures) {
-		if (group == null) {
-			throw new NullPointerException("group");
-		}
-		if (futures == null) {
-			throw new NullPointerException("futures");
-		}
+        this.group = group;
 
-		this.group = group;
+        Map<Integer, ChannelFuture> futureMap = new LinkedHashMap<Integer, ChannelFuture>();
+        for (ChannelFuture f : futures) {
+            futureMap.put(f.getChannel().getId(), f);
+        }
 
-		Map<Integer, ChannelFuture> futureMap = new LinkedHashMap<Integer, ChannelFuture>();
-		for (ChannelFuture f : futures) {
-			futureMap.put(f.getChannel().getId(), f);
-		}
+        this.futures = Collections.unmodifiableMap(futureMap);
 
-		this.futures = Collections.unmodifiableMap(futureMap);
+        for (ChannelFuture f : this.futures.values()) {
+            f.addListener(childListener);
+        }
 
-		for (ChannelFuture f : this.futures.values()) {
-			f.addListener(childListener);
-		}
+        // Done on arrival?
+        if (this.futures.isEmpty()) {
+            setDone();
+        }
+    }
 
-		// Done on arrival?
-		if (this.futures.isEmpty()) {
-			setDone();
-		}
-	}
+    DefaultChannelGroupFuture(ChannelGroup group, Map<Integer, ChannelFuture> futures) {
+        this.group = group;
+        this.futures = Collections.unmodifiableMap(futures);
+        for (ChannelFuture f : this.futures.values()) {
+            f.addListener(childListener);
+        }
 
-	DefaultChannelGroupFuture(ChannelGroup group, Map<Integer, ChannelFuture> futures) {
-		this.group = group;
-		this.futures = Collections.unmodifiableMap(futures);
-		for (ChannelFuture f : this.futures.values()) {
-			f.addListener(childListener);
-		}
+        // Done on arrival?
+        if (this.futures.isEmpty()) {
+            setDone();
+        }
+    }
 
-		// Done on arrival?
-		if (this.futures.isEmpty()) {
-			setDone();
-		}
-	}
+    private static void checkDeadLock() {
+        if (DeadLockProofWorker.PARENT.get() != null) {
+            throw new IllegalStateException("await*() in I/O thread causes a dead lock or " + "sudden performance drop. Use addListener() instead or " + "call await*() from a different thread.");
+        }
+    }
 
-	public ChannelGroup getGroup() {
-		return group;
-	}
+    public ChannelGroup getGroup() {
+        return group;
+    }
 
-	public ChannelFuture find(Integer channelId) {
-		return futures.get(channelId);
-	}
+    public ChannelFuture find(Integer channelId) {
+        return futures.get(channelId);
+    }
 
-	public ChannelFuture find(Channel channel) {
-		return futures.get(channel.getId());
-	}
+    public ChannelFuture find(Channel channel) {
+        return futures.get(channel.getId());
+    }
 
-	public Iterator<ChannelFuture> iterator() {
-		return futures.values().iterator();
-	}
+    public Iterator<ChannelFuture> iterator() {
+        return futures.values().iterator();
+    }
 
-	public synchronized boolean isDone() {
-		return done;
-	}
+    public synchronized boolean isDone() {
+        return done;
+    }
 
-	public synchronized boolean isCompleteSuccess() {
-		return successCount == futures.size();
-	}
+    public synchronized boolean isCompleteSuccess() {
+        return successCount == futures.size();
+    }
 
-	public synchronized boolean isPartialSuccess() {
-		return successCount != 0 && successCount != futures.size();
-	}
+    public synchronized boolean isPartialSuccess() {
+        return successCount != 0 && successCount != futures.size();
+    }
 
-	public synchronized boolean isPartialFailure() {
-		return failureCount != 0 && failureCount != futures.size();
-	}
+    public synchronized boolean isPartialFailure() {
+        return failureCount != 0 && failureCount != futures.size();
+    }
 
-	public synchronized boolean isCompleteFailure() {
-		int futureCnt = futures.size();
-		return futureCnt != 0 && failureCount == futureCnt;
-	}
+    public synchronized boolean isCompleteFailure() {
+        int futureCnt = futures.size();
+        return futureCnt != 0 && failureCount == futureCnt;
+    }
 
-	public void addListener(ChannelGroupFutureListener listener) {
-		if (listener == null) {
-			throw new NullPointerException("listener");
-		}
+    public void addListener(ChannelGroupFutureListener listener) {
+        if (listener == null) {
+            throw new NullPointerException("listener");
+        }
 
-		boolean notifyNow = false;
-		synchronized (this) {
-			if (done) {
-				notifyNow = true;
-			} else {
-				if (firstListener == null) {
-					firstListener = listener;
-				} else {
-					if (otherListeners == null) {
-						otherListeners = new ArrayList<ChannelGroupFutureListener>(1);
-					}
-					otherListeners.add(listener);
-				}
-			}
-		}
+        boolean notifyNow = false;
+        synchronized (this) {
+            if (done) {
+                notifyNow = true;
+            } else {
+                if (firstListener == null) {
+                    firstListener = listener;
+                } else {
+                    if (otherListeners == null) {
+                        otherListeners = new ArrayList<ChannelGroupFutureListener>(1);
+                    }
+                    otherListeners.add(listener);
+                }
+            }
+        }
 
-		if (notifyNow) {
-			notifyListener(listener);
-		}
-	}
+        if (notifyNow) {
+            notifyListener(listener);
+        }
+    }
 
-	public void removeListener(ChannelGroupFutureListener listener) {
-		if (listener == null) {
-			throw new NullPointerException("listener");
-		}
+    public void removeListener(ChannelGroupFutureListener listener) {
+        if (listener == null) {
+            throw new NullPointerException("listener");
+        }
 
-		synchronized (this) {
-			if (!done) {
-				if (listener == firstListener) {
-					if (otherListeners != null && !otherListeners.isEmpty()) {
-						firstListener = otherListeners.remove(0);
-					} else {
-						firstListener = null;
-					}
-				} else if (otherListeners != null) {
-					otherListeners.remove(listener);
-				}
-			}
-		}
-	}
+        synchronized (this) {
+            if (!done) {
+                if (listener == firstListener) {
+                    if (otherListeners != null && !otherListeners.isEmpty()) {
+                        firstListener = otherListeners.remove(0);
+                    } else {
+                        firstListener = null;
+                    }
+                } else if (otherListeners != null) {
+                    otherListeners.remove(listener);
+                }
+            }
+        }
+    }
 
-	public ChannelGroupFuture await() throws InterruptedException {
-		if (Thread.interrupted()) {
-			throw new InterruptedException();
-		}
+    public ChannelGroupFuture await() throws InterruptedException {
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
 
-		synchronized (this) {
-			while (!done) {
-				checkDeadLock();
-				waiters++;
-				try {
-					wait();
-				} finally {
-					waiters--;
-				}
-			}
-		}
-		return this;
-	}
+        synchronized (this) {
+            while (!done) {
+                checkDeadLock();
+                waiters++;
+                try {
+                    wait();
+                } finally {
+                    waiters--;
+                }
+            }
+        }
+        return this;
+    }
 
-	public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
-		return await0(unit.toNanos(timeout), true);
-	}
+    public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
+        return await0(unit.toNanos(timeout), true);
+    }
 
-	public boolean await(long timeoutMillis) throws InterruptedException {
-		return await0(MILLISECONDS.toNanos(timeoutMillis), true);
-	}
+    public boolean await(long timeoutMillis) throws InterruptedException {
+        return await0(MILLISECONDS.toNanos(timeoutMillis), true);
+    }
 
-	public ChannelGroupFuture awaitUninterruptibly() {
-		boolean interrupted = false;
-		synchronized (this) {
-			while (!done) {
-				checkDeadLock();
-				waiters++;
-				try {
-					wait();
-				} catch (InterruptedException e) {
-					interrupted = true;
-				} finally {
-					waiters--;
-				}
-			}
-		}
+    public ChannelGroupFuture awaitUninterruptibly() {
+        boolean interrupted = false;
+        synchronized (this) {
+            while (!done) {
+                checkDeadLock();
+                waiters++;
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                } finally {
+                    waiters--;
+                }
+            }
+        }
 
-		if (interrupted) {
-			Thread.currentThread().interrupt();
-		}
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
 
-		return this;
-	}
+        return this;
+    }
 
-	public boolean awaitUninterruptibly(long timeout, TimeUnit unit) {
-		try {
-			return await0(unit.toNanos(timeout), false);
-		} catch (InterruptedException e) {
-			throw new InternalError();
-		}
-	}
+    public boolean awaitUninterruptibly(long timeout, TimeUnit unit) {
+        try {
+            return await0(unit.toNanos(timeout), false);
+        } catch (InterruptedException e) {
+            throw new InternalError();
+        }
+    }
 
-	public boolean awaitUninterruptibly(long timeoutMillis) {
-		try {
-			return await0(MILLISECONDS.toNanos(timeoutMillis), false);
-		} catch (InterruptedException e) {
-			throw new InternalError();
-		}
-	}
+    public boolean awaitUninterruptibly(long timeoutMillis) {
+        try {
+            return await0(MILLISECONDS.toNanos(timeoutMillis), false);
+        } catch (InterruptedException e) {
+            throw new InternalError();
+        }
+    }
 
-	private boolean await0(long timeoutNanos, boolean interruptable) throws InterruptedException {
-		if (interruptable && Thread.interrupted()) {
-			throw new InterruptedException();
-		}
+    private boolean await0(long timeoutNanos, boolean interruptable) throws InterruptedException {
+        if (interruptable && Thread.interrupted()) {
+            throw new InterruptedException();
+        }
 
-		long startTime = timeoutNanos <= 0 ? 0 : System.nanoTime();
-		long waitTime = timeoutNanos;
-		boolean interrupted = false;
+        long startTime = timeoutNanos <= 0 ? 0 : System.nanoTime();
+        long waitTime = timeoutNanos;
+        boolean interrupted = false;
 
-		try {
-			synchronized (this) {
-				if (done || waitTime <= 0) {
-					return done;
-				}
+        try {
+            synchronized (this) {
+                if (done || waitTime <= 0) {
+                    return done;
+                }
 
-				checkDeadLock();
-				waiters++;
-				try {
-					for (;;) {
-						try {
-							wait(waitTime / 1000000, (int) (waitTime % 1000000));
-						} catch (InterruptedException e) {
-							if (interruptable) {
-								throw e;
-							} else {
-								interrupted = true;
-							}
-						}
+                checkDeadLock();
+                waiters++;
+                try {
+                    for (; ; ) {
+                        try {
+                            wait(waitTime / 1000000, (int) (waitTime % 1000000));
+                        } catch (InterruptedException e) {
+                            if (interruptable) {
+                                throw e;
+                            } else {
+                                interrupted = true;
+                            }
+                        }
 
-						if (done) {
-							return true;
-						} else {
-							waitTime = timeoutNanos - (System.nanoTime() - startTime);
-							if (waitTime <= 0) {
-								return done;
-							}
-						}
-					}
-				} finally {
-					waiters--;
-				}
-			}
-		} finally {
-			if (interrupted) {
-				Thread.currentThread().interrupt();
-			}
-		}
-	}
+                        if (done) {
+                            return true;
+                        } else {
+                            waitTime = timeoutNanos - (System.nanoTime() - startTime);
+                            if (waitTime <= 0) {
+                                return done;
+                            }
+                        }
+                    }
+                } finally {
+                    waiters--;
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
 
-	private static void checkDeadLock() {
-		if (DeadLockProofWorker.PARENT.get() != null) {
-			throw new IllegalStateException("await*() in I/O thread causes a dead lock or " + "sudden performance drop. Use addListener() instead or " + "call await*() from a different thread.");
-		}
-	}
+    boolean setDone() {
+        synchronized (this) {
+            // Allow only once.
+            if (done) {
+                return false;
+            }
 
-	boolean setDone() {
-		synchronized (this) {
-			// Allow only once.
-			if (done) {
-				return false;
-			}
+            done = true;
+            if (waiters > 0) {
+                notifyAll();
+            }
+        }
 
-			done = true;
-			if (waiters > 0) {
-				notifyAll();
-			}
-		}
+        notifyListeners();
+        return true;
+    }
 
-		notifyListeners();
-		return true;
-	}
+    private void notifyListeners() {
+        // This method doesn't need synchronization because:
+        // 1) This method is always called after synchronized (this) block.
+        // Hence any listener list modification happens-before this method.
+        // 2) This method is called only when 'done' is true. Once 'done'
+        // becomes true, the listener list is never modified - see
+        // add/removeListener()
+        if (firstListener != null) {
+            notifyListener(firstListener);
+            firstListener = null;
 
-	private void notifyListeners() {
-		// This method doesn't need synchronization because:
-		// 1) This method is always called after synchronized (this) block.
-		// Hence any listener list modification happens-before this method.
-		// 2) This method is called only when 'done' is true. Once 'done'
-		// becomes true, the listener list is never modified - see
-		// add/removeListener()
-		if (firstListener != null) {
-			notifyListener(firstListener);
-			firstListener = null;
+            if (otherListeners != null) {
+                for (ChannelGroupFutureListener l : otherListeners) {
+                    notifyListener(l);
+                }
+                otherListeners = null;
+            }
+        }
+    }
 
-			if (otherListeners != null) {
-				for (ChannelGroupFutureListener l : otherListeners) {
-					notifyListener(l);
-				}
-				otherListeners = null;
-			}
-		}
-	}
-
-	private void notifyListener(ChannelGroupFutureListener l) {
-		try {
-			l.operationComplete(this);
-		} catch (Throwable t) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("An exception was thrown by " + ChannelFutureListener.class.getSimpleName() + '.', t);
-			}
-		}
-	}
+    private void notifyListener(ChannelGroupFutureListener l) {
+        try {
+            l.operationComplete(this);
+        } catch (Throwable t) {
+            if (logger.isWarnEnabled()) {
+                logger.warn("An exception was thrown by " + ChannelFutureListener.class.getSimpleName() + '.', t);
+            }
+        }
+    }
 }

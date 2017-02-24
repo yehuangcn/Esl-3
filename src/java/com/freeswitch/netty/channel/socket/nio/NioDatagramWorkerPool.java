@@ -19,17 +19,15 @@ import java.util.concurrent.Executor;
 
 /**
  * Default implementation which hands of {@link NioDatagramWorker}'s
- *
- *
  */
 public class NioDatagramWorkerPool extends AbstractNioWorkerPool<NioDatagramWorker> {
 
-	public NioDatagramWorkerPool(Executor executor, int workerCount) {
-		super(executor, workerCount);
-	}
+    public NioDatagramWorkerPool(Executor executor, int workerCount) {
+        super(executor, workerCount);
+    }
 
-	@Override
-	protected NioDatagramWorker newWorker(Executor executor) {
-		return new NioDatagramWorker(executor);
-	}
+    @Override
+    protected NioDatagramWorker newWorker(Executor executor) {
+        return new NioDatagramWorker(executor);
+    }
 }

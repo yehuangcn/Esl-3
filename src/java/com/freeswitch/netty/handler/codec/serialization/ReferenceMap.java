@@ -22,69 +22,69 @@ import java.util.Set;
 
 abstract class ReferenceMap<K, V> implements Map<K, V> {
 
-	private final Map<K, Reference<V>> delegate;
+    private final Map<K, Reference<V>> delegate;
 
-	protected ReferenceMap(Map<K, Reference<V>> delegate) {
-		this.delegate = delegate;
-	}
+    protected ReferenceMap(Map<K, Reference<V>> delegate) {
+        this.delegate = delegate;
+    }
 
-	abstract Reference<V> fold(V value);
+    abstract Reference<V> fold(V value);
 
-	private V unfold(Reference<V> ref) {
-		if (ref == null) {
-			return null;
-		}
+    private V unfold(Reference<V> ref) {
+        if (ref == null) {
+            return null;
+        }
 
-		return ref.get();
-	}
+        return ref.get();
+    }
 
-	public int size() {
-		return delegate.size();
-	}
+    public int size() {
+        return delegate.size();
+    }
 
-	public boolean isEmpty() {
-		return delegate.isEmpty();
-	}
+    public boolean isEmpty() {
+        return delegate.isEmpty();
+    }
 
-	public boolean containsKey(Object key) {
-		return delegate.containsKey(key);
-	}
+    public boolean containsKey(Object key) {
+        return delegate.containsKey(key);
+    }
 
-	public boolean containsValue(Object value) {
-		throw new UnsupportedOperationException();
-	}
+    public boolean containsValue(Object value) {
+        throw new UnsupportedOperationException();
+    }
 
-	public V get(Object key) {
-		return unfold(delegate.get(key));
-	}
+    public V get(Object key) {
+        return unfold(delegate.get(key));
+    }
 
-	public V put(K key, V value) {
-		return unfold(delegate.put(key, fold(value)));
-	}
+    public V put(K key, V value) {
+        return unfold(delegate.put(key, fold(value)));
+    }
 
-	public V remove(Object key) {
-		return unfold(delegate.remove(key));
-	}
+    public V remove(Object key) {
+        return unfold(delegate.remove(key));
+    }
 
-	public void putAll(Map<? extends K, ? extends V> m) {
-		for (Entry<? extends K, ? extends V> entry : m.entrySet()) {
-			delegate.put(entry.getKey(), fold(entry.getValue()));
-		}
-	}
+    public void putAll(Map<? extends K, ? extends V> m) {
+        for (Entry<? extends K, ? extends V> entry : m.entrySet()) {
+            delegate.put(entry.getKey(), fold(entry.getValue()));
+        }
+    }
 
-	public void clear() {
-		delegate.clear();
-	}
+    public void clear() {
+        delegate.clear();
+    }
 
-	public Set<K> keySet() {
-		return delegate.keySet();
-	}
+    public Set<K> keySet() {
+        return delegate.keySet();
+    }
 
-	public Collection<V> values() {
-		throw new UnsupportedOperationException();
-	}
+    public Collection<V> values() {
+        throw new UnsupportedOperationException();
+    }
 
-	public Set<Entry<K, V>> entrySet() {
-		throw new UnsupportedOperationException();
-	}
+    public Set<Entry<K, V>> entrySet() {
+        throw new UnsupportedOperationException();
+    }
 }

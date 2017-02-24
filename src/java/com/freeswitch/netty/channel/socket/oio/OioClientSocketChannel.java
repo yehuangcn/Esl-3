@@ -15,35 +15,35 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
+import com.freeswitch.netty.channel.ChannelFactory;
+import com.freeswitch.netty.channel.ChannelPipeline;
+import com.freeswitch.netty.channel.ChannelSink;
 
 import java.io.OutputStream;
 import java.io.PushbackInputStream;
 import java.net.Socket;
 
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
+import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
 
 class OioClientSocketChannel extends OioSocketChannel {
 
-	volatile PushbackInputStream in;
-	volatile OutputStream out;
+    volatile PushbackInputStream in;
+    volatile OutputStream out;
 
-	OioClientSocketChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
+    OioClientSocketChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
 
-		super(null, factory, pipeline, sink, new Socket());
+        super(null, factory, pipeline, sink, new Socket());
 
-		fireChannelOpen(this);
-	}
+        fireChannelOpen(this);
+    }
 
-	@Override
-	PushbackInputStream getInputStream() {
-		return in;
-	}
+    @Override
+    PushbackInputStream getInputStream() {
+        return in;
+    }
 
-	@Override
-	OutputStream getOutputStream() {
-		return out;
-	}
+    @Override
+    OutputStream getOutputStream() {
+        return out;
+    }
 }

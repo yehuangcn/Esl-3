@@ -21,9 +21,9 @@ import java.util.EventListener;
  * Listens to the result of a {@link ChannelFuture}. The result of the
  * asynchronous {@link Channel} I/O operation is notified once this listener is
  * added by calling {@link ChannelFuture#addListener(ChannelFutureListener)}.
- *
+ * <p>
  * <h3>Return the control to the caller quickly</h3>
- *
+ * <p>
  * {@link #operationComplete(ChannelFuture)} is directly called by an I/O
  * thread. Therefore, performing a time consuming task or a blocking operation
  * in the handler method can cause an unexpected pause during I/O. If you need
@@ -32,34 +32,33 @@ import java.util.EventListener;
  */
 public interface ChannelFutureListener extends EventListener {
 
-	/**
-	 * A {@link ChannelFutureListener} that closes the {@link Channel} which is
-	 * associated with the specified {@link ChannelFuture}.
-	 */
-	ChannelFutureListener CLOSE = new ChannelFutureListener() {
-		public void operationComplete(ChannelFuture future) {
-			future.getChannel().close();
-		}
-	};
+    /**
+     * A {@link ChannelFutureListener} that closes the {@link Channel} which is
+     * associated with the specified {@link ChannelFuture}.
+     */
+    ChannelFutureListener CLOSE = new ChannelFutureListener() {
+        public void operationComplete(ChannelFuture future) {
+            future.getChannel().close();
+        }
+    };
 
-	/**
-	 * A {@link ChannelFutureListener} that closes the {@link Channel} when the
-	 * operation ended up with a failure or cancellation rather than a success.
-	 */
-	ChannelFutureListener CLOSE_ON_FAILURE = new ChannelFutureListener() {
-		public void operationComplete(ChannelFuture future) {
-			if (!future.isSuccess()) {
-				future.getChannel().close();
-			}
-		}
-	};
+    /**
+     * A {@link ChannelFutureListener} that closes the {@link Channel} when the
+     * operation ended up with a failure or cancellation rather than a success.
+     */
+    ChannelFutureListener CLOSE_ON_FAILURE = new ChannelFutureListener() {
+        public void operationComplete(ChannelFuture future) {
+            if (!future.isSuccess()) {
+                future.getChannel().close();
+            }
+        }
+    };
 
-	/**
-	 * Invoked when the I/O operation associated with the {@link ChannelFuture}
-	 * has been completed.
-	 *
-	 * @param future
-	 *            the source {@link ChannelFuture} which called this callback
-	 */
-	void operationComplete(ChannelFuture future) throws Exception;
+    /**
+     * Invoked when the I/O operation associated with the {@link ChannelFuture}
+     * has been completed.
+     *
+     * @param future the source {@link ChannelFuture} which called this callback
+     */
+    void operationComplete(ChannelFuture future) throws Exception;
 }

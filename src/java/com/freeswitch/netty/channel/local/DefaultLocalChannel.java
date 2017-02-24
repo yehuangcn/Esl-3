@@ -15,13 +15,8 @@
  */
 package com.freeswitch.netty.channel.local;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelClosed;
-import static com.freeswitch.netty.channel.Channels.fireChannelDisconnected;
-import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
-import static com.freeswitch.netty.channel.Channels.fireChannelUnbound;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.fireMessageReceived;
-import static com.freeswitch.netty.channel.Channels.fireWriteComplete;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.util.internal.ThreadLocalBoolean;
 
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.NotYetConnectedException;
@@ -29,183 +24,170 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.freeswitch.netty.channel.AbstractChannel;
-import com.freeswitch.netty.channel.ChannelConfig;
-import com.freeswitch.netty.channel.ChannelException;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelFutureListener;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
-import com.freeswitch.netty.channel.DefaultChannelConfig;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.util.internal.ThreadLocalBoolean;
+import static com.freeswitch.netty.channel.Channels.*;
 
 /**
  */
 final class DefaultLocalChannel extends AbstractChannel implements LocalChannel {
 
-	// TODO Move the state management up to AbstractChannel to remove
-	// duplication.
-	private static final int ST_OPEN = 0;
-	private static final int ST_BOUND = 1;
-	private static final int ST_CONNECTED = 2;
-	private static final int ST_CLOSED = -1;
-	final AtomicInteger state = new AtomicInteger(ST_OPEN);
+    // TODO Move the state management up to AbstractChannel to remove
+    // duplication.
+    private static final int ST_OPEN = 0;
+    private static final int ST_BOUND = 1;
+    private static final int ST_CONNECTED = 2;
+    private static final int ST_CLOSED = -1;
+    final AtomicInteger state = new AtomicInteger(ST_OPEN);
+    final Queue<MessageEvent> writeBuffer = new ConcurrentLinkedQueue<MessageEvent>();
+    private final ChannelConfig config;
+    private final ThreadLocalBoolean delivering = new ThreadLocalBoolean();
+    volatile DefaultLocalChannel pairedChannel;
+    volatile LocalAddress localAddress;
+    volatile LocalAddress remoteAddress;
 
-	private final ChannelConfig config;
-	private final ThreadLocalBoolean delivering = new ThreadLocalBoolean();
+    DefaultLocalChannel(LocalServerChannel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, DefaultLocalChannel pairedChannel) {
+        super(parent, factory, pipeline, sink);
+        this.pairedChannel = pairedChannel;
+        config = new DefaultChannelConfig();
 
-	final Queue<MessageEvent> writeBuffer = new ConcurrentLinkedQueue<MessageEvent>();
+        // TODO Move the state variable to AbstractChannel so that we don't need
+        // to add many listeners.
+        getCloseFuture().addListener(new ChannelFutureListener() {
+            public void operationComplete(ChannelFuture future) throws Exception {
+                state.set(ST_CLOSED);
+            }
+        });
 
-	volatile DefaultLocalChannel pairedChannel;
-	volatile LocalAddress localAddress;
-	volatile LocalAddress remoteAddress;
+        fireChannelOpen(this);
+    }
 
-	DefaultLocalChannel(LocalServerChannel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, DefaultLocalChannel pairedChannel) {
-		super(parent, factory, pipeline, sink);
-		this.pairedChannel = pairedChannel;
-		config = new DefaultChannelConfig();
+    public ChannelConfig getConfig() {
+        return config;
+    }
 
-		// TODO Move the state variable to AbstractChannel so that we don't need
-		// to add many listeners.
-		getCloseFuture().addListener(new ChannelFutureListener() {
-			public void operationComplete(ChannelFuture future) throws Exception {
-				state.set(ST_CLOSED);
-			}
-		});
+    @Override
+    public boolean isOpen() {
+        return state.get() >= ST_OPEN;
+    }
 
-		fireChannelOpen(this);
-	}
+    public boolean isBound() {
+        return state.get() >= ST_BOUND;
+    }
 
-	public ChannelConfig getConfig() {
-		return config;
-	}
+    public boolean isConnected() {
+        return state.get() == ST_CONNECTED;
+    }
 
-	@Override
-	public boolean isOpen() {
-		return state.get() >= ST_OPEN;
-	}
+    void setBound() throws ClosedChannelException {
+        if (!state.compareAndSet(ST_OPEN, ST_BOUND)) {
+            switch (state.get()) {
+                case ST_CLOSED:
+                    throw new ClosedChannelException();
+                default:
+                    throw new ChannelException("already bound");
+            }
+        }
+    }
 
-	public boolean isBound() {
-		return state.get() >= ST_BOUND;
-	}
+    void setConnected() {
+        if (state.get() != ST_CLOSED) {
+            state.set(ST_CONNECTED);
+        }
+    }
 
-	public boolean isConnected() {
-		return state.get() == ST_CONNECTED;
-	}
+    @Override
+    protected boolean setClosed() {
+        return super.setClosed();
+    }
 
-	void setBound() throws ClosedChannelException {
-		if (!state.compareAndSet(ST_OPEN, ST_BOUND)) {
-			switch (state.get()) {
-			case ST_CLOSED:
-				throw new ClosedChannelException();
-			default:
-				throw new ChannelException("already bound");
-			}
-		}
-	}
+    public LocalAddress getLocalAddress() {
+        return localAddress;
+    }
 
-	void setConnected() {
-		if (state.get() != ST_CLOSED) {
-			state.set(ST_CONNECTED);
-		}
-	}
+    public LocalAddress getRemoteAddress() {
+        return remoteAddress;
+    }
 
-	@Override
-	protected boolean setClosed() {
-		return super.setClosed();
-	}
+    void closeNow(ChannelFuture future) {
+        LocalAddress localAddress = this.localAddress;
+        try {
+            // Close the self.
+            if (!setClosed()) {
+                return;
+            }
 
-	public LocalAddress getLocalAddress() {
-		return localAddress;
-	}
+            DefaultLocalChannel pairedChannel = this.pairedChannel;
+            if (pairedChannel != null) {
+                this.pairedChannel = null;
+                fireChannelDisconnected(this);
+                fireChannelUnbound(this);
+            }
+            fireChannelClosed(this);
 
-	public LocalAddress getRemoteAddress() {
-		return remoteAddress;
-	}
+            // Close the peer.
+            if (pairedChannel == null || !pairedChannel.setClosed()) {
+                return;
+            }
 
-	void closeNow(ChannelFuture future) {
-		LocalAddress localAddress = this.localAddress;
-		try {
-			// Close the self.
-			if (!setClosed()) {
-				return;
-			}
+            DefaultLocalChannel me = pairedChannel.pairedChannel;
+            if (me != null) {
+                pairedChannel.pairedChannel = null;
+                fireChannelDisconnected(pairedChannel);
+                fireChannelUnbound(pairedChannel);
+            }
+            fireChannelClosed(pairedChannel);
+        } finally {
+            future.setSuccess();
+            if (localAddress != null && getParent() == null) {
+                LocalChannelRegistry.unregister(localAddress);
+            }
+        }
+    }
 
-			DefaultLocalChannel pairedChannel = this.pairedChannel;
-			if (pairedChannel != null) {
-				this.pairedChannel = null;
-				fireChannelDisconnected(this);
-				fireChannelUnbound(this);
-			}
-			fireChannelClosed(this);
+    void flushWriteBuffer() {
+        DefaultLocalChannel pairedChannel = this.pairedChannel;
+        if (pairedChannel != null) {
+            if (pairedChannel.isConnected()) {
+                // Channel is open and connected and channelConnected event has
+                // been fired.
+                if (!delivering.get()) {
+                    delivering.set(true);
+                    try {
+                        for (; ; ) {
+                            MessageEvent e = writeBuffer.poll();
+                            if (e == null) {
+                                break;
+                            }
 
-			// Close the peer.
-			if (pairedChannel == null || !pairedChannel.setClosed()) {
-				return;
-			}
+                            fireMessageReceived(pairedChannel, e.getMessage());
+                            e.getFuture().setSuccess();
+                            fireWriteComplete(this, 1);
+                        }
+                    } finally {
+                        delivering.set(false);
+                    }
+                }
+            } else {
+                // Channel is open and connected but channelConnected event has
+                // not been fired yet.
+            }
+        } else {
+            // Channel is closed or not connected yet - notify as failures.
+            Exception cause;
+            if (isOpen()) {
+                cause = new NotYetConnectedException();
+            } else {
+                cause = new ClosedChannelException();
+            }
 
-			DefaultLocalChannel me = pairedChannel.pairedChannel;
-			if (me != null) {
-				pairedChannel.pairedChannel = null;
-				fireChannelDisconnected(pairedChannel);
-				fireChannelUnbound(pairedChannel);
-			}
-			fireChannelClosed(pairedChannel);
-		} finally {
-			future.setSuccess();
-			if (localAddress != null && getParent() == null) {
-				LocalChannelRegistry.unregister(localAddress);
-			}
-		}
-	}
+            for (; ; ) {
+                MessageEvent e = writeBuffer.poll();
+                if (e == null) {
+                    break;
+                }
 
-	void flushWriteBuffer() {
-		DefaultLocalChannel pairedChannel = this.pairedChannel;
-		if (pairedChannel != null) {
-			if (pairedChannel.isConnected()) {
-				// Channel is open and connected and channelConnected event has
-				// been fired.
-				if (!delivering.get()) {
-					delivering.set(true);
-					try {
-						for (;;) {
-							MessageEvent e = writeBuffer.poll();
-							if (e == null) {
-								break;
-							}
-
-							fireMessageReceived(pairedChannel, e.getMessage());
-							e.getFuture().setSuccess();
-							fireWriteComplete(this, 1);
-						}
-					} finally {
-						delivering.set(false);
-					}
-				}
-			} else {
-				// Channel is open and connected but channelConnected event has
-				// not been fired yet.
-			}
-		} else {
-			// Channel is closed or not connected yet - notify as failures.
-			Exception cause;
-			if (isOpen()) {
-				cause = new NotYetConnectedException();
-			} else {
-				cause = new ClosedChannelException();
-			}
-
-			for (;;) {
-				MessageEvent e = writeBuffer.poll();
-				if (e == null) {
-					break;
-				}
-
-				e.getFuture().setFailure(cause);
-				fireExceptionCaught(this, cause);
-			}
-		}
-	}
+                e.getFuture().setFailure(cause);
+                fireExceptionCaught(this, cause);
+            }
+        }
+    }
 }

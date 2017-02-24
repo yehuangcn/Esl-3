@@ -15,86 +15,80 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import java.net.SocketAddress;
+import com.freeswitch.netty.channel.*;
 
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelState;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.MessageEvent;
+import java.net.SocketAddress;
 
 class NioServerSocketPipelineSink extends AbstractNioChannelSink {
 
-	public void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception {
-		Channel channel = e.getChannel();
-		if (channel instanceof NioServerSocketChannel) {
-			handleServerSocket(e);
-		} else if (channel instanceof NioSocketChannel) {
-			handleAcceptedSocket(e);
-		}
-	}
+    private static void handleServerSocket(ChannelEvent e) {
+        if (!(e instanceof ChannelStateEvent)) {
+            return;
+        }
 
-	private static void handleServerSocket(ChannelEvent e) {
-		if (!(e instanceof ChannelStateEvent)) {
-			return;
-		}
+        ChannelStateEvent event = (ChannelStateEvent) e;
+        NioServerSocketChannel channel = (NioServerSocketChannel) event.getChannel();
+        ChannelFuture future = event.getFuture();
+        ChannelState state = event.getState();
+        Object value = event.getValue();
 
-		ChannelStateEvent event = (ChannelStateEvent) e;
-		NioServerSocketChannel channel = (NioServerSocketChannel) event.getChannel();
-		ChannelFuture future = event.getFuture();
-		ChannelState state = event.getState();
-		Object value = event.getValue();
+        switch (state) {
+            case OPEN:
+                if (Boolean.FALSE.equals(value)) {
+                    ((NioServerBoss) channel.boss).close(channel, future);
+                }
+                break;
+            case BOUND:
+                if (value != null) {
+                    ((NioServerBoss) channel.boss).bind(channel, future, (SocketAddress) value);
+                } else {
+                    ((NioServerBoss) channel.boss).close(channel, future);
+                }
+                break;
+            default:
+                break;
+        }
+    }
 
-		switch (state) {
-		case OPEN:
-			if (Boolean.FALSE.equals(value)) {
-				((NioServerBoss) channel.boss).close(channel, future);
-			}
-			break;
-		case BOUND:
-			if (value != null) {
-				((NioServerBoss) channel.boss).bind(channel, future, (SocketAddress) value);
-			} else {
-				((NioServerBoss) channel.boss).close(channel, future);
-			}
-			break;
-		default:
-			break;
-		}
-	}
+    private static void handleAcceptedSocket(ChannelEvent e) {
+        if (e instanceof ChannelStateEvent) {
+            ChannelStateEvent event = (ChannelStateEvent) e;
+            NioSocketChannel channel = (NioSocketChannel) event.getChannel();
+            ChannelFuture future = event.getFuture();
+            ChannelState state = event.getState();
+            Object value = event.getValue();
 
-	private static void handleAcceptedSocket(ChannelEvent e) {
-		if (e instanceof ChannelStateEvent) {
-			ChannelStateEvent event = (ChannelStateEvent) e;
-			NioSocketChannel channel = (NioSocketChannel) event.getChannel();
-			ChannelFuture future = event.getFuture();
-			ChannelState state = event.getState();
-			Object value = event.getValue();
+            switch (state) {
+                case OPEN:
+                    if (Boolean.FALSE.equals(value)) {
+                        channel.worker.close(channel, future);
+                    }
+                    break;
+                case BOUND:
+                case CONNECTED:
+                    if (value == null) {
+                        channel.worker.close(channel, future);
+                    }
+                    break;
+                case INTEREST_OPS:
+                    channel.worker.setInterestOps(channel, future, ((Integer) value).intValue());
+                    break;
+            }
+        } else if (e instanceof MessageEvent) {
+            MessageEvent event = (MessageEvent) e;
+            NioSocketChannel channel = (NioSocketChannel) event.getChannel();
+            boolean offered = channel.writeBufferQueue.offer(event);
+            assert offered;
+            channel.worker.writeFromUserCode(channel);
+        }
+    }
 
-			switch (state) {
-			case OPEN:
-				if (Boolean.FALSE.equals(value)) {
-					channel.worker.close(channel, future);
-				}
-				break;
-			case BOUND:
-			case CONNECTED:
-				if (value == null) {
-					channel.worker.close(channel, future);
-				}
-				break;
-			case INTEREST_OPS:
-				channel.worker.setInterestOps(channel, future, ((Integer) value).intValue());
-				break;
-			}
-		} else if (e instanceof MessageEvent) {
-			MessageEvent event = (MessageEvent) e;
-			NioSocketChannel channel = (NioSocketChannel) event.getChannel();
-			boolean offered = channel.writeBufferQueue.offer(event);
-			assert offered;
-			channel.worker.writeFromUserCode(channel);
-		}
-	}
+    public void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception {
+        Channel channel = e.getChannel();
+        if (channel instanceof NioServerSocketChannel) {
+            handleServerSocket(e);
+        } else if (channel instanceof NioSocketChannel) {
+            handleAcceptedSocket(e);
+        }
+    }
 }

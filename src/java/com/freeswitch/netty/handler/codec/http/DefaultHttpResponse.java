@@ -22,48 +22,46 @@ import com.freeswitch.netty.util.internal.StringUtil;
  */
 public class DefaultHttpResponse extends DefaultHttpMessage implements HttpResponse {
 
-	private HttpResponseStatus status;
+    private HttpResponseStatus status;
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param version
-	 *            the HTTP version of this response
-	 * @param status
-	 *            the status of this response
-	 */
-	public DefaultHttpResponse(HttpVersion version, HttpResponseStatus status) {
-		super(version);
-		setStatus(status);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param version the HTTP version of this response
+     * @param status  the status of this response
+     */
+    public DefaultHttpResponse(HttpVersion version, HttpResponseStatus status) {
+        super(version);
+        setStatus(status);
+    }
 
-	public HttpResponseStatus getStatus() {
-		return status;
-	}
+    public HttpResponseStatus getStatus() {
+        return status;
+    }
 
-	public void setStatus(HttpResponseStatus status) {
-		if (status == null) {
-			throw new NullPointerException("status");
-		}
-		this.status = status;
-	}
+    public void setStatus(HttpResponseStatus status) {
+        if (status == null) {
+            throw new NullPointerException("status");
+        }
+        this.status = status;
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder buf = new StringBuilder();
-		buf.append(getClass().getSimpleName());
-		buf.append("(chunked: ");
-		buf.append(isChunked());
-		buf.append(')');
-		buf.append(StringUtil.NEWLINE);
-		buf.append(getProtocolVersion().getText());
-		buf.append(' ');
-		buf.append(getStatus().toString());
-		buf.append(StringUtil.NEWLINE);
-		appendHeaders(buf);
+    @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder();
+        buf.append(getClass().getSimpleName());
+        buf.append("(chunked: ");
+        buf.append(isChunked());
+        buf.append(')');
+        buf.append(StringUtil.NEWLINE);
+        buf.append(getProtocolVersion().getText());
+        buf.append(' ');
+        buf.append(getStatus().toString());
+        buf.append(StringUtil.NEWLINE);
+        appendHeaders(buf);
 
-		// Remove the last newline.
-		buf.setLength(buf.length() - StringUtil.NEWLINE.length());
-		return buf.toString();
-	}
+        // Remove the last newline.
+        buf.setLength(buf.length() - StringUtil.NEWLINE.length());
+        return buf.toString();
+    }
 }

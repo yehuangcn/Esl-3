@@ -15,20 +15,20 @@
  */
 package com.freeswitch.netty.channel;
 
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.channel.socket.ServerSocketChannel;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketAddress;
-
-import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.channel.socket.ServerSocketChannel;
 
 /**
  * An I/O event or I/O request associated with a {@link Channel}.
  * <p>
  * A {@link ChannelEvent} is handled by a series of {@link ChannelHandler}s in a
  * {@link ChannelPipeline}.
- *
+ * <p>
  * <h3>Upstream events and downstream events, and their interpretation</h3>
  * <p>
  * Every event is either an upstream event or a downstream event. If an event
@@ -50,9 +50,9 @@ import com.freeswitch.netty.channel.socket.ServerSocketChannel;
  * downstream events are the request for server operations such as
  * {@link OutputStream#write(byte[])}, {@link Socket#connect(SocketAddress)},
  * and {@link Socket#close()}.
- *
+ * <p>
  * <h4>Upstream events</h4>
- *
+ * <p>
  * <table border="1" cellspacing="0" cellpadding="6">
  * <tr>
  * <th>Event name</th>
@@ -158,9 +158,9 @@ import com.freeswitch.netty.channel.socket.ServerSocketChannel;
  * closed.)</td>
  * </tr>
  * </table>
- *
+ * <p>
  * <h4>Downstream events</h4>
- *
+ * <p>
  * <table border="1" cellspacing="0" cellpadding="6">
  * <tr>
  * <th>Event name</th>
@@ -210,7 +210,7 @@ import com.freeswitch.netty.channel.socket.ServerSocketChannel;
  * ignored and discarded. Please note that there's no {@code "open"} in the
  * table. It is because a {@link Channel} is always open when it is created by a
  * {@link ChannelFactory}.
- *
+ * <p>
  * <h3>Additional resources worth reading</h3>
  * <p>
  * Please refer to the {@link ChannelHandler} and {@link ChannelPipeline}
@@ -222,17 +222,17 @@ import com.freeswitch.netty.channel.socket.ServerSocketChannel;
  */
 public interface ChannelEvent {
 
-	/**
-	 * Returns the {@link Channel} which is associated with this event.
-	 */
-	Channel getChannel();
+    /**
+     * Returns the {@link Channel} which is associated with this event.
+     */
+    Channel getChannel();
 
-	/**
-	 * Returns the {@link ChannelFuture} which is associated with this event. If
-	 * this event is an upstream event, this method will always return a
-	 * {@link SucceededChannelFuture} because the event has occurred already. If
-	 * this event is a downstream event (i.e. I/O request), the returned future
-	 * will be notified when the I/O request succeeds or fails.
-	 */
-	ChannelFuture getFuture();
+    /**
+     * Returns the {@link ChannelFuture} which is associated with this event. If
+     * this event is an upstream event, this method will always return a
+     * {@link SucceededChannelFuture} because the event has occurred already. If
+     * this event is a downstream event (i.e. I/O request), the returned future
+     * will be notified when the I/O request succeeds or fails.
+     */
+    ChannelFuture getFuture();
 }

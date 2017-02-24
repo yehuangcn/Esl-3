@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Utility that detects various properties specific to the current runtime
  * environment, such as Java version and the availability of the
  * {@code sun.misc.Unsafe} object.
- *
+ * <p>
  * <br>
  * You can disable the use of {@code sun.misc.Unsafe} if you specify the System
  * property <strong>org.jboss.netty.tryUnsafe</strong> with value of
@@ -34,97 +34,97 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class DetectionUtil {
 
-	private static final int JAVA_VERSION = javaVersion0();
-	private static final boolean HAS_UNSAFE = hasUnsafe(AtomicInteger.class.getClassLoader());
-	private static final boolean IS_WINDOWS;
-	static {
-		String os = SystemPropertyUtil.get("os.name", "").toLowerCase();
-		// windows
-		IS_WINDOWS = os.contains("win");
-	}
+    private static final int JAVA_VERSION = javaVersion0();
+    private static final boolean HAS_UNSAFE = hasUnsafe(AtomicInteger.class.getClassLoader());
+    private static final boolean IS_WINDOWS;
 
-	/**
-	 * Return {@code true} if the JVM is running on Windows
-	 *
-	 */
-	public static boolean isWindows() {
-		return IS_WINDOWS;
-	}
+    static {
+        String os = SystemPropertyUtil.get("os.name", "").toLowerCase();
+        // windows
+        IS_WINDOWS = os.contains("win");
+    }
 
-	public static boolean hasUnsafe() {
-		return HAS_UNSAFE;
-	}
+    private DetectionUtil() {
+        // only static method supported
+    }
 
-	public static int javaVersion() {
-		return JAVA_VERSION;
-	}
+    /**
+     * Return {@code true} if the JVM is running on Windows
+     */
+    public static boolean isWindows() {
+        return IS_WINDOWS;
+    }
 
-	private static boolean hasUnsafe(ClassLoader loader) {
-		boolean noUnsafe = SystemPropertyUtil.getBoolean("io.netty.noUnsafe", false);
-		if (noUnsafe) {
-			return false;
-		}
+    public static boolean hasUnsafe() {
+        return HAS_UNSAFE;
+    }
 
-		// Legacy properties
-		boolean tryUnsafe;
-		if (SystemPropertyUtil.contains("io.netty.tryUnsafe")) {
-			tryUnsafe = SystemPropertyUtil.getBoolean("io.netty.tryUnsafe", true);
-		} else {
-			tryUnsafe = SystemPropertyUtil.getBoolean("org.jboss.netty.tryUnsafe", true);
-		}
+    public static int javaVersion() {
+        return JAVA_VERSION;
+    }
 
-		if (!tryUnsafe) {
-			return false;
-		}
+    private static boolean hasUnsafe(ClassLoader loader) {
+        boolean noUnsafe = SystemPropertyUtil.getBoolean("io.netty.noUnsafe", false);
+        if (noUnsafe) {
+            return false;
+        }
 
-		try {
-			Class<?> unsafeClazz = Class.forName("sun.misc.Unsafe", true, loader);
-			return hasUnsafeField(unsafeClazz);
-		} catch (Exception e) {
-			// Ignore
-		}
+        // Legacy properties
+        boolean tryUnsafe;
+        if (SystemPropertyUtil.contains("io.netty.tryUnsafe")) {
+            tryUnsafe = SystemPropertyUtil.getBoolean("io.netty.tryUnsafe", true);
+        } else {
+            tryUnsafe = SystemPropertyUtil.getBoolean("org.jboss.netty.tryUnsafe", true);
+        }
 
-		return false;
-	}
+        if (!tryUnsafe) {
+            return false;
+        }
 
-	private static boolean hasUnsafeField(final Class<?> unsafeClass) throws PrivilegedActionException {
-		return AccessController.doPrivileged(new PrivilegedExceptionAction<Boolean>() {
-			public Boolean run() throws Exception {
-				unsafeClass.getDeclaredField("theUnsafe");
-				return true;
-			}
-		});
-	}
+        try {
+            Class<?> unsafeClazz = Class.forName("sun.misc.Unsafe", true, loader);
+            return hasUnsafeField(unsafeClazz);
+        } catch (Exception e) {
+            // Ignore
+        }
 
-	private static int javaVersion0() {
-		try {
-			// Check if its android, if so handle it the same way as java6.
-			//
-			// See https://github.com/netty/netty/issues/282
-			Class.forName("android.app.Application");
-			return 6;
-		} catch (ClassNotFoundException e) {
-			// Ignore
-		}
+        return false;
+    }
 
-		try {
-			Class.forName("java.util.concurrent.LinkedTransferQueue", false, BlockingQueue.class.getClassLoader());
-			return 7;
-		} catch (Exception e) {
-			// Ignore
-		}
+    private static boolean hasUnsafeField(final Class<?> unsafeClass) throws PrivilegedActionException {
+        return AccessController.doPrivileged(new PrivilegedExceptionAction<Boolean>() {
+            public Boolean run() throws Exception {
+                unsafeClass.getDeclaredField("theUnsafe");
+                return true;
+            }
+        });
+    }
 
-		try {
-			Class.forName("java.util.ArrayDeque", false, Queue.class.getClassLoader());
-			return 6;
-		} catch (Exception e) {
-			// Ignore
-		}
+    private static int javaVersion0() {
+        try {
+            // Check if its android, if so handle it the same way as java6.
+            //
+            // See https://github.com/netty/netty/issues/282
+            Class.forName("android.app.Application");
+            return 6;
+        } catch (ClassNotFoundException e) {
+            // Ignore
+        }
 
-		return 5;
-	}
+        try {
+            Class.forName("java.util.concurrent.LinkedTransferQueue", false, BlockingQueue.class.getClassLoader());
+            return 7;
+        } catch (Exception e) {
+            // Ignore
+        }
 
-	private DetectionUtil() {
-		// only static method supported
-	}
+        try {
+            Class.forName("java.util.ArrayDeque", false, Queue.class.getClassLoader());
+            return 6;
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        return 5;
+    }
 }

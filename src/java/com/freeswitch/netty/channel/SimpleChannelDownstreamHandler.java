@@ -27,7 +27,7 @@ import java.net.SocketAddress;
  * <p>
  * Please use {@link SimpleChannelHandler} if you need to implement both
  * {@link ChannelUpstreamHandler} and {@link ChannelDownstreamHandler}.
- *
+ * <p>
  * <h3>Overriding the
  * {@link #handleDownstream(ChannelHandlerContext, ChannelEvent)
  * handleDownstream} method</h3>
@@ -38,7 +38,7 @@ import java.net.SocketAddress;
  * make sure to call {@code super.handleDownstream()} so that other handler
  * methods are invoked properly:
  * </p>
- * 
+ * <p>
  * <pre>
  * public class MyChannelHandler extends {@link SimpleChannelDownstreamHandler} {
  *
@@ -60,98 +60,97 @@ import java.net.SocketAddress;
  * Use the *Later(..) methods of the {@link Channels} class if you want to send
  * an upstream event from a {@link ChannelDownstreamHandler} otherwise you may
  * run into threading issues.
- *
  */
 public class SimpleChannelDownstreamHandler implements ChannelDownstreamHandler {
 
-	/**
-	 * {@inheritDoc} Down-casts the received downstream event into more
-	 * meaningful sub-type event and calls an appropriate handler method with
-	 * the down-casted event.
-	 */
-	public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
+    /**
+     * {@inheritDoc} Down-casts the received downstream event into more
+     * meaningful sub-type event and calls an appropriate handler method with
+     * the down-casted event.
+     */
+    public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
 
-		if (e instanceof MessageEvent) {
-			writeRequested(ctx, (MessageEvent) e);
-		} else if (e instanceof ChannelStateEvent) {
-			ChannelStateEvent evt = (ChannelStateEvent) e;
-			switch (evt.getState()) {
-			case OPEN:
-				if (!Boolean.TRUE.equals(evt.getValue())) {
-					closeRequested(ctx, evt);
-				}
-				break;
-			case BOUND:
-				if (evt.getValue() != null) {
-					bindRequested(ctx, evt);
-				} else {
-					unbindRequested(ctx, evt);
-				}
-				break;
-			case CONNECTED:
-				if (evt.getValue() != null) {
-					connectRequested(ctx, evt);
-				} else {
-					disconnectRequested(ctx, evt);
-				}
-				break;
-			case INTEREST_OPS:
-				setInterestOpsRequested(ctx, evt);
-				break;
-			default:
-				ctx.sendDownstream(e);
-			}
-		} else {
-			ctx.sendDownstream(e);
-		}
-	}
+        if (e instanceof MessageEvent) {
+            writeRequested(ctx, (MessageEvent) e);
+        } else if (e instanceof ChannelStateEvent) {
+            ChannelStateEvent evt = (ChannelStateEvent) e;
+            switch (evt.getState()) {
+                case OPEN:
+                    if (!Boolean.TRUE.equals(evt.getValue())) {
+                        closeRequested(ctx, evt);
+                    }
+                    break;
+                case BOUND:
+                    if (evt.getValue() != null) {
+                        bindRequested(ctx, evt);
+                    } else {
+                        unbindRequested(ctx, evt);
+                    }
+                    break;
+                case CONNECTED:
+                    if (evt.getValue() != null) {
+                        connectRequested(ctx, evt);
+                    } else {
+                        disconnectRequested(ctx, evt);
+                    }
+                    break;
+                case INTEREST_OPS:
+                    setInterestOpsRequested(ctx, evt);
+                    break;
+                default:
+                    ctx.sendDownstream(e);
+            }
+        } else {
+            ctx.sendDownstream(e);
+        }
+    }
 
-	/**
-	 * Invoked when {@link Channel#write(Object)} is called.
-	 */
-	public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-		ctx.sendDownstream(e);
-	}
+    /**
+     * Invoked when {@link Channel#write(Object)} is called.
+     */
+    public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+        ctx.sendDownstream(e);
+    }
 
-	/**
-	 * Invoked when {@link Channel#bind(SocketAddress)} was called.
-	 */
-	public void bindRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		ctx.sendDownstream(e);
-	}
+    /**
+     * Invoked when {@link Channel#bind(SocketAddress)} was called.
+     */
+    public void bindRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        ctx.sendDownstream(e);
+    }
 
-	/**
-	 * Invoked when {@link Channel#connect(SocketAddress)} was called.
-	 */
-	public void connectRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		ctx.sendDownstream(e);
-	}
+    /**
+     * Invoked when {@link Channel#connect(SocketAddress)} was called.
+     */
+    public void connectRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        ctx.sendDownstream(e);
+    }
 
-	/**
-	 * Invoked when {@link Channel#setInterestOps(int)} was called.
-	 */
-	public void setInterestOpsRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		ctx.sendDownstream(e);
-	}
+    /**
+     * Invoked when {@link Channel#setInterestOps(int)} was called.
+     */
+    public void setInterestOpsRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        ctx.sendDownstream(e);
+    }
 
-	/**
-	 * Invoked when {@link Channel#disconnect()} was called.
-	 */
-	public void disconnectRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		ctx.sendDownstream(e);
-	}
+    /**
+     * Invoked when {@link Channel#disconnect()} was called.
+     */
+    public void disconnectRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        ctx.sendDownstream(e);
+    }
 
-	/**
-	 * Invoked when {@link Channel#unbind()} was called.
-	 */
-	public void unbindRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		ctx.sendDownstream(e);
-	}
+    /**
+     * Invoked when {@link Channel#unbind()} was called.
+     */
+    public void unbindRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        ctx.sendDownstream(e);
+    }
 
-	/**
-	 * Invoked when {@link Channel#close()} was called.
-	 */
-	public void closeRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		ctx.sendDownstream(e);
-	}
+    /**
+     * Invoked when {@link Channel#close()} was called.
+     */
+    public void closeRequested(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        ctx.sendDownstream(e);
+    }
 }

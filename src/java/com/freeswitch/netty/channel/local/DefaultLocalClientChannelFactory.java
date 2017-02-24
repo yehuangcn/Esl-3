@@ -20,33 +20,33 @@ import com.freeswitch.netty.channel.ChannelSink;
 
 /**
  * The default {@link LocalClientChannelFactory} implementation.
- * 
+ *
  * @apiviz.landmark
  */
 public class DefaultLocalClientChannelFactory implements LocalClientChannelFactory {
 
-	private final ChannelSink sink;
+    private final ChannelSink sink;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public DefaultLocalClientChannelFactory() {
-		sink = new LocalClientChannelSink();
-	}
+    /**
+     * Creates a new instance.
+     */
+    public DefaultLocalClientChannelFactory() {
+        sink = new LocalClientChannelSink();
+    }
 
-	public LocalChannel newChannel(ChannelPipeline pipeline) {
-		return new DefaultLocalChannel(null, this, pipeline, sink, null);
-	}
+    public LocalChannel newChannel(ChannelPipeline pipeline) {
+        return new DefaultLocalChannel(null, this, pipeline, sink, null);
+    }
 
-	/**
-	 * Does nothing because this implementation does not require any external
-	 * resources.
-	 */
-	public void releaseExternalResources() {
-		// No external resources.
-	}
+    /**
+     * Does nothing because this implementation does not require any external
+     * resources.
+     */
+    public void releaseExternalResources() {
+        // No external resources.
+    }
 
-	public void shutdown() {
-		// nothing to shutdown
-	}
+    public void shutdown() {
+        // nothing to shutdown
+    }
 }

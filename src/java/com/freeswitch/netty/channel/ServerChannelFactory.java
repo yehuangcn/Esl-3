@@ -21,5 +21,5 @@ package com.freeswitch.netty.channel;
  * @apiviz.has org.jboss.netty.channel.ServerChannel oneway - - creates
  */
 public interface ServerChannelFactory extends ChannelFactory {
-	ServerChannel newChannel(ChannelPipeline pipeline);
+    ServerChannel newChannel(ChannelPipeline pipeline);
 }

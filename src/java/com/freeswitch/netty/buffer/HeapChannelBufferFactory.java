@@ -26,60 +26,59 @@ import java.nio.ByteOrder;
  */
 public class HeapChannelBufferFactory extends AbstractChannelBufferFactory {
 
-	private static final HeapChannelBufferFactory INSTANCE_BE = new HeapChannelBufferFactory(ByteOrder.BIG_ENDIAN);
+    private static final HeapChannelBufferFactory INSTANCE_BE = new HeapChannelBufferFactory(ByteOrder.BIG_ENDIAN);
 
-	private static final HeapChannelBufferFactory INSTANCE_LE = new HeapChannelBufferFactory(ByteOrder.LITTLE_ENDIAN);
+    private static final HeapChannelBufferFactory INSTANCE_LE = new HeapChannelBufferFactory(ByteOrder.LITTLE_ENDIAN);
 
-	public static ChannelBufferFactory getInstance() {
-		return INSTANCE_BE;
-	}
+    /**
+     * Creates a new factory whose default {@link ByteOrder} is
+     * {@link ByteOrder#BIG_ENDIAN}.
+     */
+    public HeapChannelBufferFactory() {
+    }
 
-	public static ChannelBufferFactory getInstance(ByteOrder endianness) {
-		if (endianness == ByteOrder.BIG_ENDIAN) {
-			return INSTANCE_BE;
-		} else if (endianness == ByteOrder.LITTLE_ENDIAN) {
-			return INSTANCE_LE;
-		} else if (endianness == null) {
-			throw new NullPointerException("endianness");
-		} else {
-			throw new IllegalStateException("Should not reach here");
-		}
-	}
+    /**
+     * Creates a new factory with the specified default {@link ByteOrder}.
+     *
+     * @param defaultOrder the default {@link ByteOrder} of this factory
+     */
+    public HeapChannelBufferFactory(ByteOrder defaultOrder) {
+        super(defaultOrder);
+    }
 
-	/**
-	 * Creates a new factory whose default {@link ByteOrder} is
-	 * {@link ByteOrder#BIG_ENDIAN}.
-	 */
-	public HeapChannelBufferFactory() {
-	}
+    public static ChannelBufferFactory getInstance() {
+        return INSTANCE_BE;
+    }
 
-	/**
-	 * Creates a new factory with the specified default {@link ByteOrder}.
-	 *
-	 * @param defaultOrder
-	 *            the default {@link ByteOrder} of this factory
-	 */
-	public HeapChannelBufferFactory(ByteOrder defaultOrder) {
-		super(defaultOrder);
-	}
+    public static ChannelBufferFactory getInstance(ByteOrder endianness) {
+        if (endianness == ByteOrder.BIG_ENDIAN) {
+            return INSTANCE_BE;
+        } else if (endianness == ByteOrder.LITTLE_ENDIAN) {
+            return INSTANCE_LE;
+        } else if (endianness == null) {
+            throw new NullPointerException("endianness");
+        } else {
+            throw new IllegalStateException("Should not reach here");
+        }
+    }
 
-	public ChannelBuffer getBuffer(ByteOrder order, int capacity) {
-		return ChannelBuffers.buffer(order, capacity);
-	}
+    public ChannelBuffer getBuffer(ByteOrder order, int capacity) {
+        return ChannelBuffers.buffer(order, capacity);
+    }
 
-	public ChannelBuffer getBuffer(ByteOrder order, byte[] array, int offset, int length) {
-		return ChannelBuffers.wrappedBuffer(order, array, offset, length);
-	}
+    public ChannelBuffer getBuffer(ByteOrder order, byte[] array, int offset, int length) {
+        return ChannelBuffers.wrappedBuffer(order, array, offset, length);
+    }
 
-	public ChannelBuffer getBuffer(ByteBuffer nioBuffer) {
-		if (nioBuffer.hasArray()) {
-			return ChannelBuffers.wrappedBuffer(nioBuffer);
-		}
+    public ChannelBuffer getBuffer(ByteBuffer nioBuffer) {
+        if (nioBuffer.hasArray()) {
+            return ChannelBuffers.wrappedBuffer(nioBuffer);
+        }
 
-		ChannelBuffer buf = getBuffer(nioBuffer.order(), nioBuffer.remaining());
-		int pos = nioBuffer.position();
-		buf.writeBytes(nioBuffer);
-		nioBuffer.position(pos);
-		return buf;
-	}
+        ChannelBuffer buf = getBuffer(nioBuffer.order(), nioBuffer.remaining());
+        int pos = nioBuffer.position();
+        buf.writeBytes(nioBuffer);
+        nioBuffer.position(pos);
+        return buf;
+    }
 }

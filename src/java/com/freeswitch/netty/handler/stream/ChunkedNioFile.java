@@ -15,7 +15,7 @@
  */
 package com.freeswitch.netty.handler.stream;
 
-import static com.freeswitch.netty.buffer.ChannelBuffers.wrappedBuffer;
+import com.freeswitch.netty.channel.FileRegion;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-import com.freeswitch.netty.channel.FileRegion;
+import static com.freeswitch.netty.buffer.ChannelBuffers.wrappedBuffer;
 
 /**
  * A {@link ChunkedInput} that fetches data from a file chunk by chunk using NIO
@@ -35,134 +35,129 @@ import com.freeswitch.netty.channel.FileRegion;
  */
 public class ChunkedNioFile implements ChunkedInput {
 
-	private final FileChannel in;
-	private final long startOffset;
-	private final long endOffset;
-	private final int chunkSize;
-	private long offset;
+    private final FileChannel in;
+    private final long startOffset;
+    private final long endOffset;
+    private final int chunkSize;
+    private long offset;
 
-	/**
-	 * Creates a new instance that fetches data from the specified file.
-	 */
-	public ChunkedNioFile(File in) throws IOException {
-		this(new FileInputStream(in).getChannel());
-	}
+    /**
+     * Creates a new instance that fetches data from the specified file.
+     */
+    public ChunkedNioFile(File in) throws IOException {
+        this(new FileInputStream(in).getChannel());
+    }
 
-	/**
-	 * Creates a new instance that fetches data from the specified file.
-	 *
-	 * @param chunkSize
-	 *            the number of bytes to fetch on each {@link #nextChunk()} call
-	 */
-	public ChunkedNioFile(File in, int chunkSize) throws IOException {
-		this(new FileInputStream(in).getChannel(), chunkSize);
-	}
+    /**
+     * Creates a new instance that fetches data from the specified file.
+     *
+     * @param chunkSize the number of bytes to fetch on each {@link #nextChunk()} call
+     */
+    public ChunkedNioFile(File in, int chunkSize) throws IOException {
+        this(new FileInputStream(in).getChannel(), chunkSize);
+    }
 
-	/**
-	 * Creates a new instance that fetches data from the specified file.
-	 */
-	public ChunkedNioFile(FileChannel in) throws IOException {
-		this(in, ChunkedStream.DEFAULT_CHUNK_SIZE);
-	}
+    /**
+     * Creates a new instance that fetches data from the specified file.
+     */
+    public ChunkedNioFile(FileChannel in) throws IOException {
+        this(in, ChunkedStream.DEFAULT_CHUNK_SIZE);
+    }
 
-	/**
-	 * Creates a new instance that fetches data from the specified file.
-	 *
-	 * @param chunkSize
-	 *            the number of bytes to fetch on each {@link #nextChunk()} call
-	 */
-	public ChunkedNioFile(FileChannel in, int chunkSize) throws IOException {
-		this(in, 0, in.size(), chunkSize);
-	}
+    /**
+     * Creates a new instance that fetches data from the specified file.
+     *
+     * @param chunkSize the number of bytes to fetch on each {@link #nextChunk()} call
+     */
+    public ChunkedNioFile(FileChannel in, int chunkSize) throws IOException {
+        this(in, 0, in.size(), chunkSize);
+    }
 
-	/**
-	 * Creates a new instance that fetches data from the specified file.
-	 *
-	 * @param offset
-	 *            the offset of the file where the transfer begins
-	 * @param length
-	 *            the number of bytes to transfer
-	 * @param chunkSize
-	 *            the number of bytes to fetch on each {@link #nextChunk()} call
-	 */
-	public ChunkedNioFile(FileChannel in, long offset, long length, int chunkSize) throws IOException {
-		if (in == null) {
-			throw new NullPointerException("in");
-		}
-		if (offset < 0) {
-			throw new IllegalArgumentException("offset: " + offset + " (expected: 0 or greater)");
-		}
-		if (length < 0) {
-			throw new IllegalArgumentException("length: " + length + " (expected: 0 or greater)");
-		}
-		if (chunkSize <= 0) {
-			throw new IllegalArgumentException("chunkSize: " + chunkSize + " (expected: a positive integer)");
-		}
+    /**
+     * Creates a new instance that fetches data from the specified file.
+     *
+     * @param offset    the offset of the file where the transfer begins
+     * @param length    the number of bytes to transfer
+     * @param chunkSize the number of bytes to fetch on each {@link #nextChunk()} call
+     */
+    public ChunkedNioFile(FileChannel in, long offset, long length, int chunkSize) throws IOException {
+        if (in == null) {
+            throw new NullPointerException("in");
+        }
+        if (offset < 0) {
+            throw new IllegalArgumentException("offset: " + offset + " (expected: 0 or greater)");
+        }
+        if (length < 0) {
+            throw new IllegalArgumentException("length: " + length + " (expected: 0 or greater)");
+        }
+        if (chunkSize <= 0) {
+            throw new IllegalArgumentException("chunkSize: " + chunkSize + " (expected: a positive integer)");
+        }
 
-		if (offset != 0) {
-			in.position(offset);
-		}
-		this.in = in;
-		this.chunkSize = chunkSize;
-		this.offset = startOffset = offset;
-		endOffset = offset + length;
-	}
+        if (offset != 0) {
+            in.position(offset);
+        }
+        this.in = in;
+        this.chunkSize = chunkSize;
+        this.offset = startOffset = offset;
+        endOffset = offset + length;
+    }
 
-	/**
-	 * Returns the offset in the file where the transfer began.
-	 */
-	public long getStartOffset() {
-		return startOffset;
-	}
+    /**
+     * Returns the offset in the file where the transfer began.
+     */
+    public long getStartOffset() {
+        return startOffset;
+    }
 
-	/**
-	 * Returns the offset in the file where the transfer will end.
-	 */
-	public long getEndOffset() {
-		return endOffset;
-	}
+    /**
+     * Returns the offset in the file where the transfer will end.
+     */
+    public long getEndOffset() {
+        return endOffset;
+    }
 
-	/**
-	 * Returns the offset in the file where the transfer is happening currently.
-	 */
-	public long getCurrentOffset() {
-		return offset;
-	}
+    /**
+     * Returns the offset in the file where the transfer is happening currently.
+     */
+    public long getCurrentOffset() {
+        return offset;
+    }
 
-	public boolean hasNextChunk() throws Exception {
-		return offset < endOffset && in.isOpen();
-	}
+    public boolean hasNextChunk() throws Exception {
+        return offset < endOffset && in.isOpen();
+    }
 
-	public boolean isEndOfInput() throws Exception {
-		return !hasNextChunk();
-	}
+    public boolean isEndOfInput() throws Exception {
+        return !hasNextChunk();
+    }
 
-	public void close() throws Exception {
-		in.close();
-	}
+    public void close() throws Exception {
+        in.close();
+    }
 
-	public Object nextChunk() throws Exception {
-		long offset = this.offset;
-		if (offset >= endOffset) {
-			return null;
-		}
+    public Object nextChunk() throws Exception {
+        long offset = this.offset;
+        if (offset >= endOffset) {
+            return null;
+        }
 
-		int chunkSize = (int) Math.min(this.chunkSize, endOffset - offset);
-		byte[] chunkArray = new byte[chunkSize];
-		ByteBuffer chunk = ByteBuffer.wrap(chunkArray);
-		int readBytes = 0;
-		for (;;) {
-			int localReadBytes = in.read(chunk);
-			if (localReadBytes < 0) {
-				break;
-			}
-			readBytes += localReadBytes;
-			if (readBytes == chunkSize) {
-				break;
-			}
-		}
+        int chunkSize = (int) Math.min(this.chunkSize, endOffset - offset);
+        byte[] chunkArray = new byte[chunkSize];
+        ByteBuffer chunk = ByteBuffer.wrap(chunkArray);
+        int readBytes = 0;
+        for (; ; ) {
+            int localReadBytes = in.read(chunk);
+            if (localReadBytes < 0) {
+                break;
+            }
+            readBytes += localReadBytes;
+            if (readBytes == chunkSize) {
+                break;
+            }
+        }
 
-		this.offset += readBytes;
-		return wrappedBuffer(chunkArray);
-	}
+        this.offset += readBytes;
+        return wrappedBuffer(chunkArray);
+    }
 }

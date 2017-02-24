@@ -22,9 +22,9 @@ package com.freeswitch.netty.util;
  */
 public interface EstimatableObjectWrapper {
 
-	/**
-	 * Returns the underlying object that needs to be taken into account by
-	 * {@link ObjectSizeEstimator} for more accurate object size estimation.
-	 */
-	Object unwrap();
+    /**
+     * Returns the underlying object that needs to be taken into account by
+     * {@link ObjectSizeEstimator} for more accurate object size estimation.
+     */
+    Object unwrap();
 }

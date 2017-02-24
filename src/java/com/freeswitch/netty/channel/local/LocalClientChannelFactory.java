@@ -22,5 +22,5 @@ import com.freeswitch.netty.channel.ChannelPipeline;
  * A {@link ChannelFactory} that creates a client-side {@link LocalChannel}.
  */
 public interface LocalClientChannelFactory extends ChannelFactory {
-	LocalChannel newChannel(ChannelPipeline pipeline);
+    LocalChannel newChannel(ChannelPipeline pipeline);
 }

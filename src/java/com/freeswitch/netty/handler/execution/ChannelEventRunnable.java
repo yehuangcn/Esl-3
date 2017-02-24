@@ -15,57 +15,57 @@
  */
 package com.freeswitch.netty.handler.execution;
 
-import java.util.concurrent.Executor;
-
 import com.freeswitch.netty.channel.ChannelEvent;
 import com.freeswitch.netty.channel.ChannelHandlerContext;
 import com.freeswitch.netty.util.EstimatableObjectWrapper;
 
+import java.util.concurrent.Executor;
+
 public abstract class ChannelEventRunnable implements Runnable, EstimatableObjectWrapper {
 
-	/**
-	 * An <em>internal use only</em> thread-local variable that tells the
-	 * {@link Executor} that this worker acquired a worker thread from.
-	 */
-	protected static final ThreadLocal<Executor> PARENT = new ThreadLocal<Executor>();
+    /**
+     * An <em>internal use only</em> thread-local variable that tells the
+     * {@link Executor} that this worker acquired a worker thread from.
+     */
+    protected static final ThreadLocal<Executor> PARENT = new ThreadLocal<Executor>();
 
-	protected final ChannelHandlerContext ctx;
-	protected final ChannelEvent e;
-	int estimatedSize;
-	private final Executor executor;
+    protected final ChannelHandlerContext ctx;
+    protected final ChannelEvent e;
+    private final Executor executor;
+    int estimatedSize;
 
-	/**
-	 * Creates a {@link Runnable} which sends the specified {@link ChannelEvent}
-	 * upstream via the specified {@link ChannelHandlerContext}.
-	 */
-	protected ChannelEventRunnable(ChannelHandlerContext ctx, ChannelEvent e, Executor executor) {
-		this.ctx = ctx;
-		this.e = e;
-		this.executor = executor;
-	}
+    /**
+     * Creates a {@link Runnable} which sends the specified {@link ChannelEvent}
+     * upstream via the specified {@link ChannelHandlerContext}.
+     */
+    protected ChannelEventRunnable(ChannelHandlerContext ctx, ChannelEvent e, Executor executor) {
+        this.ctx = ctx;
+        this.e = e;
+        this.executor = executor;
+    }
 
-	/**
-	 * Returns the {@link ChannelHandlerContext} which will be used to send the
-	 * {@link ChannelEvent} upstream.
-	 */
-	public ChannelHandlerContext getContext() {
-		return ctx;
-	}
+    /**
+     * Returns the {@link ChannelHandlerContext} which will be used to send the
+     * {@link ChannelEvent} upstream.
+     */
+    public ChannelHandlerContext getContext() {
+        return ctx;
+    }
 
-	/**
-	 * Returns the {@link ChannelEvent} which will be sent upstream.
-	 */
-	public ChannelEvent getEvent() {
-		return e;
-	}
+    /**
+     * Returns the {@link ChannelEvent} which will be sent upstream.
+     */
+    public ChannelEvent getEvent() {
+        return e;
+    }
 
-	public Object unwrap() {
-		return e;
-	}
+    public Object unwrap() {
+        return e;
+    }
 
-	public final void run() {
-		doRun();
-	}
+    public final void run() {
+        doRun();
+    }
 
-	protected abstract void doRun();
+    protected abstract void doRun();
 }

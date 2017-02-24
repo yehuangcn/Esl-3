@@ -20,13 +20,13 @@ package com.freeswitch.netty.handler.codec.http;
  */
 public interface HttpChunkTrailer extends HttpChunk {
 
-	/**
-	 * Always returns {@code true}.
-	 */
-	boolean isLast();
+    /**
+     * Always returns {@code true}.
+     */
+    boolean isLast();
 
-	/**
-	 * Returns the trialing headers of this trailer.
-	 */
-	HttpHeaders trailingHeaders();
+    /**
+     * Returns the trialing headers of this trailer.
+     */
+    HttpHeaders trailingHeaders();
 }

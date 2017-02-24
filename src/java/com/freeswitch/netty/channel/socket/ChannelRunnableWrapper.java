@@ -20,35 +20,35 @@ import com.freeswitch.netty.channel.DefaultChannelFuture;
 
 public class ChannelRunnableWrapper extends DefaultChannelFuture implements Runnable {
 
-	private final Runnable task;
-	private boolean started;
+    private final Runnable task;
+    private boolean started;
 
-	public ChannelRunnableWrapper(Channel channel, Runnable task) {
-		super(channel, true);
-		this.task = task;
-	}
+    public ChannelRunnableWrapper(Channel channel, Runnable task) {
+        super(channel, true);
+        this.task = task;
+    }
 
-	public void run() {
-		synchronized (this) {
-			if (!isCancelled()) {
-				started = true;
-			} else {
-				return;
-			}
-		}
-		try {
-			task.run();
-			setSuccess();
-		} catch (Throwable t) {
-			setFailure(t);
-		}
-	}
+    public void run() {
+        synchronized (this) {
+            if (!isCancelled()) {
+                started = true;
+            } else {
+                return;
+            }
+        }
+        try {
+            task.run();
+            setSuccess();
+        } catch (Throwable t) {
+            setFailure(t);
+        }
+    }
 
-	@Override
-	public synchronized boolean cancel() {
-		if (started) {
-			return false;
-		}
-		return super.cancel();
-	}
+    @Override
+    public synchronized boolean cancel() {
+        if (started) {
+            return false;
+        }
+        return super.cancel();
+    }
 }

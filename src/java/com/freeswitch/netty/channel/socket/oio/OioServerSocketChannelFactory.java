@@ -15,10 +15,6 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelPipeline;
 import com.freeswitch.netty.channel.ChannelSink;
@@ -28,17 +24,21 @@ import com.freeswitch.netty.channel.socket.ServerSocketChannelFactory;
 import com.freeswitch.netty.util.ThreadNameDeterminer;
 import com.freeswitch.netty.util.internal.ExecutorUtil;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+
 /**
  * A {@link ServerSocketChannelFactory} which creates a server-side blocking I/O
  * based {@link ServerSocketChannel}. It utilizes the good old blocking I/O API
  * which is known to yield better throughput and latency when there are
  * relatively small number of connections to serve.
- *
+ * <p>
  * <h3>How threads work</h3>
  * <p>
  * There are two types of threads in a {@link OioServerSocketChannelFactory};
  * one is boss thread and the other is worker thread.
- *
+ * <p>
  * <h4>Boss threads</h4>
  * <p>
  * Each bound {@link ServerSocketChannel} has its own boss thread. For server,
@@ -47,12 +47,12 @@ import com.freeswitch.netty.util.internal.ExecutorUtil;
  * unbound. Once a connection is accepted successfully, the boss thread passes
  * the accepted {@link Channel} to one of the worker threads that the
  * {@link OioServerSocketChannelFactory} manages.
- *
+ * <p>
  * <h4>Worker threads</h4>
  * <p>
  * Each connected {@link Channel} has a dedicated worker thread, just like a
  * traditional blocking I/O thread model.
- *
+ * <p>
  * <h3>Life cycle of threads and graceful shutdown</h3>
  * <p>
  * All threads are acquired from the {@link Executor}s which were specified when
@@ -65,18 +65,18 @@ import com.freeswitch.netty.util.internal.ExecutorUtil;
  * there's nothing left to process. All the related resources are also released
  * when the boss and worker threads are released. Therefore, to shut down a
  * service gracefully, you should do the following:
- *
+ * <p>
  * <ol>
  * <li>unbind all channels created by the factory,
  * <li>close all child channels accepted by the unbound channels, (these two
  * steps so far is usually done using {@link ChannelGroup#close()})</li>
  * <li>call {@link #releaseExternalResources()}.</li>
  * </ol>
- *
+ * <p>
  * Please make sure not to shut down the executor until all channels are closed.
  * Otherwise, you will end up with a {@link RejectedExecutionException} and the
  * related resources might not be released properly.
- *
+ * <p>
  * <h3>Limitation</h3>
  * <p>
  * A {@link ServerSocketChannel} created by this factory and its child channels
@@ -87,69 +87,64 @@ import com.freeswitch.netty.util.internal.ExecutorUtil;
  */
 public class OioServerSocketChannelFactory implements ServerSocketChannelFactory {
 
-	final Executor bossExecutor;
-	private final Executor workerExecutor;
-	private final ChannelSink sink;
-	private boolean shutdownExecutor;
+    final Executor bossExecutor;
+    private final Executor workerExecutor;
+    private final ChannelSink sink;
+    private boolean shutdownExecutor;
 
-	/**
-	 * Create a new {@link OioServerSocketChannelFactory} with a
-	 * {@link Executors#newCachedThreadPool()} for the boss and worker executor.
-	 *
-	 * See {@link #OioServerSocketChannelFactory(Executor, Executor)}
-	 */
-	public OioServerSocketChannelFactory() {
-		this(Executors.newCachedThreadPool(), Executors.newCachedThreadPool());
-		shutdownExecutor = true;
-	}
+    /**
+     * Create a new {@link OioServerSocketChannelFactory} with a
+     * {@link Executors#newCachedThreadPool()} for the boss and worker executor.
+     * <p>
+     * See {@link #OioServerSocketChannelFactory(Executor, Executor)}
+     */
+    public OioServerSocketChannelFactory() {
+        this(Executors.newCachedThreadPool(), Executors.newCachedThreadPool());
+        shutdownExecutor = true;
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param bossExecutor
-	 *            the {@link Executor} which will execute the boss threads
-	 * @param workerExecutor
-	 *            the {@link Executor} which will execute the I/O worker threads
-	 */
-	public OioServerSocketChannelFactory(Executor bossExecutor, Executor workerExecutor) {
-		this(bossExecutor, workerExecutor, null);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param bossExecutor   the {@link Executor} which will execute the boss threads
+     * @param workerExecutor the {@link Executor} which will execute the I/O worker threads
+     */
+    public OioServerSocketChannelFactory(Executor bossExecutor, Executor workerExecutor) {
+        this(bossExecutor, workerExecutor, null);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param bossExecutor
-	 *            the {@link Executor} which will execute the boss threads
-	 * @param workerExecutor
-	 *            the {@link Executor} which will execute the I/O worker threads
-	 * @param determiner
-	 *            the {@link ThreadNameDeterminer} to set the thread names.
-	 */
-	public OioServerSocketChannelFactory(Executor bossExecutor, Executor workerExecutor, ThreadNameDeterminer determiner) {
-		if (bossExecutor == null) {
-			throw new NullPointerException("bossExecutor");
-		}
-		if (workerExecutor == null) {
-			throw new NullPointerException("workerExecutor");
-		}
-		this.bossExecutor = bossExecutor;
-		this.workerExecutor = workerExecutor;
-		sink = new OioServerSocketPipelineSink(workerExecutor, determiner);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param bossExecutor   the {@link Executor} which will execute the boss threads
+     * @param workerExecutor the {@link Executor} which will execute the I/O worker threads
+     * @param determiner     the {@link ThreadNameDeterminer} to set the thread names.
+     */
+    public OioServerSocketChannelFactory(Executor bossExecutor, Executor workerExecutor, ThreadNameDeterminer determiner) {
+        if (bossExecutor == null) {
+            throw new NullPointerException("bossExecutor");
+        }
+        if (workerExecutor == null) {
+            throw new NullPointerException("workerExecutor");
+        }
+        this.bossExecutor = bossExecutor;
+        this.workerExecutor = workerExecutor;
+        sink = new OioServerSocketPipelineSink(workerExecutor, determiner);
+    }
 
-	public ServerSocketChannel newChannel(ChannelPipeline pipeline) {
-		return new OioServerSocketChannel(this, pipeline, sink);
-	}
+    public ServerSocketChannel newChannel(ChannelPipeline pipeline) {
+        return new OioServerSocketChannel(this, pipeline, sink);
+    }
 
-	public void shutdown() {
-		if (shutdownExecutor) {
-			ExecutorUtil.shutdownNow(bossExecutor);
-			ExecutorUtil.shutdownNow(workerExecutor);
-		}
-	}
+    public void shutdown() {
+        if (shutdownExecutor) {
+            ExecutorUtil.shutdownNow(bossExecutor);
+            ExecutorUtil.shutdownNow(workerExecutor);
+        }
+    }
 
-	public void releaseExternalResources() {
-		ExecutorUtil.shutdownNow(bossExecutor);
-		ExecutorUtil.shutdownNow(workerExecutor);
-	}
+    public void releaseExternalResources() {
+        ExecutorUtil.shutdownNow(bossExecutor);
+        ExecutorUtil.shutdownNow(workerExecutor);
+    }
 }

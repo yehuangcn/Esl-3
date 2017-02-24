@@ -15,10 +15,10 @@
  */
 package com.freeswitch.netty.handler.stream;
 
-import static com.freeswitch.netty.buffer.ChannelBuffers.wrappedBuffer;
-
 import java.io.InputStream;
 import java.io.PushbackInputStream;
+
+import static com.freeswitch.netty.buffer.ChannelBuffers.wrappedBuffer;
 
 /**
  * A {@link ChunkedInput} that fetches data from an {@link InputStream} chunk by
@@ -32,93 +32,92 @@ import java.io.PushbackInputStream;
  */
 public class ChunkedStream implements ChunkedInput {
 
-	static final int DEFAULT_CHUNK_SIZE = 8192;
+    static final int DEFAULT_CHUNK_SIZE = 8192;
 
-	private final PushbackInputStream in;
-	private final int chunkSize;
-	private long offset;
+    private final PushbackInputStream in;
+    private final int chunkSize;
+    private long offset;
 
-	/**
-	 * Creates a new instance that fetches data from the specified stream.
-	 */
-	public ChunkedStream(InputStream in) {
-		this(in, DEFAULT_CHUNK_SIZE);
-	}
+    /**
+     * Creates a new instance that fetches data from the specified stream.
+     */
+    public ChunkedStream(InputStream in) {
+        this(in, DEFAULT_CHUNK_SIZE);
+    }
 
-	/**
-	 * Creates a new instance that fetches data from the specified stream.
-	 *
-	 * @param chunkSize
-	 *            the number of bytes to fetch on each {@link #nextChunk()} call
-	 */
-	public ChunkedStream(InputStream in, int chunkSize) {
-		if (in == null) {
-			throw new NullPointerException("in");
-		}
-		if (chunkSize <= 0) {
-			throw new IllegalArgumentException("chunkSize: " + chunkSize + " (expected: a positive integer)");
-		}
+    /**
+     * Creates a new instance that fetches data from the specified stream.
+     *
+     * @param chunkSize the number of bytes to fetch on each {@link #nextChunk()} call
+     */
+    public ChunkedStream(InputStream in, int chunkSize) {
+        if (in == null) {
+            throw new NullPointerException("in");
+        }
+        if (chunkSize <= 0) {
+            throw new IllegalArgumentException("chunkSize: " + chunkSize + " (expected: a positive integer)");
+        }
 
-		if (in instanceof PushbackInputStream) {
-			this.in = (PushbackInputStream) in;
-		} else {
-			this.in = new PushbackInputStream(in);
-		}
-		this.chunkSize = chunkSize;
-	}
+        if (in instanceof PushbackInputStream) {
+            this.in = (PushbackInputStream) in;
+        } else {
+            this.in = new PushbackInputStream(in);
+        }
+        this.chunkSize = chunkSize;
+    }
 
-	/**
-	 * Returns the number of transferred bytes.
-	 */
-	public long getTransferredBytes() {
-		return offset;
-	}
+    /**
+     * Returns the number of transferred bytes.
+     */
+    public long getTransferredBytes() {
+        return offset;
+    }
 
-	public boolean hasNextChunk() throws Exception {
-		int b = in.read();
-		if (b < 0) {
-			return false;
-		} else {
-			in.unread(b);
-			return true;
-		}
-	}
+    public boolean hasNextChunk() throws Exception {
+        int b = in.read();
+        if (b < 0) {
+            return false;
+        } else {
+            in.unread(b);
+            return true;
+        }
+    }
 
-	public boolean isEndOfInput() throws Exception {
-		return !hasNextChunk();
-	}
+    public boolean isEndOfInput() throws Exception {
+        return !hasNextChunk();
+    }
 
-	public void close() throws Exception {
-		in.close();
-	}
+    public void close() throws Exception {
+        in.close();
+    }
 
-	public Object nextChunk() throws Exception {
-		if (!hasNextChunk()) {
-			return null;
-		}
+    public Object nextChunk() throws Exception {
+        if (!hasNextChunk()) {
+            return null;
+        }
 
-		final int availableBytes = in.available();
-		final int chunkSize;
-		if (availableBytes <= 0) {
-			chunkSize = this.chunkSize;
-		} else {
-			chunkSize = Math.min(this.chunkSize, in.available());
-		}
-		final byte[] chunk = new byte[chunkSize];
-		int readBytes = 0;
-		for (;;) {
-			int localReadBytes = in.read(chunk, readBytes, chunkSize - readBytes);
-			if (localReadBytes < 0) {
-				break;
-			}
-			readBytes += localReadBytes;
-			offset += localReadBytes;
+        final int availableBytes = in.available();
+        final int chunkSize;
+        if (availableBytes <= 0) {
+            chunkSize = this.chunkSize;
+        } else {
+            chunkSize = Math.min(this.chunkSize, in.available());
+        }
+        final byte[] chunk = new byte[chunkSize];
+        int readBytes = 0;
+        for (; ; ) {
+            int localReadBytes = in.read(chunk, readBytes, chunkSize - readBytes);
+            if (localReadBytes < 0) {
+                break;
+            }
+            readBytes += localReadBytes;
+            offset += localReadBytes;
 
-			if (readBytes == chunkSize) {
-				break;
-			}
-		}
+            if (readBytes == chunkSize) {
+                break;
+            }
+        }
 
-		return wrappedBuffer(chunk, 0, readBytes);
-	}
+        return wrappedBuffer(chunk, 0, readBytes);
+    }
 }

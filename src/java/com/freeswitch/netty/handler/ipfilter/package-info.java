@@ -18,14 +18,14 @@
  * Implementation of a Ip based Filter handlers.<br>
  * <br>
  * <br>
- * <P>
+ * <p>
  * The main goal of this package is to allow to filter connections based on IP
  * rules. The main interface is
  * <tt>{@link com.freeswitch.netty.handler.ipfilter.IpFilteringHandler}</tt> which
  * all filters will extend.
  * </P>
- *
- * <P>
+ * <p>
+ * <p>
  * Two IP filtering are proposed:<br>
  * <ul>
  * <li>{@link com.freeswitch.netty.handler.ipfilter.OneIpFilterHandler}: This filter
@@ -33,7 +33,7 @@
  * filter will prevent two connections from the same client based on its IP
  * address.</li><br>
  * <br>
- *
+ * <p>
  * <li>{@link com.freeswitch.netty.handler.ipfilter.IpFilterRuleHandler}: This filter
  * proposes to allow or block IP range (based on standard notation or on CIDR
  * notation) when the connection is running. It relies on another class like
@@ -41,28 +41,28 @@
  * <tt>IpSubnetFilterRule</tt> (IPV4 and IPV6 support) or <tt>PatternRule</tt>
  * (string pattern support) which implements those Ip ranges.</li><br>
  * <br>
- *
+ * <p>
  * </ul>
  * </P>
- *
- * <P>
+ * <p>
+ * <p>
  * Standard use could be as follow: The accept method must be overridden (of
  * course you can override others).
  * </P>
- *
- * <P>
+ * <p>
+ * <p>
  * <ul>
  * <li><tt>accept</tt> method allows to specify your way of choosing if a new
  * connection is to be allowed or not.</li><br>
  * In <tt>OneIpFilterHandler</tt> and <tt>IpFilterRuleHandler</tt>, this method
  * is already implemented.<br>
  * <br>
- *
+ * <p>
  * <li>handleRefusedChannel method is executed when the accept method filters
  * (blocks, so returning false) the new connection. This method allows you to
  * implement specific actions to be taken before the channel is closed. After
  * this method is called, the channel is immediately closed.</li><br>
- *
+ * <p>
  * So if you want to send back a message to the client, <b>don't forget to
  * return a respectful ChannelFuture, otherwise the message could be missed
  * since the channel will be closed immediately after this call and the waiting
@@ -73,7 +73,7 @@
  * {@link com.freeswitch.netty.handler.ipfilter.IpFilterListener} or returns null if
  * no listener has been set. <br>
  * <br>
- *
+ * <p>
  * <li><tt>continues</tt> is called when any event appears after CONNECTED event
  * and only for blocked channels.</li><br>
  * It should return True if this new event has to go to next handlers in the
@@ -93,7 +93,7 @@
  * {@link com.freeswitch.netty.handler.ipfilter.IpFilterListener} or returns false if
  * no listener has been set. <br>
  * <br>
- *
+ * <p>
  * <li>Finally <tt>handleUpstream</tt> traps the CONNECTED and DISCONNECTED
  * events.</li><br>
  * If in the CONNECTED events the channel is blocked (<tt>accept</tt> refused
@@ -103,14 +103,14 @@
  * isBlocked, and if so, calling <tt>ctx.sendUpstream(e);</tt> after calling the
  * super method or by changing the <tt>continues</tt> method.<br>
  * <br>
- * 
+ * <p>
  * </ul>
  * </P>
  * <br>
  * <br>
- *
+ * <p>
  * A typical setup for ip filter for TCP/IP socket would be:
- *
+ * <p>
  * <pre>
  * {@link com.freeswitch.netty.channel.ChannelPipeline} pipeline = ...;
  *

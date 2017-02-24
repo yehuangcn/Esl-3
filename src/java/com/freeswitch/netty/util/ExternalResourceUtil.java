@@ -21,24 +21,24 @@ package com.freeswitch.netty.util;
  */
 public final class ExternalResourceUtil {
 
-	/**
-	 * Releases the specified {@link ExternalResourceReleasable}s.
-	 */
-	public static void release(ExternalResourceReleasable... releasables) {
-		ExternalResourceReleasable[] releasablesCopy = new ExternalResourceReleasable[releasables.length];
+    private ExternalResourceUtil() {
+    }
 
-		for (int i = 0; i < releasables.length; i++) {
-			if (releasables[i] == null) {
-				throw new NullPointerException("releasables[" + i + ']');
-			}
-			releasablesCopy[i] = releasables[i];
-		}
+    /**
+     * Releases the specified {@link ExternalResourceReleasable}s.
+     */
+    public static void release(ExternalResourceReleasable... releasables) {
+        ExternalResourceReleasable[] releasablesCopy = new ExternalResourceReleasable[releasables.length];
 
-		for (ExternalResourceReleasable e : releasablesCopy) {
-			e.releaseExternalResources();
-		}
-	}
+        for (int i = 0; i < releasables.length; i++) {
+            if (releasables[i] == null) {
+                throw new NullPointerException("releasables[" + i + ']');
+            }
+            releasablesCopy[i] = releasables[i];
+        }
 
-	private ExternalResourceUtil() {
-	}
+        for (ExternalResourceReleasable e : releasablesCopy) {
+            e.releaseExternalResources();
+        }
+    }
 }

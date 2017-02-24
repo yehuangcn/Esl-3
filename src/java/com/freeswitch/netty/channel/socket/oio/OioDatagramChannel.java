@@ -15,127 +15,117 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
-import static com.freeswitch.netty.channel.Channels.failedFuture;
-import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
-import static com.freeswitch.netty.channel.Channels.succeededFuture;
-
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.MulticastSocket;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-
-import com.freeswitch.netty.channel.ChannelException;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
+import com.freeswitch.netty.channel.*;
 import com.freeswitch.netty.channel.socket.DatagramChannel;
 import com.freeswitch.netty.channel.socket.DatagramChannelConfig;
 import com.freeswitch.netty.channel.socket.DefaultDatagramChannelConfig;
 
+import java.io.IOException;
+import java.net.*;
+
+import static com.freeswitch.netty.channel.Channels.*;
+
 final class OioDatagramChannel extends AbstractOioChannel implements DatagramChannel {
 
-	final MulticastSocket socket;
-	private final DatagramChannelConfig config;
+    final MulticastSocket socket;
+    private final DatagramChannelConfig config;
 
-	OioDatagramChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
+    OioDatagramChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
 
-		super(null, factory, pipeline, sink);
+        super(null, factory, pipeline, sink);
 
-		try {
-			socket = new MulticastSocket(null);
-		} catch (IOException e) {
-			throw new ChannelException("Failed to open a datagram socket.", e);
-		}
+        try {
+            socket = new MulticastSocket(null);
+        } catch (IOException e) {
+            throw new ChannelException("Failed to open a datagram socket.", e);
+        }
 
-		try {
-			socket.setSoTimeout(10);
-			socket.setBroadcast(false);
-		} catch (SocketException e) {
-			throw new ChannelException("Failed to configure the datagram socket timeout.", e);
-		}
-		config = new DefaultDatagramChannelConfig(socket);
+        try {
+            socket.setSoTimeout(10);
+            socket.setBroadcast(false);
+        } catch (SocketException e) {
+            throw new ChannelException("Failed to configure the datagram socket timeout.", e);
+        }
+        config = new DefaultDatagramChannelConfig(socket);
 
-		fireChannelOpen(this);
-	}
+        fireChannelOpen(this);
+    }
 
-	public DatagramChannelConfig getConfig() {
-		return config;
-	}
+    public DatagramChannelConfig getConfig() {
+        return config;
+    }
 
-	public ChannelFuture joinGroup(InetAddress multicastAddress) {
-		ensureBound();
-		try {
-			socket.joinGroup(multicastAddress);
-			return succeededFuture(this);
-		} catch (IOException e) {
-			return failedFuture(this, e);
-		}
-	}
+    public ChannelFuture joinGroup(InetAddress multicastAddress) {
+        ensureBound();
+        try {
+            socket.joinGroup(multicastAddress);
+            return succeededFuture(this);
+        } catch (IOException e) {
+            return failedFuture(this, e);
+        }
+    }
 
-	public ChannelFuture joinGroup(InetSocketAddress multicastAddress, NetworkInterface networkInterface) {
-		ensureBound();
-		try {
-			socket.joinGroup(multicastAddress, networkInterface);
-			return succeededFuture(this);
-		} catch (IOException e) {
-			return failedFuture(this, e);
-		}
-	}
+    public ChannelFuture joinGroup(InetSocketAddress multicastAddress, NetworkInterface networkInterface) {
+        ensureBound();
+        try {
+            socket.joinGroup(multicastAddress, networkInterface);
+            return succeededFuture(this);
+        } catch (IOException e) {
+            return failedFuture(this, e);
+        }
+    }
 
-	private void ensureBound() {
-		if (!isBound()) {
-			throw new IllegalStateException(DatagramChannel.class.getName() + " must be bound to join a group.");
-		}
-	}
+    private void ensureBound() {
+        if (!isBound()) {
+            throw new IllegalStateException(DatagramChannel.class.getName() + " must be bound to join a group.");
+        }
+    }
 
-	public ChannelFuture leaveGroup(InetAddress multicastAddress) {
-		try {
-			socket.leaveGroup(multicastAddress);
-			return succeededFuture(this);
-		} catch (IOException e) {
-			return failedFuture(this, e);
-		}
-	}
+    public ChannelFuture leaveGroup(InetAddress multicastAddress) {
+        try {
+            socket.leaveGroup(multicastAddress);
+            return succeededFuture(this);
+        } catch (IOException e) {
+            return failedFuture(this, e);
+        }
+    }
 
-	public ChannelFuture leaveGroup(InetSocketAddress multicastAddress, NetworkInterface networkInterface) {
-		try {
-			socket.leaveGroup(multicastAddress, networkInterface);
-			return succeededFuture(this);
-		} catch (IOException e) {
-			return failedFuture(this, e);
-		}
-	}
+    public ChannelFuture leaveGroup(InetSocketAddress multicastAddress, NetworkInterface networkInterface) {
+        try {
+            socket.leaveGroup(multicastAddress, networkInterface);
+            return succeededFuture(this);
+        } catch (IOException e) {
+            return failedFuture(this, e);
+        }
+    }
 
-	@Override
-	boolean isSocketBound() {
-		return socket.isBound();
-	}
+    @Override
+    boolean isSocketBound() {
+        return socket.isBound();
+    }
 
-	@Override
-	boolean isSocketConnected() {
-		return socket.isConnected();
-	}
+    @Override
+    boolean isSocketConnected() {
+        return socket.isConnected();
+    }
 
-	@Override
-	InetSocketAddress getLocalSocketAddress() throws Exception {
-		return (InetSocketAddress) socket.getLocalSocketAddress();
-	}
+    @Override
+    InetSocketAddress getLocalSocketAddress() throws Exception {
+        return (InetSocketAddress) socket.getLocalSocketAddress();
+    }
 
-	@Override
-	InetSocketAddress getRemoteSocketAddress() throws Exception {
-		return (InetSocketAddress) socket.getRemoteSocketAddress();
-	}
+    @Override
+    InetSocketAddress getRemoteSocketAddress() throws Exception {
+        return (InetSocketAddress) socket.getRemoteSocketAddress();
+    }
 
-	@Override
-	void closeSocket() {
-		socket.close();
-	}
+    @Override
+    void closeSocket() {
+        socket.close();
+    }
 
-	@Override
-	boolean isSocketClosed() {
-		return socket.isClosed();
-	}
+    @Override
+    boolean isSocketClosed() {
+        return socket.isClosed();
+    }
 }

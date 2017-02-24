@@ -15,10 +15,6 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelPipeline;
 import com.freeswitch.netty.channel.group.ChannelGroup;
@@ -27,21 +23,25 @@ import com.freeswitch.netty.channel.socket.DatagramChannelFactory;
 import com.freeswitch.netty.util.ThreadNameDeterminer;
 import com.freeswitch.netty.util.internal.ExecutorUtil;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+
 /**
  * A {@link DatagramChannelFactory} which creates a blocking I/O based
  * {@link DatagramChannel}. It utilizes the good old blocking I/O API which has
  * support for multicast.
- *
+ * <p>
  * <h3>How threads work</h3>
  * <p>
  * There is only one type of threads in {@link OioDatagramChannelFactory};
  * worker threads.
- *
+ * <p>
  * <h4>Worker threads</h4>
  * <p>
  * Each {@link Channel} has a dedicated worker thread, just like a traditional
  * blocking I/O thread model.
- *
+ * <p>
  * <h3>Life cycle of threads and graceful shutdown</h3>
  * <p>
  * Worker threads are acquired from the {@link Executor} which was specified
@@ -53,17 +53,17 @@ import com.freeswitch.netty.util.internal.ExecutorUtil;
  * left to process. All the related resources are also released when the worker
  * threads are released. Therefore, to shut down a service gracefully, you
  * should do the following:
- *
+ * <p>
  * <ol>
  * <li>close all channels created by the factory usually using
  * {@link ChannelGroup#close()}, and</li>
  * <li>call {@link #releaseExternalResources()}.</li>
  * </ol>
- *
+ * <p>
  * Please make sure not to shut down the executor until all channels are closed.
  * Otherwise, you will end up with a {@link RejectedExecutionException} and the
  * related resources might not be released properly.
- *
+ * <p>
  * <h3>Limitation</h3>
  * <p>
  * A {@link DatagramChannel} created by this factory does not support
@@ -74,57 +74,54 @@ import com.freeswitch.netty.util.internal.ExecutorUtil;
  */
 public class OioDatagramChannelFactory implements DatagramChannelFactory {
 
-	private final Executor workerExecutor;
-	final OioDatagramPipelineSink sink;
-	private boolean shutdownExecutor;
+    final OioDatagramPipelineSink sink;
+    private final Executor workerExecutor;
+    private boolean shutdownExecutor;
 
-	/**
-	 * Creates a new instance with a {@link Executors#newCachedThreadPool()}
-	 *
-	 * See {@link #OioDatagramChannelFactory(Executor)}
-	 */
-	public OioDatagramChannelFactory() {
-		this(Executors.newCachedThreadPool());
-		shutdownExecutor = true;
-	}
+    /**
+     * Creates a new instance with a {@link Executors#newCachedThreadPool()}
+     * <p>
+     * See {@link #OioDatagramChannelFactory(Executor)}
+     */
+    public OioDatagramChannelFactory() {
+        this(Executors.newCachedThreadPool());
+        shutdownExecutor = true;
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param workerExecutor
-	 *            the {@link Executor} which will execute the I/O worker threads
-	 */
-	public OioDatagramChannelFactory(Executor workerExecutor) {
-		this(workerExecutor, null);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param workerExecutor the {@link Executor} which will execute the I/O worker threads
+     */
+    public OioDatagramChannelFactory(Executor workerExecutor) {
+        this(workerExecutor, null);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param workerExecutor
-	 *            the {@link Executor} which will execute the I/O worker threads
-	 * @param determiner
-	 *            the {@link ThreadNameDeterminer} to set the thread names.
-	 */
-	public OioDatagramChannelFactory(Executor workerExecutor, ThreadNameDeterminer determiner) {
-		if (workerExecutor == null) {
-			throw new NullPointerException("workerExecutor");
-		}
-		this.workerExecutor = workerExecutor;
-		sink = new OioDatagramPipelineSink(workerExecutor, determiner);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param workerExecutor the {@link Executor} which will execute the I/O worker threads
+     * @param determiner     the {@link ThreadNameDeterminer} to set the thread names.
+     */
+    public OioDatagramChannelFactory(Executor workerExecutor, ThreadNameDeterminer determiner) {
+        if (workerExecutor == null) {
+            throw new NullPointerException("workerExecutor");
+        }
+        this.workerExecutor = workerExecutor;
+        sink = new OioDatagramPipelineSink(workerExecutor, determiner);
+    }
 
-	public DatagramChannel newChannel(ChannelPipeline pipeline) {
-		return new OioDatagramChannel(this, pipeline, sink);
-	}
+    public DatagramChannel newChannel(ChannelPipeline pipeline) {
+        return new OioDatagramChannel(this, pipeline, sink);
+    }
 
-	public void shutdown() {
-		if (shutdownExecutor) {
-			ExecutorUtil.shutdownNow(workerExecutor);
-		}
-	}
+    public void shutdown() {
+        if (shutdownExecutor) {
+            ExecutorUtil.shutdownNow(workerExecutor);
+        }
+    }
 
-	public void releaseExternalResources() {
-		ExecutorUtil.shutdownNow(workerExecutor);
-	}
+    public void releaseExternalResources() {
+        ExecutorUtil.shutdownNow(workerExecutor);
+    }
 }

@@ -15,23 +15,18 @@
  */
 package com.freeswitch.netty.channel.group;
 
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.handler.execution.ExecutionHandler;
+
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
-
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelHandler;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.handler.execution.ExecutionHandler;
 
 /**
  * The result of an asynchronous {@link ChannelGroup} operation.
  * {@link ChannelGroupFuture} is composed of {@link ChannelFuture}s which
  * represent the outcome of the individual I/O operations that affect the
  * {@link Channel}s in the {@link ChannelGroup}.
- *
+ * <p>
  * <p>
  * All I/O operations in {@link ChannelGroup} are asynchronous. It means any I/O
  * calls will return immediately with no guarantee that the requested I/O
@@ -44,10 +39,10 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  * operation. It also allows you to add more than one
  * {@link ChannelGroupFutureListener} so you can get notified when the I/O
  * operation have been completed.
- *
+ * <p>
  * <h3>Prefer {@link #addListener(ChannelGroupFutureListener)} to
  * {@link #await()}</h3>
- *
+ * <p>
  * It is recommended to prefer {@link #addListener(ChannelGroupFutureListener)}
  * to {@link #await()} wherever possible to get notified when I/O operations are
  * done and to do any follow-up tasks.
@@ -66,7 +61,7 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  * blocks unnecessarily until all I/O operations are done and there's relatively
  * expensive cost of inter-thread notification. Moreover, there's a chance of
  * dead lock in a particular circumstance, which is described below.
- *
+ * <p>
  * <h3>Do not call {@link #await()} inside {@link ChannelHandler}</h3>
  * <p>
  * The event handler methods in {@link ChannelHandler} is often called by an I/O
@@ -75,7 +70,7 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  * the I/O thread, the I/O operation it is waiting for might never be complete
  * because {@link #await()} can block the I/O operation it is waiting for, which
  * is a dead lock.
- * 
+ * <p>
  * <pre>
  * // BAD - NEVER DO THIS
  * {@code @Override}
@@ -109,142 +104,137 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  * where it is more convenient to call {@link #await()}. In such a case, please
  * make sure you do not call {@link #await()} in an I/O thread. Otherwise,
  * {@link IllegalStateException} will be raised to prevent a dead lock.
- * 
+ *
  * @apiviz.owns org.jboss.netty.channel.group.ChannelGroupFutureListener - -
- *              notifies
+ * notifies
  */
 public interface ChannelGroupFuture extends Iterable<ChannelFuture> {
 
-	/**
-	 * Returns the {@link ChannelGroup} which is associated with this future.
-	 */
-	ChannelGroup getGroup();
+    /**
+     * Returns the {@link ChannelGroup} which is associated with this future.
+     */
+    ChannelGroup getGroup();
 
-	/**
-	 * Returns the {@link ChannelFuture} of the individual I/O operation which
-	 * is associated with the {@link Channel} whose ID matches the specified
-	 * integer.
-	 *
-	 * @return the matching {@link ChannelFuture} if found. {@code null}
-	 *         otherwise.
-	 */
-	ChannelFuture find(Integer channelId);
+    /**
+     * Returns the {@link ChannelFuture} of the individual I/O operation which
+     * is associated with the {@link Channel} whose ID matches the specified
+     * integer.
+     *
+     * @return the matching {@link ChannelFuture} if found. {@code null}
+     * otherwise.
+     */
+    ChannelFuture find(Integer channelId);
 
-	/**
-	 * Returns the {@link ChannelFuture} of the individual I/O operation which
-	 * is associated with the specified {@link Channel}.
-	 *
-	 * @return the matching {@link ChannelFuture} if found. {@code null}
-	 *         otherwise.
-	 */
-	ChannelFuture find(Channel channel);
+    /**
+     * Returns the {@link ChannelFuture} of the individual I/O operation which
+     * is associated with the specified {@link Channel}.
+     *
+     * @return the matching {@link ChannelFuture} if found. {@code null}
+     * otherwise.
+     */
+    ChannelFuture find(Channel channel);
 
-	/**
-	 * Returns {@code true} if and only if this future is complete, regardless
-	 * of whether the operation was successful, failed, or canceled.
-	 */
-	boolean isDone();
+    /**
+     * Returns {@code true} if and only if this future is complete, regardless
+     * of whether the operation was successful, failed, or canceled.
+     */
+    boolean isDone();
 
-	/**
-	 * Returns {@code true} if and only if all I/O operations associated with
-	 * this future were successful without any failure.
-	 */
-	boolean isCompleteSuccess();
+    /**
+     * Returns {@code true} if and only if all I/O operations associated with
+     * this future were successful without any failure.
+     */
+    boolean isCompleteSuccess();
 
-	/**
-	 * Returns {@code true} if and only if the I/O operations associated with
-	 * this future were partially successful with some failure.
-	 */
-	boolean isPartialSuccess();
+    /**
+     * Returns {@code true} if and only if the I/O operations associated with
+     * this future were partially successful with some failure.
+     */
+    boolean isPartialSuccess();
 
-	/**
-	 * Returns {@code true} if and only if all I/O operations associated with
-	 * this future have failed without any success.
-	 */
-	boolean isCompleteFailure();
+    /**
+     * Returns {@code true} if and only if all I/O operations associated with
+     * this future have failed without any success.
+     */
+    boolean isCompleteFailure();
 
-	/**
-	 * Returns {@code true} if and only if the I/O operations associated with
-	 * this future have failed partially with some success.
-	 */
-	boolean isPartialFailure();
+    /**
+     * Returns {@code true} if and only if the I/O operations associated with
+     * this future have failed partially with some success.
+     */
+    boolean isPartialFailure();
 
-	/**
-	 * Adds the specified listener to this future. The specified listener is
-	 * notified when this future is {@linkplain #isDone() done}. If this future
-	 * is already completed, the specified listener is notified immediately.
-	 */
-	void addListener(ChannelGroupFutureListener listener);
+    /**
+     * Adds the specified listener to this future. The specified listener is
+     * notified when this future is {@linkplain #isDone() done}. If this future
+     * is already completed, the specified listener is notified immediately.
+     */
+    void addListener(ChannelGroupFutureListener listener);
 
-	/**
-	 * Removes the specified listener from this future. The specified listener
-	 * is no longer notified when this future is {@linkplain #isDone() done}. If
-	 * this future is already completed, this method has no effect and returns
-	 * silently.
-	 */
-	void removeListener(ChannelGroupFutureListener listener);
+    /**
+     * Removes the specified listener from this future. The specified listener
+     * is no longer notified when this future is {@linkplain #isDone() done}. If
+     * this future is already completed, this method has no effect and returns
+     * silently.
+     */
+    void removeListener(ChannelGroupFutureListener listener);
 
-	/**
-	 * Waits for this future to be completed.
-	 *
-	 * @throws InterruptedException
-	 *             if the current thread was interrupted
-	 */
-	ChannelGroupFuture await() throws InterruptedException;
+    /**
+     * Waits for this future to be completed.
+     *
+     * @throws InterruptedException if the current thread was interrupted
+     */
+    ChannelGroupFuture await() throws InterruptedException;
 
-	/**
-	 * Waits for this future to be completed without interruption. This method
-	 * catches an {@link InterruptedException} and discards it silently.
-	 */
-	ChannelGroupFuture awaitUninterruptibly();
+    /**
+     * Waits for this future to be completed without interruption. This method
+     * catches an {@link InterruptedException} and discards it silently.
+     */
+    ChannelGroupFuture awaitUninterruptibly();
 
-	/**
-	 * Waits for this future to be completed within the specified time limit.
-	 *
-	 * @return {@code true} if and only if the future was completed within the
-	 *         specified time limit
-	 *
-	 * @throws InterruptedException
-	 *             if the current thread was interrupted
-	 */
-	boolean await(long timeout, TimeUnit unit) throws InterruptedException;
+    /**
+     * Waits for this future to be completed within the specified time limit.
+     *
+     * @return {@code true} if and only if the future was completed within the
+     * specified time limit
+     * @throws InterruptedException if the current thread was interrupted
+     */
+    boolean await(long timeout, TimeUnit unit) throws InterruptedException;
 
-	/**
-	 * Waits for this future to be completed within the specified time limit.
-	 *
-	 * @return {@code true} if and only if the future was completed within the
-	 *         specified time limit
-	 *
-	 * @throws InterruptedException
-	 *             if the current thread was interrupted
-	 */
-	boolean await(long timeoutMillis) throws InterruptedException;
+    /**
+     * Waits for this future to be completed within the specified time limit.
+     *
+     * @return {@code true} if and only if the future was completed within the
+     * specified time limit
+     * @throws InterruptedException if the current thread was interrupted
+     */
+    boolean await(long timeoutMillis) throws InterruptedException;
 
-	/**
-	 * Waits for this future to be completed within the specified time limit
-	 * without interruption. This method catches an {@link InterruptedException}
-	 * and discards it silently.
-	 *
-	 * @return {@code true} if and only if the future was completed within the
-	 *         specified time limit
-	 */
-	boolean awaitUninterruptibly(long timeout, TimeUnit unit);
+    /**
+     * Waits for this future to be completed within the specified time limit
+     * without interruption. This method catches an {@link InterruptedException}
+     * and discards it silently.
+     *
+     * @return {@code true} if and only if the future was completed within the
+     * specified time limit
+     */
+    boolean awaitUninterruptibly(long timeout, TimeUnit unit);
 
-	/**
-	 * Waits for this future to be completed within the specified time limit
-	 * without interruption. This method catches an {@link InterruptedException}
-	 * and discards it silently.
-	 *
-	 * @return {@code true} if and only if the future was completed within the
-	 *         specified time limit
-	 */
-	boolean awaitUninterruptibly(long timeoutMillis);
+    /**
+     * Waits for this future to be completed within the specified time limit
+     * without interruption. This method catches an {@link InterruptedException}
+     * and discards it silently.
+     *
+     * @return {@code true} if and only if the future was completed within the
+     * specified time limit
+     */
+    boolean awaitUninterruptibly(long timeoutMillis);
 
-	/**
-	 * Returns the {@link Iterator} that enumerates all {@link ChannelFuture}s
-	 * which are associated with this future. Please note that the returned
-	 * {@link Iterator} is is unmodifiable, which means a {@link ChannelFuture}
-	 * cannot be removed from this future.
-	 */
-	Iterator<ChannelFuture> iterator();
+    /**
+     * Returns the {@link Iterator} that enumerates all {@link ChannelFuture}s
+     * which are associated with this future. Please note that the returned
+     * {@link Iterator} is is unmodifiable, which means a {@link ChannelFuture}
+     * cannot be removed from this future.
+     */
+    Iterator<ChannelFuture> iterator();
 }

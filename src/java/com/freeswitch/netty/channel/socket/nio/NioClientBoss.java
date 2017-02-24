@@ -15,8 +15,10 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.succeededFuture;
+import com.freeswitch.netty.channel.Channel;
+import com.freeswitch.netty.channel.ChannelFuture;
+import com.freeswitch.netty.channel.ConnectTimeoutException;
+import com.freeswitch.netty.util.*;
 
 import java.io.IOException;
 import java.net.ConnectException;
@@ -28,177 +30,171 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ConnectTimeoutException;
-import com.freeswitch.netty.util.ThreadNameDeterminer;
-import com.freeswitch.netty.util.ThreadRenamingRunnable;
-import com.freeswitch.netty.util.Timeout;
-import com.freeswitch.netty.util.Timer;
-import com.freeswitch.netty.util.TimerTask;
+import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
+import static com.freeswitch.netty.channel.Channels.succeededFuture;
 
 /**
  * {@link Boss} implementation that handles the connection attempts of clients
  */
 public final class NioClientBoss extends AbstractNioSelector implements Boss {
 
-	private final TimerTask wakeupTask = new TimerTask() {
-		public void run(Timeout timeout) throws Exception {
-			// This is needed to prevent a possible race that can lead to a NPE
-			// when the selector is closed before this is run
-			//
-			// See https://github.com/netty/netty/issues/685
-			Selector selector = NioClientBoss.this.selector;
+    private final TimerTask wakeupTask = new TimerTask() {
+        public void run(Timeout timeout) throws Exception {
+            // This is needed to prevent a possible race that can lead to a NPE
+            // when the selector is closed before this is run
+            //
+            // See https://github.com/netty/netty/issues/685
+            Selector selector = NioClientBoss.this.selector;
 
-			if (selector != null) {
-				if (wakenUp.compareAndSet(false, true)) {
-					selector.wakeup();
-				}
-			}
-		}
-	};
+            if (selector != null) {
+                if (wakenUp.compareAndSet(false, true)) {
+                    selector.wakeup();
+                }
+            }
+        }
+    };
 
-	private final Timer timer;
+    private final Timer timer;
 
-	NioClientBoss(Executor bossExecutor, Timer timer, ThreadNameDeterminer determiner) {
-		super(bossExecutor, determiner);
-		this.timer = timer;
-	}
+    NioClientBoss(Executor bossExecutor, Timer timer, ThreadNameDeterminer determiner) {
+        super(bossExecutor, determiner);
+        this.timer = timer;
+    }
 
-	@Override
-	protected ThreadRenamingRunnable newThreadRenamingRunnable(int id, ThreadNameDeterminer determiner) {
-		return new ThreadRenamingRunnable(this, "New I/O boss #" + id, determiner);
-	}
+    private static void processConnectTimeout(Set<SelectionKey> keys, long currentTimeNanos) {
+        for (SelectionKey k : keys) {
+            if (!k.isValid()) {
+                // Comment the close call again as it gave us major problems
+                // with ClosedChannelExceptions.
+                //
+                // See:
+                // * https://github.com/netty/netty/issues/142
+                // * https://github.com/netty/netty/issues/138
+                //
+                // close(k);
+                continue;
+            }
 
-	@Override
-	protected Runnable createRegisterTask(Channel channel, ChannelFuture future) {
-		return new RegisterTask(this, (NioClientSocketChannel) channel);
-	}
+            NioClientSocketChannel ch = (NioClientSocketChannel) k.attachment();
+            if (ch.connectDeadlineNanos > 0 && currentTimeNanos >= ch.connectDeadlineNanos) {
 
-	@Override
-	protected void process(Selector selector) {
-		processSelectedKeys(selector.selectedKeys());
+                // Create a new ConnectException everytime and not cache it as
+                // otherwise we end up with
+                // using the wrong remoteaddress in the ConnectException
+                // message.
+                //
+                // See https://github.com/netty/netty/issues/2713
+                ConnectException cause = new ConnectTimeoutException("connection timed out: " + ch.requestedRemoteAddress);
 
-		// Handle connection timeout every 10 milliseconds approximately.
-		long currentTimeNanos = System.nanoTime();
-		processConnectTimeout(selector.keys(), currentTimeNanos);
-	}
+                ch.connectFuture.setFailure(cause);
+                fireExceptionCaught(ch, cause);
+                ch.worker.close(ch, succeededFuture(ch));
+            }
+        }
+    }
 
-	private void processSelectedKeys(Set<SelectionKey> selectedKeys) {
+    private static void connect(SelectionKey k) throws IOException {
+        NioClientSocketChannel ch = (NioClientSocketChannel) k.attachment();
+        try {
+            if (ch.channel.finishConnect()) {
+                k.cancel();
+                if (ch.timoutTimer != null) {
+                    ch.timoutTimer.cancel();
+                }
+                ch.worker.register(ch, ch.connectFuture);
+            }
+        } catch (ConnectException e) {
+            ConnectException newE = new ConnectException(e.getMessage() + ": " + ch.requestedRemoteAddress);
+            newE.setStackTrace(e.getStackTrace());
+            throw newE;
+        }
+    }
 
-		// check if the set is empty and if so just return to not create garbage
-		// by
-		// creating a new Iterator every time even if there is nothing to
-		// process.
-		// See https://github.com/netty/netty/issues/597
-		if (selectedKeys.isEmpty()) {
-			return;
-		}
-		for (Iterator<SelectionKey> i = selectedKeys.iterator(); i.hasNext();) {
-			SelectionKey k = i.next();
-			i.remove();
+    @Override
+    protected ThreadRenamingRunnable newThreadRenamingRunnable(int id, ThreadNameDeterminer determiner) {
+        return new ThreadRenamingRunnable(this, "New I/O boss #" + id, determiner);
+    }
 
-			if (!k.isValid()) {
-				close(k);
-				continue;
-			}
+    @Override
+    protected Runnable createRegisterTask(Channel channel, ChannelFuture future) {
+        return new RegisterTask(this, (NioClientSocketChannel) channel);
+    }
 
-			try {
-				if (k.isConnectable()) {
-					connect(k);
-				}
-			} catch (Throwable t) {
-				NioClientSocketChannel ch = (NioClientSocketChannel) k.attachment();
-				ch.connectFuture.setFailure(t);
-				fireExceptionCaught(ch, t);
-				k.cancel(); // Some JDK implementations run into an infinite
-							// loop without this.
-				ch.worker.close(ch, succeededFuture(ch));
-			}
-		}
-	}
+    @Override
+    protected void process(Selector selector) {
+        processSelectedKeys(selector.selectedKeys());
 
-	private static void processConnectTimeout(Set<SelectionKey> keys, long currentTimeNanos) {
-		for (SelectionKey k : keys) {
-			if (!k.isValid()) {
-				// Comment the close call again as it gave us major problems
-				// with ClosedChannelExceptions.
-				//
-				// See:
-				// * https://github.com/netty/netty/issues/142
-				// * https://github.com/netty/netty/issues/138
-				//
-				// close(k);
-				continue;
-			}
+        // Handle connection timeout every 10 milliseconds approximately.
+        long currentTimeNanos = System.nanoTime();
+        processConnectTimeout(selector.keys(), currentTimeNanos);
+    }
 
-			NioClientSocketChannel ch = (NioClientSocketChannel) k.attachment();
-			if (ch.connectDeadlineNanos > 0 && currentTimeNanos >= ch.connectDeadlineNanos) {
+    private void processSelectedKeys(Set<SelectionKey> selectedKeys) {
 
-				// Create a new ConnectException everytime and not cache it as
-				// otherwise we end up with
-				// using the wrong remoteaddress in the ConnectException
-				// message.
-				//
-				// See https://github.com/netty/netty/issues/2713
-				ConnectException cause = new ConnectTimeoutException("connection timed out: " + ch.requestedRemoteAddress);
+        // check if the set is empty and if so just return to not create garbage
+        // by
+        // creating a new Iterator every time even if there is nothing to
+        // process.
+        // See https://github.com/netty/netty/issues/597
+        if (selectedKeys.isEmpty()) {
+            return;
+        }
+        for (Iterator<SelectionKey> i = selectedKeys.iterator(); i.hasNext(); ) {
+            SelectionKey k = i.next();
+            i.remove();
 
-				ch.connectFuture.setFailure(cause);
-				fireExceptionCaught(ch, cause);
-				ch.worker.close(ch, succeededFuture(ch));
-			}
-		}
-	}
+            if (!k.isValid()) {
+                close(k);
+                continue;
+            }
 
-	private static void connect(SelectionKey k) throws IOException {
-		NioClientSocketChannel ch = (NioClientSocketChannel) k.attachment();
-		try {
-			if (ch.channel.finishConnect()) {
-				k.cancel();
-				if (ch.timoutTimer != null) {
-					ch.timoutTimer.cancel();
-				}
-				ch.worker.register(ch, ch.connectFuture);
-			}
-		} catch (ConnectException e) {
-			ConnectException newE = new ConnectException(e.getMessage() + ": " + ch.requestedRemoteAddress);
-			newE.setStackTrace(e.getStackTrace());
-			throw newE;
-		}
-	}
+            try {
+                if (k.isConnectable()) {
+                    connect(k);
+                }
+            } catch (Throwable t) {
+                NioClientSocketChannel ch = (NioClientSocketChannel) k.attachment();
+                ch.connectFuture.setFailure(t);
+                fireExceptionCaught(ch, t);
+                k.cancel(); // Some JDK implementations run into an infinite
+                // loop without this.
+                ch.worker.close(ch, succeededFuture(ch));
+            }
+        }
+    }
 
-	@Override
-	protected void close(SelectionKey k) {
-		NioClientSocketChannel ch = (NioClientSocketChannel) k.attachment();
-		ch.worker.close(ch, succeededFuture(ch));
-	}
+    @Override
+    protected void close(SelectionKey k) {
+        NioClientSocketChannel ch = (NioClientSocketChannel) k.attachment();
+        ch.worker.close(ch, succeededFuture(ch));
+    }
 
-	private final class RegisterTask implements Runnable {
-		private final NioClientBoss boss;
-		private final NioClientSocketChannel channel;
+    private final class RegisterTask implements Runnable {
+        private final NioClientBoss boss;
+        private final NioClientSocketChannel channel;
 
-		RegisterTask(NioClientBoss boss, NioClientSocketChannel channel) {
-			this.boss = boss;
-			this.channel = channel;
-		}
+        RegisterTask(NioClientBoss boss, NioClientSocketChannel channel) {
+            this.boss = boss;
+            this.channel = channel;
+        }
 
-		public void run() {
-			int timeout = channel.getConfig().getConnectTimeoutMillis();
-			if (timeout > 0) {
-				if (!channel.isConnected()) {
-					channel.timoutTimer = timer.newTimeout(wakeupTask, timeout, TimeUnit.MILLISECONDS);
-				}
-			}
-			try {
-				channel.channel.register(boss.selector, SelectionKey.OP_CONNECT, channel);
-			} catch (ClosedChannelException e) {
-				channel.worker.close(channel, succeededFuture(channel));
-			}
+        public void run() {
+            int timeout = channel.getConfig().getConnectTimeoutMillis();
+            if (timeout > 0) {
+                if (!channel.isConnected()) {
+                    channel.timoutTimer = timer.newTimeout(wakeupTask, timeout, TimeUnit.MILLISECONDS);
+                }
+            }
+            try {
+                channel.channel.register(boss.selector, SelectionKey.OP_CONNECT, channel);
+            } catch (ClosedChannelException e) {
+                channel.worker.close(channel, succeededFuture(channel));
+            }
 
-			int connectTimeout = channel.getConfig().getConnectTimeoutMillis();
-			if (connectTimeout > 0) {
-				channel.connectDeadlineNanos = System.nanoTime() + connectTimeout * 1000000L;
-			}
-		}
-	}
+            int connectTimeout = channel.getConfig().getConnectTimeoutMillis();
+            if (connectTimeout > 0) {
+                channel.connectDeadlineNanos = System.nanoTime() + connectTimeout * 1000000L;
+            }
+        }
+    }
 }

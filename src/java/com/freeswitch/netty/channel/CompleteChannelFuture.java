@@ -15,10 +15,10 @@
  */
 package com.freeswitch.netty.channel;
 
-import java.util.concurrent.TimeUnit;
-
 import com.freeswitch.netty.logging.InternalLogger;
 import com.freeswitch.netty.logging.InternalLoggerFactory;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * A skeletal {@link ChannelFuture} implementation which represents a
@@ -26,95 +26,94 @@ import com.freeswitch.netty.logging.InternalLoggerFactory;
  */
 public abstract class CompleteChannelFuture implements ChannelFuture {
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(CompleteChannelFuture.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(CompleteChannelFuture.class);
 
-	private final Channel channel;
+    private final Channel channel;
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param channel
-	 *            the {@link Channel} associated with this future
-	 */
-	protected CompleteChannelFuture(Channel channel) {
-		if (channel == null) {
-			throw new NullPointerException("channel");
-		}
-		this.channel = channel;
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param channel the {@link Channel} associated with this future
+     */
+    protected CompleteChannelFuture(Channel channel) {
+        if (channel == null) {
+            throw new NullPointerException("channel");
+        }
+        this.channel = channel;
+    }
 
-	public void addListener(ChannelFutureListener listener) {
-		try {
-			listener.operationComplete(this);
-		} catch (Throwable t) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("An exception was thrown by " + ChannelFutureListener.class.getSimpleName() + '.', t);
-			}
-		}
-	}
+    public void addListener(ChannelFutureListener listener) {
+        try {
+            listener.operationComplete(this);
+        } catch (Throwable t) {
+            if (logger.isWarnEnabled()) {
+                logger.warn("An exception was thrown by " + ChannelFutureListener.class.getSimpleName() + '.', t);
+            }
+        }
+    }
 
-	public void removeListener(ChannelFutureListener listener) {
-		// NOOP
-	}
+    public void removeListener(ChannelFutureListener listener) {
+        // NOOP
+    }
 
-	public ChannelFuture await() throws InterruptedException {
-		if (Thread.interrupted()) {
-			throw new InterruptedException();
-		}
-		return this;
-	}
+    public ChannelFuture await() throws InterruptedException {
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
+        return this;
+    }
 
-	public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
-		if (Thread.interrupted()) {
-			throw new InterruptedException();
-		}
-		return true;
-	}
+    public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
+        return true;
+    }
 
-	public boolean await(long timeoutMillis) throws InterruptedException {
-		if (Thread.interrupted()) {
-			throw new InterruptedException();
-		}
-		return true;
-	}
+    public boolean await(long timeoutMillis) throws InterruptedException {
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
+        return true;
+    }
 
-	public ChannelFuture awaitUninterruptibly() {
-		return this;
-	}
+    public ChannelFuture awaitUninterruptibly() {
+        return this;
+    }
 
-	public boolean awaitUninterruptibly(long timeout, TimeUnit unit) {
-		return true;
-	}
+    public boolean awaitUninterruptibly(long timeout, TimeUnit unit) {
+        return true;
+    }
 
-	public boolean awaitUninterruptibly(long timeoutMillis) {
-		return true;
-	}
+    public boolean awaitUninterruptibly(long timeoutMillis) {
+        return true;
+    }
 
-	public Channel getChannel() {
-		return channel;
-	}
+    public Channel getChannel() {
+        return channel;
+    }
 
-	public boolean isDone() {
-		return true;
-	}
+    public boolean isDone() {
+        return true;
+    }
 
-	public boolean setProgress(long amount, long current, long total) {
-		return false;
-	}
+    public boolean setProgress(long amount, long current, long total) {
+        return false;
+    }
 
-	public boolean setFailure(Throwable cause) {
-		return false;
-	}
+    public boolean setFailure(Throwable cause) {
+        return false;
+    }
 
-	public boolean setSuccess() {
-		return false;
-	}
+    public boolean setSuccess() {
+        return false;
+    }
 
-	public boolean cancel() {
-		return false;
-	}
+    public boolean cancel() {
+        return false;
+    }
 
-	public boolean isCancelled() {
-		return false;
-	}
+    public boolean isCancelled() {
+        return false;
+    }
 }

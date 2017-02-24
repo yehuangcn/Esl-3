@@ -23,38 +23,37 @@ import com.freeswitch.netty.channel.ChannelUpstreamHandler;
 /**
  * A combination of {@link HttpRequestDecoder} and {@link HttpResponseEncoder}
  * which enables easier server side HTTP implementation.
- * 
- * @see HttpClientCodec
  *
  * @apiviz.has org.jboss.netty.handler.codec.http.HttpRequestDecoder
  * @apiviz.has org.jboss.netty.handler.codec.http.HttpResponseEncoder
+ * @see HttpClientCodec
  */
 public class HttpServerCodec implements ChannelUpstreamHandler, ChannelDownstreamHandler {
 
-	private final HttpRequestDecoder decoder;
-	private final HttpResponseEncoder encoder = new HttpResponseEncoder();
+    private final HttpRequestDecoder decoder;
+    private final HttpResponseEncoder encoder = new HttpResponseEncoder();
 
-	/**
-	 * Creates a new instance with the default decoder options
-	 * ({@code maxInitialLineLength (4096}}, {@code maxHeaderSize (8192)}, and
-	 * {@code maxChunkSize (8192)}).
-	 */
-	public HttpServerCodec() {
-		this(4096, 8192, 8192);
-	}
+    /**
+     * Creates a new instance with the default decoder options
+     * ({@code maxInitialLineLength (4096}}, {@code maxHeaderSize (8192)}, and
+     * {@code maxChunkSize (8192)}).
+     */
+    public HttpServerCodec() {
+        this(4096, 8192, 8192);
+    }
 
-	/**
-	 * Creates a new instance with the specified decoder options.
-	 */
-	public HttpServerCodec(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize) {
-		decoder = new HttpRequestDecoder(maxInitialLineLength, maxHeaderSize, maxChunkSize);
-	}
+    /**
+     * Creates a new instance with the specified decoder options.
+     */
+    public HttpServerCodec(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize) {
+        decoder = new HttpRequestDecoder(maxInitialLineLength, maxHeaderSize, maxChunkSize);
+    }
 
-	public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
-		decoder.handleUpstream(ctx, e);
-	}
+    public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
+        decoder.handleUpstream(ctx, e);
+    }
 
-	public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
-		encoder.handleDownstream(ctx, e);
-	}
+    public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
+        encoder.handleDownstream(ctx, e);
+    }
 }

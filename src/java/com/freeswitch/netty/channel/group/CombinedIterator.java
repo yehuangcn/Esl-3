@@ -22,53 +22,53 @@ import java.util.NoSuchElementException;
  */
 final class CombinedIterator<E> implements Iterator<E> {
 
-	private final Iterator<E> i1;
-	private final Iterator<E> i2;
-	private Iterator<E> currentIterator;
+    private final Iterator<E> i1;
+    private final Iterator<E> i2;
+    private Iterator<E> currentIterator;
 
-	CombinedIterator(Iterator<E> i1, Iterator<E> i2) {
-		if (i1 == null) {
-			throw new NullPointerException("i1");
-		}
-		if (i2 == null) {
-			throw new NullPointerException("i2");
-		}
-		this.i1 = i1;
-		this.i2 = i2;
-		currentIterator = i1;
-	}
+    CombinedIterator(Iterator<E> i1, Iterator<E> i2) {
+        if (i1 == null) {
+            throw new NullPointerException("i1");
+        }
+        if (i2 == null) {
+            throw new NullPointerException("i2");
+        }
+        this.i1 = i1;
+        this.i2 = i2;
+        currentIterator = i1;
+    }
 
-	public boolean hasNext() {
-		for (;;) {
-			if (currentIterator.hasNext()) {
-				return true;
-			}
+    public boolean hasNext() {
+        for (; ; ) {
+            if (currentIterator.hasNext()) {
+                return true;
+            }
 
-			if (currentIterator == i1) {
-				currentIterator = i2;
-			} else {
-				return false;
-			}
-		}
-	}
+            if (currentIterator == i1) {
+                currentIterator = i2;
+            } else {
+                return false;
+            }
+        }
+    }
 
-	public E next() {
-		for (;;) {
-			try {
-				E e = currentIterator.next();
-				return e;
-			} catch (NoSuchElementException e) {
-				if (currentIterator == i1) {
-					currentIterator = i2;
-				} else {
-					throw e;
-				}
-			}
-		}
-	}
+    public E next() {
+        for (; ; ) {
+            try {
+                E e = currentIterator.next();
+                return e;
+            } catch (NoSuchElementException e) {
+                if (currentIterator == i1) {
+                    currentIterator = i2;
+                } else {
+                    throw e;
+                }
+            }
+        }
+    }
 
-	public void remove() {
-		currentIterator.remove();
-	}
+    public void remove() {
+        currentIterator.remove();
+    }
 
 }

@@ -32,21 +32,20 @@ import com.freeswitch.netty.buffer.ChannelBuffer;
  */
 public interface ReceiveBufferSizePredictor {
 
-	/**
-	 * Predicts the capacity of the {@link ChannelBuffer} for the next read
-	 * operation depending on the actual number of read bytes in the previous
-	 * read operation.
-	 *
-	 * @return the expected number of readable bytes this time
-	 */
-	int nextReceiveBufferSize();
+    /**
+     * Predicts the capacity of the {@link ChannelBuffer} for the next read
+     * operation depending on the actual number of read bytes in the previous
+     * read operation.
+     *
+     * @return the expected number of readable bytes this time
+     */
+    int nextReceiveBufferSize();
 
-	/**
-	 * Updates this predictor by specifying the actual number of read bytes in
-	 * the previous read operation.
-	 *
-	 * @param previousReceiveBufferSize
-	 *            the actual number of read bytes in the previous read operation
-	 */
-	void previousReceiveBufferSize(int previousReceiveBufferSize);
+    /**
+     * Updates this predictor by specifying the actual number of read bytes in
+     * the previous read operation.
+     *
+     * @param previousReceiveBufferSize the actual number of read bytes in the previous read operation
+     */
+    void previousReceiveBufferSize(int previousReceiveBufferSize);
 }

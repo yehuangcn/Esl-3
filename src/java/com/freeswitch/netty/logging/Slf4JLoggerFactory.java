@@ -24,9 +24,9 @@ import org.slf4j.LoggerFactory;
  */
 public class Slf4JLoggerFactory extends InternalLoggerFactory {
 
-	@Override
-	public InternalLogger newInstance(String name) {
-		final Logger logger = LoggerFactory.getLogger(name);
-		return new Slf4JLogger(logger);
-	}
+    @Override
+    public InternalLogger newInstance(String name) {
+        final Logger logger = LoggerFactory.getLogger(name);
+        return new Slf4JLogger(logger);
+    }
 }

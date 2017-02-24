@@ -24,33 +24,33 @@ import java.io.InterruptedIOException;
  */
 public class BlockingReadTimeoutException extends InterruptedIOException {
 
-	private static final long serialVersionUID = 356009226872649493L;
+    private static final long serialVersionUID = 356009226872649493L;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public BlockingReadTimeoutException() {
-	}
+    /**
+     * Creates a new instance.
+     */
+    public BlockingReadTimeoutException() {
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public BlockingReadTimeoutException(String message, Throwable cause) {
-		super(message);
-		initCause(cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public BlockingReadTimeoutException(String message, Throwable cause) {
+        super(message);
+        initCause(cause);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public BlockingReadTimeoutException(String message) {
-		super(message);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public BlockingReadTimeoutException(String message) {
+        super(message);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public BlockingReadTimeoutException(Throwable cause) {
-		initCause(cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public BlockingReadTimeoutException(Throwable cause) {
+        initCause(cause);
+    }
 }

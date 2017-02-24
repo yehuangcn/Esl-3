@@ -15,6 +15,10 @@
  */
 package com.freeswitch.netty.util;
 
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.channel.MessageEvent;
+import com.freeswitch.netty.util.internal.ConcurrentIdentityWeakKeyHashMap;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
@@ -22,104 +26,100 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
-import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.util.internal.ConcurrentIdentityWeakKeyHashMap;
-
 /**
  * The default {@link ObjectSizeEstimator} implementation for general purpose.
  */
 public class DefaultObjectSizeEstimator implements ObjectSizeEstimator {
 
-	private final ConcurrentMap<Class<?>, Integer> class2size = new ConcurrentIdentityWeakKeyHashMap<Class<?>, Integer>();
+    private final ConcurrentMap<Class<?>, Integer> class2size = new ConcurrentIdentityWeakKeyHashMap<Class<?>, Integer>();
 
-	/**
-	 * Creates a new instance.
-	 */
-	public DefaultObjectSizeEstimator() {
-		class2size.put(boolean.class, 4); // Probably an integer.
-		class2size.put(byte.class, 1);
-		class2size.put(char.class, 2);
-		class2size.put(int.class, 4);
-		class2size.put(short.class, 2);
-		class2size.put(long.class, 8);
-		class2size.put(float.class, 4);
-		class2size.put(double.class, 8);
-		class2size.put(void.class, 0);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public DefaultObjectSizeEstimator() {
+        class2size.put(boolean.class, 4); // Probably an integer.
+        class2size.put(byte.class, 1);
+        class2size.put(char.class, 2);
+        class2size.put(int.class, 4);
+        class2size.put(short.class, 2);
+        class2size.put(long.class, 8);
+        class2size.put(float.class, 4);
+        class2size.put(double.class, 8);
+        class2size.put(void.class, 0);
+    }
 
-	public int estimateSize(Object o) {
-		if (o == null) {
-			return 8;
-		}
+    private static int align(int size) {
+        int r = size % 8;
+        if (r != 0) {
+            size += 8 - r;
+        }
+        return size;
+    }
 
-		int answer = 8 + estimateSize(o.getClass(), null);
+    public int estimateSize(Object o) {
+        if (o == null) {
+            return 8;
+        }
 
-		if (o instanceof EstimatableObjectWrapper) {
-			answer += estimateSize(((EstimatableObjectWrapper) o).unwrap());
-		} else if (o instanceof MessageEvent) {
-			answer += estimateSize(((MessageEvent) o).getMessage());
-		} else if (o instanceof ChannelBuffer) {
-			answer += ((ChannelBuffer) o).capacity();
-		} else if (o instanceof byte[]) {
-			answer += ((byte[]) o).length;
-		} else if (o instanceof ByteBuffer) {
-			answer += ((ByteBuffer) o).remaining();
-		} else if (o instanceof CharSequence) {
-			answer += ((CharSequence) o).length() << 1;
-		} else if (o instanceof Iterable<?>) {
-			for (Object m : (Iterable<?>) o) {
-				answer += estimateSize(m);
-			}
-		}
+        int answer = 8 + estimateSize(o.getClass(), null);
 
-		return align(answer);
-	}
+        if (o instanceof EstimatableObjectWrapper) {
+            answer += estimateSize(((EstimatableObjectWrapper) o).unwrap());
+        } else if (o instanceof MessageEvent) {
+            answer += estimateSize(((MessageEvent) o).getMessage());
+        } else if (o instanceof ChannelBuffer) {
+            answer += ((ChannelBuffer) o).capacity();
+        } else if (o instanceof byte[]) {
+            answer += ((byte[]) o).length;
+        } else if (o instanceof ByteBuffer) {
+            answer += ((ByteBuffer) o).remaining();
+        } else if (o instanceof CharSequence) {
+            answer += ((CharSequence) o).length() << 1;
+        } else if (o instanceof Iterable<?>) {
+            for (Object m : (Iterable<?>) o) {
+                answer += estimateSize(m);
+            }
+        }
 
-	private int estimateSize(Class<?> clazz, Set<Class<?>> visitedClasses) {
-		Integer objectSize = class2size.get(clazz);
-		if (objectSize != null) {
-			return objectSize;
-		}
+        return align(answer);
+    }
 
-		if (visitedClasses != null) {
-			if (visitedClasses.contains(clazz)) {
-				return 0;
-			}
-		} else {
-			visitedClasses = new HashSet<Class<?>>();
-		}
+    private int estimateSize(Class<?> clazz, Set<Class<?>> visitedClasses) {
+        Integer objectSize = class2size.get(clazz);
+        if (objectSize != null) {
+            return objectSize;
+        }
 
-		visitedClasses.add(clazz);
+        if (visitedClasses != null) {
+            if (visitedClasses.contains(clazz)) {
+                return 0;
+            }
+        } else {
+            visitedClasses = new HashSet<Class<?>>();
+        }
 
-		int answer = 8; // Basic overhead.
-		for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
-			Field[] fields = c.getDeclaredFields();
-			for (Field f : fields) {
-				if ((f.getModifiers() & Modifier.STATIC) != 0) {
-					// Ignore static fields.
-					continue;
-				}
+        visitedClasses.add(clazz);
 
-				answer += estimateSize(f.getType(), visitedClasses);
-			}
-		}
+        int answer = 8; // Basic overhead.
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            Field[] fields = c.getDeclaredFields();
+            for (Field f : fields) {
+                if ((f.getModifiers() & Modifier.STATIC) != 0) {
+                    // Ignore static fields.
+                    continue;
+                }
 
-		visitedClasses.remove(clazz);
+                answer += estimateSize(f.getType(), visitedClasses);
+            }
+        }
 
-		// Some alignment.
-		answer = align(answer);
+        visitedClasses.remove(clazz);
 
-		// Put the final answer.
-		class2size.putIfAbsent(clazz, answer);
-		return answer;
-	}
+        // Some alignment.
+        answer = align(answer);
 
-	private static int align(int size) {
-		int r = size % 8;
-		if (r != 0) {
-			size += 8 - r;
-		}
-		return size;
-	}
+        // Put the final answer.
+        class2size.putIfAbsent(clazz, answer);
+        return answer;
+    }
 }

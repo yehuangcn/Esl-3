@@ -16,10 +16,10 @@
 
 package com.freeswitch.netty.handler.ssl.util;
 
+import com.freeswitch.netty.util.internal.ThreadLocalRandom;
+
 import java.security.SecureRandom;
 import java.util.Random;
-
-import com.freeswitch.netty.util.internal.ThreadLocalRandom;
 
 /**
  * Insecure {@link SecureRandom} which relies on {@link ThreadLocalRandom} for
@@ -27,78 +27,78 @@ import com.freeswitch.netty.util.internal.ThreadLocalRandom;
  */
 final class ThreadLocalInsecureRandom extends SecureRandom {
 
-	private static final long serialVersionUID = -8209473337192526191L;
+    private static final long serialVersionUID = -8209473337192526191L;
 
-	private static final SecureRandom INSTANCE = new ThreadLocalInsecureRandom();
+    private static final SecureRandom INSTANCE = new ThreadLocalInsecureRandom();
 
-	static SecureRandom current() {
-		return INSTANCE;
-	}
+    private ThreadLocalInsecureRandom() {
+    }
 
-	private ThreadLocalInsecureRandom() {
-	}
+    static SecureRandom current() {
+        return INSTANCE;
+    }
 
-	@Override
-	public String getAlgorithm() {
-		return "insecure";
-	}
+    private static Random random() {
+        return ThreadLocalRandom.current();
+    }
 
-	@Override
-	public void setSeed(byte[] seed) {
-	}
+    @Override
+    public String getAlgorithm() {
+        return "insecure";
+    }
 
-	@Override
-	public void setSeed(long seed) {
-	}
+    @Override
+    public void setSeed(byte[] seed) {
+    }
 
-	@Override
-	public void nextBytes(byte[] bytes) {
-		random().nextBytes(bytes);
-	}
+    @Override
+    public void setSeed(long seed) {
+    }
 
-	@Override
-	public byte[] generateSeed(int numBytes) {
-		byte[] seed = new byte[numBytes];
-		random().nextBytes(seed);
-		return seed;
-	}
+    @Override
+    public void nextBytes(byte[] bytes) {
+        random().nextBytes(bytes);
+    }
 
-	@Override
-	public int nextInt() {
-		return random().nextInt();
-	}
+    @Override
+    public byte[] generateSeed(int numBytes) {
+        byte[] seed = new byte[numBytes];
+        random().nextBytes(seed);
+        return seed;
+    }
 
-	@Override
-	public int nextInt(int n) {
-		return random().nextInt(n);
-	}
+    @Override
+    public int nextInt() {
+        return random().nextInt();
+    }
 
-	@Override
-	public boolean nextBoolean() {
-		return random().nextBoolean();
-	}
+    @Override
+    public int nextInt(int n) {
+        return random().nextInt(n);
+    }
 
-	@Override
-	public long nextLong() {
-		return random().nextLong();
-	}
+    @Override
+    public boolean nextBoolean() {
+        return random().nextBoolean();
+    }
 
-	@Override
-	public float nextFloat() {
-		return random().nextFloat();
-	}
+    @Override
+    public long nextLong() {
+        return random().nextLong();
+    }
 
-	@Override
-	public double nextDouble() {
-		return random().nextDouble();
-	}
+    @Override
+    public float nextFloat() {
+        return random().nextFloat();
+    }
 
-	@Override
-	public double nextGaussian() {
-		return random().nextGaussian();
-	}
+    @Override
+    public double nextDouble() {
+        return random().nextDouble();
+    }
 
-	private static Random random() {
-		return ThreadLocalRandom.current();
-	}
+    @Override
+    public double nextGaussian() {
+        return random().nextGaussian();
+    }
 }

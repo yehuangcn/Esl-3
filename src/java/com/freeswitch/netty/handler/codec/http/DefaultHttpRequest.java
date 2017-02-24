@@ -22,65 +22,62 @@ import com.freeswitch.netty.util.internal.StringUtil;
  */
 public class DefaultHttpRequest extends DefaultHttpMessage implements HttpRequest {
 
-	private HttpMethod method;
-	private String uri;
+    private HttpMethod method;
+    private String uri;
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param httpVersion
-	 *            the HTTP version of the request
-	 * @param method
-	 *            the HTTP method of the request
-	 * @param uri
-	 *            the URI or path of the request
-	 */
-	public DefaultHttpRequest(HttpVersion httpVersion, HttpMethod method, String uri) {
-		super(httpVersion);
-		setMethod(method);
-		setUri(uri);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param httpVersion the HTTP version of the request
+     * @param method      the HTTP method of the request
+     * @param uri         the URI or path of the request
+     */
+    public DefaultHttpRequest(HttpVersion httpVersion, HttpMethod method, String uri) {
+        super(httpVersion);
+        setMethod(method);
+        setUri(uri);
+    }
 
-	public HttpMethod getMethod() {
-		return method;
-	}
+    public HttpMethod getMethod() {
+        return method;
+    }
 
-	public void setMethod(HttpMethod method) {
-		if (method == null) {
-			throw new NullPointerException("method");
-		}
-		this.method = method;
-	}
+    public void setMethod(HttpMethod method) {
+        if (method == null) {
+            throw new NullPointerException("method");
+        }
+        this.method = method;
+    }
 
-	public String getUri() {
-		return uri;
-	}
+    public String getUri() {
+        return uri;
+    }
 
-	public void setUri(String uri) {
-		if (uri == null) {
-			throw new NullPointerException("uri");
-		}
-		this.uri = uri;
-	}
+    public void setUri(String uri) {
+        if (uri == null) {
+            throw new NullPointerException("uri");
+        }
+        this.uri = uri;
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder buf = new StringBuilder();
-		buf.append(getClass().getSimpleName());
-		buf.append("(chunked: ");
-		buf.append(isChunked());
-		buf.append(')');
-		buf.append(StringUtil.NEWLINE);
-		buf.append(getMethod().toString());
-		buf.append(' ');
-		buf.append(getUri());
-		buf.append(' ');
-		buf.append(getProtocolVersion().getText());
-		buf.append(StringUtil.NEWLINE);
-		appendHeaders(buf);
+    @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder();
+        buf.append(getClass().getSimpleName());
+        buf.append("(chunked: ");
+        buf.append(isChunked());
+        buf.append(')');
+        buf.append(StringUtil.NEWLINE);
+        buf.append(getMethod().toString());
+        buf.append(' ');
+        buf.append(getUri());
+        buf.append(' ');
+        buf.append(getProtocolVersion().getText());
+        buf.append(StringUtil.NEWLINE);
+        appendHeaders(buf);
 
-		// Remove the last newline.
-		buf.setLength(buf.length() - StringUtil.NEWLINE.length());
-		return buf.toString();
-	}
+        // Remove the last newline.
+        buf.setLength(buf.length() - StringUtil.NEWLINE.length());
+        return buf.toString();
+    }
 }

@@ -15,18 +15,14 @@
  */
 package com.freeswitch.netty.util;
 
+import com.freeswitch.netty.channel.ChannelFactory;
+import com.freeswitch.netty.channel.socket.nio.NioServerSocketChannelFactory;
+
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.AbstractExecutorService;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
-
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import java.util.concurrent.*;
 
 /**
  * A delegating {@link ExecutorService} with its own termination management.
@@ -37,7 +33,7 @@ import com.freeswitch.netty.channel.socket.nio.NioServerSocketChannelFactory;
  * {@link ExecutorService} to inject is shared by different components and the
  * life cycle of the components depend on the termination of the injected
  * {@link ExecutorService}.
- *
+ * <p>
  * <pre>
  * ExecutorService globalExecutor = ...;
  * ExecutorService virtualExecutor = new {@link VirtualExecutorService}(globalExecutor);
@@ -56,9 +52,9 @@ import com.freeswitch.netty.channel.socket.nio.NioServerSocketChannelFactory;
  * // by ChannelFactory via VirtualExecutorService are returned to the pool.
  * assert !globalExecutor.isShutdown();
  * </pre>
- *
+ * <p>
  * <h3>The differences from an ordinary {@link ExecutorService}</h3>
- *
+ * <p>
  * A shutdown request ({@link #shutdown()} or {@link #shutdownNow()}) does not
  * shut down its parent {@link Executor} but simply sets its internal flag to
  * reject further execution request.
@@ -70,117 +66,117 @@ import com.freeswitch.netty.channel.socket.nio.NioServerSocketChannelFactory;
  * termination but wait until {@link VirtualExecutorService} is shut down and
  * its active tasks are finished and the threads are returned to the parent
  * {@link Executor}.
- * 
+ *
  * @apiviz.landmark
  */
 public class VirtualExecutorService extends AbstractExecutorService {
 
-	private final Executor e;
-	private final ExecutorService s;
-	final Object startStopLock = new Object();
-	volatile boolean shutdown;
-	final Set<Thread> activeThreads = new MapBackedSet<Thread>(new IdentityHashMap<Thread, Boolean>());
+    final Object startStopLock = new Object();
+    final Set<Thread> activeThreads = new MapBackedSet<Thread>(new IdentityHashMap<Thread, Boolean>());
+    private final Executor e;
+    private final ExecutorService s;
+    volatile boolean shutdown;
 
-	/**
-	 * Creates a new instance with the specified parent {@link Executor}.
-	 */
-	public VirtualExecutorService(Executor parent) {
-		if (parent == null) {
-			throw new NullPointerException("parent");
-		}
+    /**
+     * Creates a new instance with the specified parent {@link Executor}.
+     */
+    public VirtualExecutorService(Executor parent) {
+        if (parent == null) {
+            throw new NullPointerException("parent");
+        }
 
-		if (parent instanceof ExecutorService) {
-			e = null;
-			s = (ExecutorService) parent;
-		} else {
-			e = parent;
-			s = null;
-		}
-	}
+        if (parent instanceof ExecutorService) {
+            e = null;
+            s = (ExecutorService) parent;
+        } else {
+            e = parent;
+            s = null;
+        }
+    }
 
-	public boolean isShutdown() {
-		synchronized (startStopLock) {
-			return shutdown;
-		}
-	}
+    public boolean isShutdown() {
+        synchronized (startStopLock) {
+            return shutdown;
+        }
+    }
 
-	public boolean isTerminated() {
-		synchronized (startStopLock) {
-			return shutdown && activeThreads.isEmpty();
-		}
-	}
+    public boolean isTerminated() {
+        synchronized (startStopLock) {
+            return shutdown && activeThreads.isEmpty();
+        }
+    }
 
-	public void shutdown() {
-		synchronized (startStopLock) {
-			if (shutdown) {
-				return;
-			}
-			shutdown = true;
-		}
-	}
+    public void shutdown() {
+        synchronized (startStopLock) {
+            if (shutdown) {
+                return;
+            }
+            shutdown = true;
+        }
+    }
 
-	public List<Runnable> shutdownNow() {
-		synchronized (startStopLock) {
-			if (!isTerminated()) {
-				shutdown();
-				for (Thread t : activeThreads) {
-					t.interrupt();
-				}
-			}
-		}
+    public List<Runnable> shutdownNow() {
+        synchronized (startStopLock) {
+            if (!isTerminated()) {
+                shutdown();
+                for (Thread t : activeThreads) {
+                    t.interrupt();
+                }
+            }
+        }
 
-		return Collections.emptyList();
-	}
+        return Collections.emptyList();
+    }
 
-	public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
-		synchronized (startStopLock) {
-			if (!isTerminated()) {
-				startStopLock.wait(TimeUnit.MILLISECONDS.convert(timeout, unit));
-			}
-			return isTerminated();
-		}
-	}
+    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        synchronized (startStopLock) {
+            if (!isTerminated()) {
+                startStopLock.wait(TimeUnit.MILLISECONDS.convert(timeout, unit));
+            }
+            return isTerminated();
+        }
+    }
 
-	public void execute(Runnable command) {
-		if (command == null) {
-			throw new NullPointerException("command");
-		}
+    public void execute(Runnable command) {
+        if (command == null) {
+            throw new NullPointerException("command");
+        }
 
-		if (shutdown) {
-			throw new RejectedExecutionException();
-		}
+        if (shutdown) {
+            throw new RejectedExecutionException();
+        }
 
-		if (s != null) {
-			s.execute(new ChildExecutorRunnable(command));
-		} else {
-			e.execute(new ChildExecutorRunnable(command));
-		}
-	}
+        if (s != null) {
+            s.execute(new ChildExecutorRunnable(command));
+        } else {
+            e.execute(new ChildExecutorRunnable(command));
+        }
+    }
 
-	private class ChildExecutorRunnable implements Runnable {
+    private class ChildExecutorRunnable implements Runnable {
 
-		private final Runnable runnable;
+        private final Runnable runnable;
 
-		ChildExecutorRunnable(Runnable runnable) {
-			this.runnable = runnable;
-		}
+        ChildExecutorRunnable(Runnable runnable) {
+            this.runnable = runnable;
+        }
 
-		public void run() {
-			Thread thread = Thread.currentThread();
-			synchronized (startStopLock) {
-				activeThreads.add(thread);
-			}
-			try {
-				runnable.run();
-			} finally {
-				synchronized (startStopLock) {
-					boolean removed = activeThreads.remove(thread);
-					assert removed;
-					if (isTerminated()) {
-						startStopLock.notifyAll();
-					}
-				}
-			}
-		}
-	}
+        public void run() {
+            Thread thread = Thread.currentThread();
+            synchronized (startStopLock) {
+                activeThreads.add(thread);
+            }
+            try {
+                runnable.run();
+            } finally {
+                synchronized (startStopLock) {
+                    boolean removed = activeThreads.remove(thread);
+                    assert removed;
+                    if (isTerminated()) {
+                        startStopLock.notifyAll();
+                    }
+                }
+            }
+        }
+    }
 }

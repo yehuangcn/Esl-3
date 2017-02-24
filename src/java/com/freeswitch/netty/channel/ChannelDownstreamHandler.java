@@ -21,7 +21,7 @@ package com.freeswitch.netty.channel;
  * <p>
  * The most common use case of this interface is to intercept an I/O request
  * such as {@link Channel#write(Object)} and {@link Channel#close()}.
- *
+ * <p>
  * <h3>{@link SimpleChannelDownstreamHandler}</h3>
  * <p>
  * In most cases, you will get to use a {@link SimpleChannelDownstreamHandler}
@@ -29,13 +29,13 @@ package com.freeswitch.netty.channel;
  * method for each event type. You might want to implement this interface
  * directly though if you want to handle various types of events in more generic
  * way.
- *
+ * <p>
  * <h3>Firing an event to the next handler</h3>
  * <p>
  * You can forward the received event downstream or upstream. In most cases,
  * {@link ChannelDownstreamHandler} will send the event downstream (i.e.
  * server) although it is legal to send the event upstream (i.e. handler):
- *
+ * <p>
  * <pre>
  * // Sending the event downstream (server)
  * void handleDownstream({@link ChannelHandlerContext} ctx, {@link ChannelEvent} e) throws Exception {
@@ -51,7 +51,7 @@ package com.freeswitch.netty.channel;
  *     ...
  * }
  * </pre>
- *
+ * <p>
  * <h4>Using the helper class to send an event</h4>
  * <p>
  * You will also find various helper methods in {@link Channels} to be useful to
@@ -62,11 +62,11 @@ package com.freeswitch.netty.channel;
  * Use the *Later(..) methods of the {@link Channels} class if you want to send
  * an upstream event from a {@link ChannelDownstreamHandler} otherwise you may
  * run into threading issues.
- *
+ * <p>
  * <h3>State management</h3>
- *
+ * <p>
  * Please refer to {@link ChannelHandler}.
- *
+ * <p>
  * <h3>Thread safety</h3>
  * <p>
  * {@link #handleDownstream(ChannelHandlerContext, ChannelEvent)
@@ -78,13 +78,11 @@ package com.freeswitch.netty.channel;
  */
 public interface ChannelDownstreamHandler extends ChannelHandler {
 
-	/**
-	 * Handles the specified downstream event.
-	 *
-	 * @param ctx
-	 *            the context object for this handler
-	 * @param e
-	 *            the downstream event to process or intercept
-	 */
-	void handleDownstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception;
+    /**
+     * Handles the specified downstream event.
+     *
+     * @param ctx the context object for this handler
+     * @param e   the downstream event to process or intercept
+     */
+    void handleDownstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception;
 }

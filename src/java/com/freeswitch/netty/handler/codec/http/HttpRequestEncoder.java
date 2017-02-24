@@ -15,55 +15,53 @@
  */
 package com.freeswitch.netty.handler.codec.http;
 
-import static com.freeswitch.netty.handler.codec.http.HttpConstants.CR;
-import static com.freeswitch.netty.handler.codec.http.HttpConstants.LF;
-import static com.freeswitch.netty.handler.codec.http.HttpConstants.SP;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
+
+import static com.freeswitch.netty.handler.codec.http.HttpConstants.*;
 
 /**
  * Encodes an {@link HttpRequest} or an {@link HttpChunk} into a
  * {@link ChannelBuffer}.
  */
 public class HttpRequestEncoder extends HttpMessageEncoder {
-	private static final char SLASH = '/';
-	private static final char QUESTION_MARK = '?';
+    private static final char SLASH = '/';
+    private static final char QUESTION_MARK = '?';
 
-	@Override
-	protected void encodeInitialLine(ChannelBuffer buf, HttpMessage message) throws Exception {
-		HttpRequest request = (HttpRequest) message;
-		buf.writeBytes(request.getMethod().toString().getBytes("ASCII"));
-		buf.writeByte(SP);
+    @Override
+    protected void encodeInitialLine(ChannelBuffer buf, HttpMessage message) throws Exception {
+        HttpRequest request = (HttpRequest) message;
+        buf.writeBytes(request.getMethod().toString().getBytes("ASCII"));
+        buf.writeByte(SP);
 
-		// Add / as absolute path if no is present.
-		// See http://tools.ietf.org/html/rfc2616#section-5.1.2
-		String uri = request.getUri();
-		int start = uri.indexOf("://");
-		if (start != -1) {
-			int startIndex = start + 3;
-			// Correctly handle query params.
-			// See https://github.com/netty/netty/issues/2732
-			int index = uri.indexOf(QUESTION_MARK, startIndex);
-			if (index == -1) {
-				if (uri.lastIndexOf(SLASH) <= startIndex) {
-					uri += SLASH;
-				}
-			} else {
-				if (uri.lastIndexOf(SLASH, index) <= startIndex) {
-					int len = uri.length();
-					StringBuilder sb = new StringBuilder(len + 1);
-					sb.append(uri, 0, index);
-					sb.append(SLASH);
-					sb.append(uri, index, len);
-					uri = sb.toString();
-				}
-			}
-		}
+        // Add / as absolute path if no is present.
+        // See http://tools.ietf.org/html/rfc2616#section-5.1.2
+        String uri = request.getUri();
+        int start = uri.indexOf("://");
+        if (start != -1) {
+            int startIndex = start + 3;
+            // Correctly handle query params.
+            // See https://github.com/netty/netty/issues/2732
+            int index = uri.indexOf(QUESTION_MARK, startIndex);
+            if (index == -1) {
+                if (uri.lastIndexOf(SLASH) <= startIndex) {
+                    uri += SLASH;
+                }
+            } else {
+                if (uri.lastIndexOf(SLASH, index) <= startIndex) {
+                    int len = uri.length();
+                    StringBuilder sb = new StringBuilder(len + 1);
+                    sb.append(uri, 0, index);
+                    sb.append(SLASH);
+                    sb.append(uri, index, len);
+                    uri = sb.toString();
+                }
+            }
+        }
 
-		buf.writeBytes(uri.getBytes("UTF-8"));
-		buf.writeByte(SP);
-		buf.writeBytes(request.getProtocolVersion().toString().getBytes("ASCII"));
-		buf.writeByte(CR);
-		buf.writeByte(LF);
-	}
+        buf.writeBytes(uri.getBytes("UTF-8"));
+        buf.writeByte(SP);
+        buf.writeBytes(request.getProtocolVersion().toString().getBytes("ASCII"));
+        buf.writeByte(CR);
+        buf.writeByte(LF);
+    }
 }

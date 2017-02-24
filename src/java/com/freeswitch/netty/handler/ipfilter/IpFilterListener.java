@@ -15,11 +15,11 @@
  */
 package com.freeswitch.netty.handler.ipfilter;
 
-import java.net.InetSocketAddress;
-
 import com.freeswitch.netty.channel.ChannelEvent;
 import com.freeswitch.netty.channel.ChannelFuture;
 import com.freeswitch.netty.channel.ChannelHandlerContext;
+
+import java.net.InetSocketAddress;
 
 /**
  * The listener interface for receiving ipFilter events.
@@ -28,52 +28,50 @@ import com.freeswitch.netty.channel.ChannelHandlerContext;
  */
 public interface IpFilterListener {
 
-	/**
-	 * Called when the channel has the CONNECTED status and the channel was
-	 * allowed by a previous call to accept(). This method enables your
-	 * implementation to send a message back to the client before closing or
-	 * whatever you need. This method returns a ChannelFuture on which the
-	 * implementation can wait uninterruptibly before continuing.<br>
-	 * For instance, If a message is sent back, the corresponding ChannelFuture
-	 * has to be returned.
-	 *
-	 * @param inetSocketAddress
-	 *            the remote {@link InetSocketAddress} from client
-	 * @return the associated ChannelFuture to be waited for before closing the
-	 *         channel. Null is allowed.
-	 */
-	ChannelFuture allowed(ChannelHandlerContext ctx, ChannelEvent e, InetSocketAddress inetSocketAddress);
+    /**
+     * Called when the channel has the CONNECTED status and the channel was
+     * allowed by a previous call to accept(). This method enables your
+     * implementation to send a message back to the client before closing or
+     * whatever you need. This method returns a ChannelFuture on which the
+     * implementation can wait uninterruptibly before continuing.<br>
+     * For instance, If a message is sent back, the corresponding ChannelFuture
+     * has to be returned.
+     *
+     * @param inetSocketAddress the remote {@link InetSocketAddress} from client
+     * @return the associated ChannelFuture to be waited for before closing the
+     * channel. Null is allowed.
+     */
+    ChannelFuture allowed(ChannelHandlerContext ctx, ChannelEvent e, InetSocketAddress inetSocketAddress);
 
-	/**
-	 * Called when the channel has the CONNECTED status and the channel was
-	 * refused by a previous call to accept(). This method enables your
-	 * implementation to send a message back to the client before closing or
-	 * whatever you need. This method returns a ChannelFuture on which the
-	 * implementation will wait uninterruptibly before closing the channel.<br>
-	 * For instance, If a message is sent back, the corresponding ChannelFuture
-	 * has to be returned.
-	 *
-	 * @param inetSocketAddress
-	 *            the remote {@link InetSocketAddress} from client
-	 * @return the associated ChannelFuture to be waited for before closing the
-	 *         channel. Null is allowed.
-	 */
-	ChannelFuture refused(ChannelHandlerContext ctx, ChannelEvent e, InetSocketAddress inetSocketAddress);
+    /**
+     * Called when the channel has the CONNECTED status and the channel was
+     * refused by a previous call to accept(). This method enables your
+     * implementation to send a message back to the client before closing or
+     * whatever you need. This method returns a ChannelFuture on which the
+     * implementation will wait uninterruptibly before closing the channel.<br>
+     * For instance, If a message is sent back, the corresponding ChannelFuture
+     * has to be returned.
+     *
+     * @param inetSocketAddress the remote {@link InetSocketAddress} from client
+     * @return the associated ChannelFuture to be waited for before closing the
+     * channel. Null is allowed.
+     */
+    ChannelFuture refused(ChannelHandlerContext ctx, ChannelEvent e, InetSocketAddress inetSocketAddress);
 
-	/**
-	 * Called in handleUpstream, if this channel was previously blocked, to
-	 * check if whatever the event, it should be passed to the next entry in the
-	 * pipeline.<br>
-	 * If one wants to not block events, just overridden this method by
-	 * returning always true.<br>
-	 * <br>
-	 * <b>Note that OPENED and BOUND events are still passed to the next entry
-	 * in the pipeline since those events come out before the CONNECTED event
-	 * and so the possibility to filter the connection.</b>
-	 *
-	 * @return True if the event should continue, False if the event should not
-	 *         continue since this channel was blocked by this filter
-	 */
-	boolean continues(ChannelHandlerContext ctx, ChannelEvent e);
+    /**
+     * Called in handleUpstream, if this channel was previously blocked, to
+     * check if whatever the event, it should be passed to the next entry in the
+     * pipeline.<br>
+     * If one wants to not block events, just overridden this method by
+     * returning always true.<br>
+     * <br>
+     * <b>Note that OPENED and BOUND events are still passed to the next entry
+     * in the pipeline since those events come out before the CONNECTED event
+     * and so the possibility to filter the connection.</b>
+     *
+     * @return True if the event should continue, False if the event should not
+     * continue since this channel was blocked by this filter
+     */
+    boolean continues(ChannelHandlerContext ctx, ChannelEvent e);
 
 }

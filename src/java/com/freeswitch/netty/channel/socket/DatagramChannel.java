@@ -15,12 +15,12 @@
  */
 package com.freeswitch.netty.channel.socket;
 
+import com.freeswitch.netty.channel.Channel;
+import com.freeswitch.netty.channel.ChannelFuture;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
-
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelFuture;
 
 /**
  * A UDP/IP {@link Channel} which is created by {@link DatagramChannelFactory}.
@@ -29,29 +29,29 @@ import com.freeswitch.netty.channel.ChannelFuture;
  * @apiviz.composedOf org.jboss.netty.channel.socket.DatagramChannelConfig
  */
 public interface DatagramChannel extends Channel {
-	DatagramChannelConfig getConfig();
+    DatagramChannelConfig getConfig();
 
-	InetSocketAddress getLocalAddress();
+    InetSocketAddress getLocalAddress();
 
-	InetSocketAddress getRemoteAddress();
+    InetSocketAddress getRemoteAddress();
 
-	/**
-	 * Joins a multicast group.
-	 */
-	ChannelFuture joinGroup(InetAddress multicastAddress);
+    /**
+     * Joins a multicast group.
+     */
+    ChannelFuture joinGroup(InetAddress multicastAddress);
 
-	/**
-	 * Joins the specified multicast group at the specified interface.
-	 */
-	ChannelFuture joinGroup(InetSocketAddress multicastAddress, NetworkInterface networkInterface);
+    /**
+     * Joins the specified multicast group at the specified interface.
+     */
+    ChannelFuture joinGroup(InetSocketAddress multicastAddress, NetworkInterface networkInterface);
 
-	/**
-	 * Leaves a multicast group.
-	 */
-	ChannelFuture leaveGroup(InetAddress multicastAddress);
+    /**
+     * Leaves a multicast group.
+     */
+    ChannelFuture leaveGroup(InetAddress multicastAddress);
 
-	/**
-	 * Leaves a multicast group on a specified local interface.
-	 */
-	ChannelFuture leaveGroup(InetSocketAddress multicastAddress, NetworkInterface networkInterface);
+    /**
+     * Leaves a multicast group on a specified local interface.
+     */
+    ChannelFuture leaveGroup(InetSocketAddress multicastAddress, NetworkInterface networkInterface);
 }

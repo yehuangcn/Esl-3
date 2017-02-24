@@ -15,98 +15,98 @@
  */
 package com.freeswitch.netty.handler.codec.http;
 
-import java.util.Map;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
 import com.freeswitch.netty.buffer.ChannelBuffers;
 import com.freeswitch.netty.util.internal.StringUtil;
+
+import java.util.Map;
 
 /**
  * The default {@link HttpMessage} implementation.
  */
 public class DefaultHttpMessage implements HttpMessage {
 
-	private final HttpHeaders headers = new DefaultHttpHeaders(true);
-	private HttpVersion version;
-	private ChannelBuffer content = ChannelBuffers.EMPTY_BUFFER;
-	private boolean chunked;
+    private final HttpHeaders headers = new DefaultHttpHeaders(true);
+    private HttpVersion version;
+    private ChannelBuffer content = ChannelBuffers.EMPTY_BUFFER;
+    private boolean chunked;
 
-	/**
-	 * Creates a new instance.
-	 */
-	protected DefaultHttpMessage(final HttpVersion version) {
-		setProtocolVersion(version);
-	}
+    /**
+     * Creates a new instance.
+     */
+    protected DefaultHttpMessage(final HttpVersion version) {
+        setProtocolVersion(version);
+    }
 
-	public HttpHeaders headers() {
-		return headers;
-	}
+    public HttpHeaders headers() {
+        return headers;
+    }
 
-	public boolean isChunked() {
-		if (chunked) {
-			return true;
-		} else {
-			return HttpCodecUtil.isTransferEncodingChunked(this);
-		}
-	}
+    public boolean isChunked() {
+        if (chunked) {
+            return true;
+        } else {
+            return HttpCodecUtil.isTransferEncodingChunked(this);
+        }
+    }
 
-	public void setChunked(boolean chunked) {
-		this.chunked = chunked;
-		if (chunked) {
-			setContent(ChannelBuffers.EMPTY_BUFFER);
-		}
-	}
+    public void setChunked(boolean chunked) {
+        this.chunked = chunked;
+        if (chunked) {
+            setContent(ChannelBuffers.EMPTY_BUFFER);
+        }
+    }
 
-	public void setContent(ChannelBuffer content) {
-		if (content == null) {
-			content = ChannelBuffers.EMPTY_BUFFER;
-		}
-		if (content.readable() && isChunked()) {
-			throw new IllegalArgumentException("non-empty content disallowed if this.chunked == true");
-		}
-		this.content = content;
-	}
+    public HttpVersion getProtocolVersion() {
+        return version;
+    }
 
-	public HttpVersion getProtocolVersion() {
-		return version;
-	}
+    public void setProtocolVersion(HttpVersion version) {
+        if (version == null) {
+            throw new NullPointerException("version");
+        }
+        this.version = version;
+    }
 
-	public void setProtocolVersion(HttpVersion version) {
-		if (version == null) {
-			throw new NullPointerException("version");
-		}
-		this.version = version;
-	}
+    public ChannelBuffer getContent() {
+        return content;
+    }
 
-	public ChannelBuffer getContent() {
-		return content;
-	}
+    public void setContent(ChannelBuffer content) {
+        if (content == null) {
+            content = ChannelBuffers.EMPTY_BUFFER;
+        }
+        if (content.readable() && isChunked()) {
+            throw new IllegalArgumentException("non-empty content disallowed if this.chunked == true");
+        }
+        this.content = content;
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder buf = new StringBuilder();
-		buf.append(getClass().getSimpleName());
-		buf.append("(version: ");
-		buf.append(getProtocolVersion().getText());
-		buf.append(", keepAlive: ");
-		buf.append(HttpHeaders.isKeepAlive(this));
-		buf.append(", chunked: ");
-		buf.append(isChunked());
-		buf.append(')');
-		buf.append(StringUtil.NEWLINE);
-		appendHeaders(buf);
+    @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder();
+        buf.append(getClass().getSimpleName());
+        buf.append("(version: ");
+        buf.append(getProtocolVersion().getText());
+        buf.append(", keepAlive: ");
+        buf.append(HttpHeaders.isKeepAlive(this));
+        buf.append(", chunked: ");
+        buf.append(isChunked());
+        buf.append(')');
+        buf.append(StringUtil.NEWLINE);
+        appendHeaders(buf);
 
-		// Remove the last newline.
-		buf.setLength(buf.length() - StringUtil.NEWLINE.length());
-		return buf.toString();
-	}
+        // Remove the last newline.
+        buf.setLength(buf.length() - StringUtil.NEWLINE.length());
+        return buf.toString();
+    }
 
-	void appendHeaders(StringBuilder buf) {
-		for (Map.Entry<String, String> e : headers()) {
-			buf.append(e.getKey());
-			buf.append(": ");
-			buf.append(e.getValue());
-			buf.append(StringUtil.NEWLINE);
-		}
-	}
+    void appendHeaders(StringBuilder buf) {
+        for (Map.Entry<String, String> e : headers()) {
+            buf.append(e.getKey());
+            buf.append(": ");
+            buf.append(e.getValue());
+            buf.append(StringUtil.NEWLINE);
+        }
+    }
 }

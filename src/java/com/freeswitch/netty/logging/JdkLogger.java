@@ -25,64 +25,64 @@ import java.util.logging.Logger;
  */
 class JdkLogger extends AbstractInternalLogger {
 
-	private final Logger logger;
-	private final String loggerName;
+    private final Logger logger;
+    private final String loggerName;
 
-	JdkLogger(Logger logger, String loggerName) {
-		this.logger = logger;
-		this.loggerName = loggerName;
-	}
+    JdkLogger(Logger logger, String loggerName) {
+        this.logger = logger;
+        this.loggerName = loggerName;
+    }
 
-	public void debug(String msg) {
-		logger.logp(Level.FINE, loggerName, null, msg);
-	}
+    public void debug(String msg) {
+        logger.logp(Level.FINE, loggerName, null, msg);
+    }
 
-	public void debug(String msg, Throwable cause) {
-		logger.logp(Level.FINE, loggerName, null, msg, cause);
-	}
+    public void debug(String msg, Throwable cause) {
+        logger.logp(Level.FINE, loggerName, null, msg, cause);
+    }
 
-	public void error(String msg) {
-		logger.logp(Level.SEVERE, loggerName, null, msg);
-	}
+    public void error(String msg) {
+        logger.logp(Level.SEVERE, loggerName, null, msg);
+    }
 
-	public void error(String msg, Throwable cause) {
-		logger.logp(Level.SEVERE, loggerName, null, msg, cause);
-	}
+    public void error(String msg, Throwable cause) {
+        logger.logp(Level.SEVERE, loggerName, null, msg, cause);
+    }
 
-	public void info(String msg) {
-		logger.logp(Level.INFO, loggerName, null, msg);
-	}
+    public void info(String msg) {
+        logger.logp(Level.INFO, loggerName, null, msg);
+    }
 
-	public void info(String msg, Throwable cause) {
-		logger.logp(Level.INFO, loggerName, null, msg, cause);
-	}
+    public void info(String msg, Throwable cause) {
+        logger.logp(Level.INFO, loggerName, null, msg, cause);
+    }
 
-	public boolean isDebugEnabled() {
-		return logger.isLoggable(Level.FINE);
-	}
+    public boolean isDebugEnabled() {
+        return logger.isLoggable(Level.FINE);
+    }
 
-	public boolean isErrorEnabled() {
-		return logger.isLoggable(Level.SEVERE);
-	}
+    public boolean isErrorEnabled() {
+        return logger.isLoggable(Level.SEVERE);
+    }
 
-	public boolean isInfoEnabled() {
-		return logger.isLoggable(Level.INFO);
-	}
+    public boolean isInfoEnabled() {
+        return logger.isLoggable(Level.INFO);
+    }
 
-	public boolean isWarnEnabled() {
-		return logger.isLoggable(Level.WARNING);
-	}
+    public boolean isWarnEnabled() {
+        return logger.isLoggable(Level.WARNING);
+    }
 
-	public void warn(String msg) {
-		logger.logp(Level.WARNING, loggerName, null, msg);
-	}
+    public void warn(String msg) {
+        logger.logp(Level.WARNING, loggerName, null, msg);
+    }
 
-	public void warn(String msg, Throwable cause) {
-		logger.logp(Level.WARNING, loggerName, null, msg, cause);
-	}
+    public void warn(String msg, Throwable cause) {
+        logger.logp(Level.WARNING, loggerName, null, msg, cause);
+    }
 
-	@Override
-	public String toString() {
-		return loggerName;
-	}
+    @Override
+    public String toString() {
+        return loggerName;
+    }
 }

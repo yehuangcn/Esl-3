@@ -23,24 +23,24 @@ import com.freeswitch.netty.channel.SimpleChannelHandler;
 /**
  * An extended {@link SimpleChannelHandler} that adds the handler method for an
  * {@link IdleStateEvent}.
- * 
+ *
  * @apiviz.uses org.jboss.netty.handler.timeout.IdleStateEvent
  */
 public class IdleStateAwareChannelHandler extends SimpleChannelHandler {
 
-	@Override
-	public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
-		if (e instanceof IdleStateEvent) {
-			channelIdle(ctx, (IdleStateEvent) e);
-		} else {
-			super.handleUpstream(ctx, e);
-		}
-	}
+    @Override
+    public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
+        if (e instanceof IdleStateEvent) {
+            channelIdle(ctx, (IdleStateEvent) e);
+        } else {
+            super.handleUpstream(ctx, e);
+        }
+    }
 
-	/**
-	 * Invoked when a {@link Channel} has been idle for a while.
-	 */
-	public void channelIdle(ChannelHandlerContext ctx, IdleStateEvent e) throws Exception {
-		ctx.sendUpstream(e);
-	}
+    /**
+     * Invoked when a {@link Channel} has been idle for a while.
+     */
+    public void channelIdle(ChannelHandlerContext ctx, IdleStateEvent e) throws Exception {
+        ctx.sendUpstream(e);
+    }
 }

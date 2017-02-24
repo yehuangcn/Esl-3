@@ -15,15 +15,7 @@
  */
 package com.freeswitch.netty.handler.traffic;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelPipelineFactory;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.MessageEvent;
+import com.freeswitch.netty.channel.*;
 import com.freeswitch.netty.handler.execution.ExecutionHandler;
 import com.freeswitch.netty.handler.execution.MemoryAwareThreadPoolExecutor;
 import com.freeswitch.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
@@ -32,13 +24,17 @@ import com.freeswitch.netty.util.Timeout;
 import com.freeswitch.netty.util.Timer;
 import com.freeswitch.netty.util.TimerTask;
 
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 /**
  * <p>
  * This implementation of the {@link AbstractTrafficShapingHandler} is for
  * channel traffic shaping, that is to say a per channel limitation of the
  * bandwidth.
  * </p>
- *
+ * <p>
  * The general use should be as follow:<br>
  * <ul>
  * <li>
@@ -56,7 +52,7 @@ import com.freeswitch.netty.util.TimerTask;
  * <p>
  * <tt>pipeline.addLast("CHANNEL_TRAFFIC_SHAPING", myHandler);</tt>
  * </p>
- *
+ * <p>
  * <p>
  * <b>Note that this handler has a Pipeline Coverage of "one" which means a new
  * handler must be created for each new channel as the counter cannot be shared
@@ -65,14 +61,14 @@ import com.freeswitch.netty.util.TimerTask;
  * ChannelTrafficShapingHandler in this {@link ChannelPipelineFactory} each time
  * getPipeline() method is called.
  * </p>
- *
+ * <p>
  * <p>
  * Other arguments can be passed like write or read limitation (in bytes/s where
  * 0 means no limitation) or the check interval (in millisecond) that represents
  * the delay between two computations of the bandwidth and so the call back of
  * the doAccounting method (0 means no accounting at all).
  * </p>
- *
+ * <p>
  * <p>
  * A value of 0 means no accounting for checkInterval. If you need traffic
  * shaping but no such accounting, it is recommended to set a positive value,
@@ -81,7 +77,7 @@ import com.freeswitch.netty.util.TimerTask;
  * precise the traffic shaping will be. It is suggested as higher value
  * something close to 5 or 10 minutes.
  * </p>
- *
+ * <p>
  * <p>
  * maxTimeToWait, by default set to 15s, allows to specify an upper bound of
  * time shaping.
@@ -116,202 +112,202 @@ import com.freeswitch.netty.util.TimerTask;
  * <br>
  */
 public class ChannelTrafficShapingHandler extends AbstractTrafficShapingHandler {
-	private final List<ToSend> messagesQueue = new LinkedList<ToSend>();
-	private long queueSize;
-	private volatile Timeout writeTimeout;
-	private volatile ChannelHandlerContext ctx;
+    private final List<ToSend> messagesQueue = new LinkedList<ToSend>();
+    private long queueSize;
+    private volatile Timeout writeTimeout;
+    private volatile ChannelHandlerContext ctx;
 
-	public ChannelTrafficShapingHandler(Timer timer, long writeLimit, long readLimit, long checkInterval) {
-		super(timer, writeLimit, readLimit, checkInterval);
-	}
+    public ChannelTrafficShapingHandler(Timer timer, long writeLimit, long readLimit, long checkInterval) {
+        super(timer, writeLimit, readLimit, checkInterval);
+    }
 
-	public ChannelTrafficShapingHandler(Timer timer, long writeLimit, long readLimit, long checkInterval, long maxTime) {
-		super(timer, writeLimit, readLimit, checkInterval, maxTime);
-	}
+    public ChannelTrafficShapingHandler(Timer timer, long writeLimit, long readLimit, long checkInterval, long maxTime) {
+        super(timer, writeLimit, readLimit, checkInterval, maxTime);
+    }
 
-	public ChannelTrafficShapingHandler(Timer timer, long writeLimit, long readLimit) {
-		super(timer, writeLimit, readLimit);
-	}
+    public ChannelTrafficShapingHandler(Timer timer, long writeLimit, long readLimit) {
+        super(timer, writeLimit, readLimit);
+    }
 
-	public ChannelTrafficShapingHandler(Timer timer, long checkInterval) {
-		super(timer, checkInterval);
-	}
+    public ChannelTrafficShapingHandler(Timer timer, long checkInterval) {
+        super(timer, checkInterval);
+    }
 
-	public ChannelTrafficShapingHandler(Timer timer) {
-		super(timer);
-	}
+    public ChannelTrafficShapingHandler(Timer timer) {
+        super(timer);
+    }
 
-	public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer, long writeLimit, long readLimit, long checkInterval) {
-		super(objectSizeEstimator, timer, writeLimit, readLimit, checkInterval);
-	}
+    public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer, long writeLimit, long readLimit, long checkInterval) {
+        super(objectSizeEstimator, timer, writeLimit, readLimit, checkInterval);
+    }
 
-	public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer, long writeLimit, long readLimit, long checkInterval, long maxTime) {
-		super(objectSizeEstimator, timer, writeLimit, readLimit, checkInterval, maxTime);
-	}
+    public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer, long writeLimit, long readLimit, long checkInterval, long maxTime) {
+        super(objectSizeEstimator, timer, writeLimit, readLimit, checkInterval, maxTime);
+    }
 
-	public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer, long writeLimit, long readLimit) {
-		super(objectSizeEstimator, timer, writeLimit, readLimit);
-	}
+    public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer, long writeLimit, long readLimit) {
+        super(objectSizeEstimator, timer, writeLimit, readLimit);
+    }
 
-	public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer, long checkInterval) {
-		super(objectSizeEstimator, timer, checkInterval);
-	}
+    public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer, long checkInterval) {
+        super(objectSizeEstimator, timer, checkInterval);
+    }
 
-	public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer) {
-		super(objectSizeEstimator, timer);
-	}
+    public ChannelTrafficShapingHandler(ObjectSizeEstimator objectSizeEstimator, Timer timer) {
+        super(objectSizeEstimator, timer);
+    }
 
-	private static final class ToSend {
-		final long relativeTimeAction;
-		final MessageEvent toSend;
+    @Override
+    void submitWrite(final ChannelHandlerContext ctx, final MessageEvent evt, final long size, final long delay, final long now) throws Exception {
+        if (ctx == null) {
+            this.ctx = ctx;
+        }
+        final ToSend newToSend;
+        Channel channel = ctx.getChannel();
+        synchronized (this) {
+            if (delay == 0 && messagesQueue.isEmpty()) {
+                if (!channel.isConnected()) {
+                    // ignore
+                    return;
+                }
+                if (trafficCounter != null) {
+                    trafficCounter.bytesRealWriteFlowControl(size);
+                }
+                ctx.sendDownstream(evt);
+                return;
+            }
+            if (timer == null) {
+                // Sleep since no executor
+                Thread.sleep(delay);
+                if (!channel.isConnected()) {
+                    // ignore
+                    return;
+                }
+                if (trafficCounter != null) {
+                    trafficCounter.bytesRealWriteFlowControl(size);
+                }
+                ctx.sendDownstream(evt);
+                return;
+            }
+            if (!channel.isConnected()) {
+                // ignore
+                return;
+            }
+            newToSend = new ToSend(delay + now, evt);
+            messagesQueue.add(newToSend);
+            queueSize += size;
+            checkWriteSuspend(ctx, delay, queueSize);
+        }
+        final long futureNow = newToSend.relativeTimeAction;
+        writeTimeout = timer.newTimeout(new TimerTask() {
+            public void run(Timeout timeout) throws Exception {
+                sendAllValid(ctx, futureNow);
+            }
+        }, delay + 1, TimeUnit.MILLISECONDS);
+    }
 
-		private ToSend(final long delay, final MessageEvent toSend) {
-			relativeTimeAction = delay;
-			this.toSend = toSend;
-		}
-	}
+    private void sendAllValid(ChannelHandlerContext ctx, final long now) throws Exception {
+        Channel channel = ctx.getChannel();
+        if (!channel.isConnected()) {
+            // ignore
+            return;
+        }
+        synchronized (this) {
+            while (!messagesQueue.isEmpty()) {
+                ToSend newToSend = messagesQueue.remove(0);
+                if (newToSend.relativeTimeAction <= now) {
+                    long size = calculateSize(newToSend.toSend.getMessage());
+                    if (trafficCounter != null) {
+                        trafficCounter.bytesRealWriteFlowControl(size);
+                    }
+                    queueSize -= size;
+                    if (!channel.isConnected()) {
+                        // ignore
+                        break;
+                    }
+                    ctx.sendDownstream(newToSend.toSend);
+                } else {
+                    messagesQueue.add(0, newToSend);
+                    break;
+                }
+            }
+            if (messagesQueue.isEmpty()) {
+                releaseWriteSuspended(ctx);
+            }
+        }
+    }
 
-	@Override
-	void submitWrite(final ChannelHandlerContext ctx, final MessageEvent evt, final long size, final long delay, final long now) throws Exception {
-		if (ctx == null) {
-			this.ctx = ctx;
-		}
-		final ToSend newToSend;
-		Channel channel = ctx.getChannel();
-		synchronized (this) {
-			if (delay == 0 && messagesQueue.isEmpty()) {
-				if (!channel.isConnected()) {
-					// ignore
-					return;
-				}
-				if (trafficCounter != null) {
-					trafficCounter.bytesRealWriteFlowControl(size);
-				}
-				ctx.sendDownstream(evt);
-				return;
-			}
-			if (timer == null) {
-				// Sleep since no executor
-				Thread.sleep(delay);
-				if (!channel.isConnected()) {
-					// ignore
-					return;
-				}
-				if (trafficCounter != null) {
-					trafficCounter.bytesRealWriteFlowControl(size);
-				}
-				ctx.sendDownstream(evt);
-				return;
-			}
-			if (!channel.isConnected()) {
-				// ignore
-				return;
-			}
-			newToSend = new ToSend(delay + now, evt);
-			messagesQueue.add(newToSend);
-			queueSize += size;
-			checkWriteSuspend(ctx, delay, queueSize);
-		}
-		final long futureNow = newToSend.relativeTimeAction;
-		writeTimeout = timer.newTimeout(new TimerTask() {
-			public void run(Timeout timeout) throws Exception {
-				sendAllValid(ctx, futureNow);
-			}
-		}, delay + 1, TimeUnit.MILLISECONDS);
-	}
+    /**
+     * @return current size in bytes of the write buffer.
+     */
+    public long queueSize() {
+        return queueSize;
+    }
 
-	private void sendAllValid(ChannelHandlerContext ctx, final long now) throws Exception {
-		Channel channel = ctx.getChannel();
-		if (!channel.isConnected()) {
-			// ignore
-			return;
-		}
-		synchronized (this) {
-			while (!messagesQueue.isEmpty()) {
-				ToSend newToSend = messagesQueue.remove(0);
-				if (newToSend.relativeTimeAction <= now) {
-					long size = calculateSize(newToSend.toSend.getMessage());
-					if (trafficCounter != null) {
-						trafficCounter.bytesRealWriteFlowControl(size);
-					}
-					queueSize -= size;
-					if (!channel.isConnected()) {
-						// ignore
-						break;
-					}
-					ctx.sendDownstream(newToSend.toSend);
-				} else {
-					messagesQueue.add(0, newToSend);
-					break;
-				}
-			}
-			if (messagesQueue.isEmpty()) {
-				releaseWriteSuspended(ctx);
-			}
-		}
-	}
+    @Override
+    public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        if (trafficCounter != null) {
+            trafficCounter.stop();
+        }
+        synchronized (this) {
+            messagesQueue.clear();
+        }
+        if (writeTimeout != null) {
+            writeTimeout.cancel();
+        }
+        super.channelClosed(ctx, e);
+    }
 
-	/**
-	 * @return current size in bytes of the write buffer.
-	 */
-	public long queueSize() {
-		return queueSize;
-	}
+    @Override
+    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        this.ctx = ctx;
+        // readSuspended = true;
+        ReadWriteStatus rws = checkAttachment(ctx);
+        rws.readSuspend = true;
+        ctx.getChannel().setReadable(false);
+        if (trafficCounter == null) {
+            // create a new counter now
+            if (timer != null) {
+                trafficCounter = new TrafficCounter(this, timer, "ChannelTC" + ctx.getChannel().getId(), checkInterval);
+            }
+        }
+        if (trafficCounter != null) {
+            trafficCounter.start();
+        }
+        rws.readSuspend = false;
+        ctx.getChannel().setReadable(true);
+        super.channelConnected(ctx, e);
+    }
 
-	@Override
-	public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		if (trafficCounter != null) {
-			trafficCounter.stop();
-		}
-		synchronized (this) {
-			messagesQueue.clear();
-		}
-		if (writeTimeout != null) {
-			writeTimeout.cancel();
-		}
-		super.channelClosed(ctx, e);
-	}
+    @Override
+    public void releaseExternalResources() {
+        Channel channel = ctx.getChannel();
+        synchronized (this) {
+            if (ctx != null && ctx.getChannel().isConnected()) {
+                for (ToSend toSend : messagesQueue) {
+                    if (!channel.isConnected()) {
+                        // ignore
+                        break;
+                    }
+                    ctx.sendDownstream(toSend.toSend);
+                }
+            }
+            messagesQueue.clear();
+        }
+        if (writeTimeout != null) {
+            writeTimeout.cancel();
+        }
+        super.releaseExternalResources();
+    }
 
-	@Override
-	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		this.ctx = ctx;
-		// readSuspended = true;
-		ReadWriteStatus rws = checkAttachment(ctx);
-		rws.readSuspend = true;
-		ctx.getChannel().setReadable(false);
-		if (trafficCounter == null) {
-			// create a new counter now
-			if (timer != null) {
-				trafficCounter = new TrafficCounter(this, timer, "ChannelTC" + ctx.getChannel().getId(), checkInterval);
-			}
-		}
-		if (trafficCounter != null) {
-			trafficCounter.start();
-		}
-		rws.readSuspend = false;
-		ctx.getChannel().setReadable(true);
-		super.channelConnected(ctx, e);
-	}
+    private static final class ToSend {
+        final long relativeTimeAction;
+        final MessageEvent toSend;
 
-	@Override
-	public void releaseExternalResources() {
-		Channel channel = ctx.getChannel();
-		synchronized (this) {
-			if (ctx != null && ctx.getChannel().isConnected()) {
-				for (ToSend toSend : messagesQueue) {
-					if (!channel.isConnected()) {
-						// ignore
-						break;
-					}
-					ctx.sendDownstream(toSend.toSend);
-				}
-			}
-			messagesQueue.clear();
-		}
-		if (writeTimeout != null) {
-			writeTimeout.cancel();
-		}
-		super.releaseExternalResources();
-	}
+        private ToSend(final long delay, final MessageEvent toSend) {
+            relativeTimeAction = delay;
+            this.toSend = toSend;
+        }
+    }
 
 }

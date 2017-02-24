@@ -21,24 +21,24 @@ package com.freeswitch.netty.channel;
  */
 public class FixedReceiveBufferSizePredictor implements ReceiveBufferSizePredictor {
 
-	private final int bufferSize;
+    private final int bufferSize;
 
-	/**
-	 * Creates a new predictor that always returns the same prediction of the
-	 * specified buffer size.
-	 */
-	public FixedReceiveBufferSizePredictor(int bufferSize) {
-		if (bufferSize <= 0) {
-			throw new IllegalArgumentException("bufferSize must greater than 0: " + bufferSize);
-		}
-		this.bufferSize = bufferSize;
-	}
+    /**
+     * Creates a new predictor that always returns the same prediction of the
+     * specified buffer size.
+     */
+    public FixedReceiveBufferSizePredictor(int bufferSize) {
+        if (bufferSize <= 0) {
+            throw new IllegalArgumentException("bufferSize must greater than 0: " + bufferSize);
+        }
+        this.bufferSize = bufferSize;
+    }
 
-	public int nextReceiveBufferSize() {
-		return bufferSize;
-	}
+    public int nextReceiveBufferSize() {
+        return bufferSize;
+    }
 
-	public void previousReceiveBufferSize(int previousReceiveBufferSize) {
-		// Ignore
-	}
+    public void previousReceiveBufferSize(int previousReceiveBufferSize) {
+        // Ignore
+    }
 }

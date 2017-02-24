@@ -15,10 +15,12 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelBound;
-import static com.freeswitch.netty.channel.Channels.fireChannelClosed;
-import static com.freeswitch.netty.channel.Channels.fireChannelUnbound;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.logging.InternalLogger;
+import com.freeswitch.netty.logging.InternalLoggerFactory;
+import com.freeswitch.netty.util.ThreadNameDeterminer;
+import com.freeswitch.netty.util.ThreadRenamingRunnable;
+import com.freeswitch.netty.util.internal.DeadLockProofWorker;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -26,205 +28,194 @@ import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.Executor;
 
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelState;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.logging.InternalLogger;
-import com.freeswitch.netty.logging.InternalLoggerFactory;
-import com.freeswitch.netty.util.ThreadNameDeterminer;
-import com.freeswitch.netty.util.ThreadRenamingRunnable;
-import com.freeswitch.netty.util.internal.DeadLockProofWorker;
+import static com.freeswitch.netty.channel.Channels.*;
 
 class OioServerSocketPipelineSink extends AbstractOioChannelSink {
 
-	static final InternalLogger logger = InternalLoggerFactory.getInstance(OioServerSocketPipelineSink.class);
+    static final InternalLogger logger = InternalLoggerFactory.getInstance(OioServerSocketPipelineSink.class);
 
-	final Executor workerExecutor;
-	private final ThreadNameDeterminer determiner;
+    final Executor workerExecutor;
+    private final ThreadNameDeterminer determiner;
 
-	OioServerSocketPipelineSink(Executor workerExecutor, ThreadNameDeterminer determiner) {
-		this.workerExecutor = workerExecutor;
-		this.determiner = determiner;
-	}
+    OioServerSocketPipelineSink(Executor workerExecutor, ThreadNameDeterminer determiner) {
+        this.workerExecutor = workerExecutor;
+        this.determiner = determiner;
+    }
 
-	public void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception {
-		Channel channel = e.getChannel();
-		if (channel instanceof OioServerSocketChannel) {
-			handleServerSocket(e);
-		} else if (channel instanceof OioAcceptedSocketChannel) {
-			handleAcceptedSocket(e);
-		}
-	}
+    private static void handleAcceptedSocket(ChannelEvent e) {
+        if (e instanceof ChannelStateEvent) {
+            ChannelStateEvent event = (ChannelStateEvent) e;
+            OioAcceptedSocketChannel channel = (OioAcceptedSocketChannel) event.getChannel();
+            ChannelFuture future = event.getFuture();
+            ChannelState state = event.getState();
+            Object value = event.getValue();
 
-	private void handleServerSocket(ChannelEvent e) {
-		if (!(e instanceof ChannelStateEvent)) {
-			return;
-		}
+            switch (state) {
+                case OPEN:
+                    if (Boolean.FALSE.equals(value)) {
+                        AbstractOioWorker.close(channel, future);
+                    }
+                    break;
+                case BOUND:
+                case CONNECTED:
+                    if (value == null) {
+                        AbstractOioWorker.close(channel, future);
+                    }
+                    break;
+                case INTEREST_OPS:
+                    AbstractOioWorker.setInterestOps(channel, future, ((Integer) value).intValue());
+                    break;
+            }
+        } else if (e instanceof MessageEvent) {
+            MessageEvent event = (MessageEvent) e;
+            OioSocketChannel channel = (OioSocketChannel) event.getChannel();
+            ChannelFuture future = event.getFuture();
+            Object message = event.getMessage();
+            OioWorker.write(channel, future, message);
+        }
+    }
 
-		ChannelStateEvent event = (ChannelStateEvent) e;
-		OioServerSocketChannel channel = (OioServerSocketChannel) event.getChannel();
-		ChannelFuture future = event.getFuture();
-		ChannelState state = event.getState();
-		Object value = event.getValue();
+    private static void close(OioServerSocketChannel channel, ChannelFuture future) {
+        boolean bound = channel.isBound();
+        try {
+            channel.socket.close();
 
-		switch (state) {
-		case OPEN:
-			if (Boolean.FALSE.equals(value)) {
-				close(channel, future);
-			}
-			break;
-		case BOUND:
-			if (value != null) {
-				bind(channel, future, (SocketAddress) value);
-			} else {
-				close(channel, future);
-			}
-			break;
-		}
-	}
+            // Make sure the boss thread is not running so that that the future
+            // is notified after a new connection cannot be accepted anymore.
+            // See NETTY-256 for more information.
+            channel.shutdownLock.lock();
+            try {
+                if (channel.setClosed()) {
+                    future.setSuccess();
+                    if (bound) {
+                        fireChannelUnbound(channel);
+                    }
+                    fireChannelClosed(channel);
+                } else {
+                    future.setSuccess();
+                }
+            } finally {
+                channel.shutdownLock.unlock();
+            }
+        } catch (Throwable t) {
+            future.setFailure(t);
+            fireExceptionCaught(channel, t);
+        }
+    }
 
-	private static void handleAcceptedSocket(ChannelEvent e) {
-		if (e instanceof ChannelStateEvent) {
-			ChannelStateEvent event = (ChannelStateEvent) e;
-			OioAcceptedSocketChannel channel = (OioAcceptedSocketChannel) event.getChannel();
-			ChannelFuture future = event.getFuture();
-			ChannelState state = event.getState();
-			Object value = event.getValue();
+    public void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception {
+        Channel channel = e.getChannel();
+        if (channel instanceof OioServerSocketChannel) {
+            handleServerSocket(e);
+        } else if (channel instanceof OioAcceptedSocketChannel) {
+            handleAcceptedSocket(e);
+        }
+    }
 
-			switch (state) {
-			case OPEN:
-				if (Boolean.FALSE.equals(value)) {
-					AbstractOioWorker.close(channel, future);
-				}
-				break;
-			case BOUND:
-			case CONNECTED:
-				if (value == null) {
-					AbstractOioWorker.close(channel, future);
-				}
-				break;
-			case INTEREST_OPS:
-				AbstractOioWorker.setInterestOps(channel, future, ((Integer) value).intValue());
-				break;
-			}
-		} else if (e instanceof MessageEvent) {
-			MessageEvent event = (MessageEvent) e;
-			OioSocketChannel channel = (OioSocketChannel) event.getChannel();
-			ChannelFuture future = event.getFuture();
-			Object message = event.getMessage();
-			OioWorker.write(channel, future, message);
-		}
-	}
+    private void handleServerSocket(ChannelEvent e) {
+        if (!(e instanceof ChannelStateEvent)) {
+            return;
+        }
 
-	private void bind(OioServerSocketChannel channel, ChannelFuture future, SocketAddress localAddress) {
+        ChannelStateEvent event = (ChannelStateEvent) e;
+        OioServerSocketChannel channel = (OioServerSocketChannel) event.getChannel();
+        ChannelFuture future = event.getFuture();
+        ChannelState state = event.getState();
+        Object value = event.getValue();
 
-		boolean bound = false;
-		boolean bossStarted = false;
-		try {
-			channel.socket.bind(localAddress, channel.getConfig().getBacklog());
-			bound = true;
+        switch (state) {
+            case OPEN:
+                if (Boolean.FALSE.equals(value)) {
+                    close(channel, future);
+                }
+                break;
+            case BOUND:
+                if (value != null) {
+                    bind(channel, future, (SocketAddress) value);
+                } else {
+                    close(channel, future);
+                }
+                break;
+        }
+    }
 
-			future.setSuccess();
-			localAddress = channel.getLocalAddress();
-			fireChannelBound(channel, localAddress);
+    private void bind(OioServerSocketChannel channel, ChannelFuture future, SocketAddress localAddress) {
 
-			Executor bossExecutor = ((OioServerSocketChannelFactory) channel.getFactory()).bossExecutor;
-			DeadLockProofWorker.start(bossExecutor, new ThreadRenamingRunnable(new Boss(channel), "Old I/O server boss (" + channel + ')', determiner));
-			bossStarted = true;
-		} catch (Throwable t) {
-			future.setFailure(t);
-			fireExceptionCaught(channel, t);
-		} finally {
-			if (!bossStarted && bound) {
-				close(channel, future);
-			}
-		}
-	}
+        boolean bound = false;
+        boolean bossStarted = false;
+        try {
+            channel.socket.bind(localAddress, channel.getConfig().getBacklog());
+            bound = true;
 
-	private static void close(OioServerSocketChannel channel, ChannelFuture future) {
-		boolean bound = channel.isBound();
-		try {
-			channel.socket.close();
+            future.setSuccess();
+            localAddress = channel.getLocalAddress();
+            fireChannelBound(channel, localAddress);
 
-			// Make sure the boss thread is not running so that that the future
-			// is notified after a new connection cannot be accepted anymore.
-			// See NETTY-256 for more information.
-			channel.shutdownLock.lock();
-			try {
-				if (channel.setClosed()) {
-					future.setSuccess();
-					if (bound) {
-						fireChannelUnbound(channel);
-					}
-					fireChannelClosed(channel);
-				} else {
-					future.setSuccess();
-				}
-			} finally {
-				channel.shutdownLock.unlock();
-			}
-		} catch (Throwable t) {
-			future.setFailure(t);
-			fireExceptionCaught(channel, t);
-		}
-	}
+            Executor bossExecutor = ((OioServerSocketChannelFactory) channel.getFactory()).bossExecutor;
+            DeadLockProofWorker.start(bossExecutor, new ThreadRenamingRunnable(new Boss(channel), "Old I/O server boss (" + channel + ')', determiner));
+            bossStarted = true;
+        } catch (Throwable t) {
+            future.setFailure(t);
+            fireExceptionCaught(channel, t);
+        } finally {
+            if (!bossStarted && bound) {
+                close(channel, future);
+            }
+        }
+    }
 
-	private final class Boss implements Runnable {
-		private final OioServerSocketChannel channel;
+    private final class Boss implements Runnable {
+        private final OioServerSocketChannel channel;
 
-		Boss(OioServerSocketChannel channel) {
-			this.channel = channel;
-		}
+        Boss(OioServerSocketChannel channel) {
+            this.channel = channel;
+        }
 
-		public void run() {
-			channel.shutdownLock.lock();
-			try {
-				while (channel.isBound()) {
-					try {
-						Socket acceptedSocket = channel.socket.accept();
-						try {
-							ChannelPipeline pipeline = channel.getConfig().getPipelineFactory().getPipeline();
-							final OioAcceptedSocketChannel acceptedChannel = new OioAcceptedSocketChannel(channel, channel.getFactory(), pipeline, OioServerSocketPipelineSink.this, acceptedSocket);
-							DeadLockProofWorker.start(workerExecutor, new ThreadRenamingRunnable(new OioWorker(acceptedChannel), "Old I/O server worker (parentId: " + channel.getId() + ", " + channel + ')', determiner));
-						} catch (Exception e) {
-							if (logger.isWarnEnabled()) {
-								logger.warn("Failed to initialize an accepted socket.", e);
-							}
+        public void run() {
+            channel.shutdownLock.lock();
+            try {
+                while (channel.isBound()) {
+                    try {
+                        Socket acceptedSocket = channel.socket.accept();
+                        try {
+                            ChannelPipeline pipeline = channel.getConfig().getPipelineFactory().getPipeline();
+                            final OioAcceptedSocketChannel acceptedChannel = new OioAcceptedSocketChannel(channel, channel.getFactory(), pipeline, OioServerSocketPipelineSink.this, acceptedSocket);
+                            DeadLockProofWorker.start(workerExecutor, new ThreadRenamingRunnable(new OioWorker(acceptedChannel), "Old I/O server worker (parentId: " + channel.getId() + ", " + channel + ')', determiner));
+                        } catch (Exception e) {
+                            if (logger.isWarnEnabled()) {
+                                logger.warn("Failed to initialize an accepted socket.", e);
+                            }
 
-							try {
-								acceptedSocket.close();
-							} catch (IOException e2) {
-								if (logger.isWarnEnabled()) {
-									logger.warn("Failed to close a partially accepted socket.", e2);
-								}
-							}
-						}
-					} catch (SocketTimeoutException e) {
-						// Thrown every second to stop when requested.
-					} catch (Throwable e) {
-						// Do not log the exception if the server socket was
-						// closed
-						// by a user.
-						if (!channel.socket.isBound() || channel.socket.isClosed()) {
-							break;
-						}
-						if (logger.isWarnEnabled()) {
-							logger.warn("Failed to accept a connection.", e);
-						}
-						try {
-							Thread.sleep(1000);
-						} catch (InterruptedException e1) {
-							// Ignore
-						}
-					}
-				}
-			} finally {
-				channel.shutdownLock.unlock();
-			}
-		}
-	}
+                            try {
+                                acceptedSocket.close();
+                            } catch (IOException e2) {
+                                if (logger.isWarnEnabled()) {
+                                    logger.warn("Failed to close a partially accepted socket.", e2);
+                                }
+                            }
+                        }
+                    } catch (SocketTimeoutException e) {
+                        // Thrown every second to stop when requested.
+                    } catch (Throwable e) {
+                        // Do not log the exception if the server socket was
+                        // closed
+                        // by a user.
+                        if (!channel.socket.isBound() || channel.socket.isClosed()) {
+                            break;
+                        }
+                        if (logger.isWarnEnabled()) {
+                            logger.warn("Failed to accept a connection.", e);
+                        }
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e1) {
+                            // Ignore
+                        }
+                    }
+                }
+            } finally {
+                channel.shutdownLock.unlock();
+            }
+        }
+    }
 }

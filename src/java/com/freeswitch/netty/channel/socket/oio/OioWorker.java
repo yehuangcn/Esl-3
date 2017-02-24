@@ -15,12 +15,10 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelConnected;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaughtLater;
-import static com.freeswitch.netty.channel.Channels.fireMessageReceived;
-import static com.freeswitch.netty.channel.Channels.fireWriteComplete;
-import static com.freeswitch.netty.channel.Channels.fireWriteCompleteLater;
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.channel.ChannelFuture;
+import com.freeswitch.netty.channel.DefaultFileRegion;
+import com.freeswitch.netty.channel.FileRegion;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -31,122 +29,119 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.WritableByteChannel;
 import java.util.regex.Pattern;
 
-import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.DefaultFileRegion;
-import com.freeswitch.netty.channel.FileRegion;
+import static com.freeswitch.netty.channel.Channels.*;
 
 class OioWorker extends AbstractOioWorker<OioSocketChannel> {
 
-	private static final Pattern SOCKET_CLOSED_MESSAGE = Pattern.compile("^.*(?:Socket.*closed).*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SOCKET_CLOSED_MESSAGE = Pattern.compile("^.*(?:Socket.*closed).*$", Pattern.CASE_INSENSITIVE);
 
-	OioWorker(OioSocketChannel channel) {
-		super(channel);
-	}
+    OioWorker(OioSocketChannel channel) {
+        super(channel);
+    }
 
-	@Override
-	public void run() {
-		boolean fireConnected = channel instanceof OioAcceptedSocketChannel;
-		if (fireConnected && channel.isOpen()) {
-			// Fire the channelConnected event for OioAcceptedSocketChannel.
-			// See #287
-			fireChannelConnected(channel, channel.getRemoteAddress());
-		}
-		super.run();
-	}
+    static void write(OioSocketChannel channel, ChannelFuture future, Object message) {
 
-	@Override
-	boolean process() throws IOException {
-		byte[] buf;
-		int readBytes;
-		PushbackInputStream in = channel.getInputStream();
-		int bytesToRead = in.available();
-		if (bytesToRead > 0) {
-			buf = new byte[bytesToRead];
-			readBytes = in.read(buf);
-		} else {
-			int b = in.read();
-			if (b < 0) {
-				return false;
-			}
-			in.unread(b);
-			return true;
-		}
-		fireMessageReceived(channel, channel.getConfig().getBufferFactory().getBuffer(buf, 0, readBytes));
+        boolean iothread = isIoThread(channel);
+        OutputStream out = channel.getOutputStream();
+        if (out == null) {
+            Exception e = new ClosedChannelException();
+            future.setFailure(e);
+            if (iothread) {
+                fireExceptionCaught(channel, e);
+            } else {
+                fireExceptionCaughtLater(channel, e);
+            }
+            return;
+        }
 
-		return true;
-	}
+        try {
+            int length = 0;
 
-	static void write(OioSocketChannel channel, ChannelFuture future, Object message) {
+            // Add support to write a FileRegion. This in fact will not give any
+            // performance gain
+            // but at least it not fail and we did the best to emulate it
+            if (message instanceof FileRegion) {
+                FileRegion fr = (FileRegion) message;
+                try {
+                    synchronized (out) {
+                        WritableByteChannel bchannel = Channels.newChannel(out);
 
-		boolean iothread = isIoThread(channel);
-		OutputStream out = channel.getOutputStream();
-		if (out == null) {
-			Exception e = new ClosedChannelException();
-			future.setFailure(e);
-			if (iothread) {
-				fireExceptionCaught(channel, e);
-			} else {
-				fireExceptionCaughtLater(channel, e);
-			}
-			return;
-		}
+                        long i;
+                        while ((i = fr.transferTo(bchannel, length)) > 0) {
+                            length += i;
+                            if (length >= fr.getCount()) {
+                                break;
+                            }
+                        }
+                    }
+                } finally {
+                    if (fr instanceof DefaultFileRegion) {
+                        DefaultFileRegion dfr = (DefaultFileRegion) fr;
+                        if (dfr.releaseAfterTransfer()) {
+                            fr.releaseExternalResources();
+                        }
+                    }
+                }
+            } else {
+                ChannelBuffer a = (ChannelBuffer) message;
+                length = a.readableBytes();
+                synchronized (out) {
+                    a.getBytes(a.readerIndex(), out, length);
+                }
+            }
 
-		try {
-			int length = 0;
+            future.setSuccess();
+            if (iothread) {
+                fireWriteComplete(channel, length);
+            } else {
+                fireWriteCompleteLater(channel, length);
+            }
 
-			// Add support to write a FileRegion. This in fact will not give any
-			// performance gain
-			// but at least it not fail and we did the best to emulate it
-			if (message instanceof FileRegion) {
-				FileRegion fr = (FileRegion) message;
-				try {
-					synchronized (out) {
-						WritableByteChannel bchannel = Channels.newChannel(out);
+        } catch (Throwable t) {
+            // Convert 'SocketException: Socket closed' to
+            // ClosedChannelException.
+            if (t instanceof SocketException && SOCKET_CLOSED_MESSAGE.matcher(String.valueOf(t.getMessage())).matches()) {
+                t = new ClosedChannelException();
+            }
+            future.setFailure(t);
+            if (iothread) {
+                fireExceptionCaught(channel, t);
+            } else {
+                fireExceptionCaughtLater(channel, t);
+            }
+        }
+    }
 
-						long i;
-						while ((i = fr.transferTo(bchannel, length)) > 0) {
-							length += i;
-							if (length >= fr.getCount()) {
-								break;
-							}
-						}
-					}
-				} finally {
-					if (fr instanceof DefaultFileRegion) {
-						DefaultFileRegion dfr = (DefaultFileRegion) fr;
-						if (dfr.releaseAfterTransfer()) {
-							fr.releaseExternalResources();
-						}
-					}
-				}
-			} else {
-				ChannelBuffer a = (ChannelBuffer) message;
-				length = a.readableBytes();
-				synchronized (out) {
-					a.getBytes(a.readerIndex(), out, length);
-				}
-			}
+    @Override
+    public void run() {
+        boolean fireConnected = channel instanceof OioAcceptedSocketChannel;
+        if (fireConnected && channel.isOpen()) {
+            // Fire the channelConnected event for OioAcceptedSocketChannel.
+            // See #287
+            fireChannelConnected(channel, channel.getRemoteAddress());
+        }
+        super.run();
+    }
 
-			future.setSuccess();
-			if (iothread) {
-				fireWriteComplete(channel, length);
-			} else {
-				fireWriteCompleteLater(channel, length);
-			}
+    @Override
+    boolean process() throws IOException {
+        byte[] buf;
+        int readBytes;
+        PushbackInputStream in = channel.getInputStream();
+        int bytesToRead = in.available();
+        if (bytesToRead > 0) {
+            buf = new byte[bytesToRead];
+            readBytes = in.read(buf);
+        } else {
+            int b = in.read();
+            if (b < 0) {
+                return false;
+            }
+            in.unread(b);
+            return true;
+        }
+        fireMessageReceived(channel, channel.getConfig().getBufferFactory().getBuffer(buf, 0, readBytes));
 
-		} catch (Throwable t) {
-			// Convert 'SocketException: Socket closed' to
-			// ClosedChannelException.
-			if (t instanceof SocketException && SOCKET_CLOSED_MESSAGE.matcher(String.valueOf(t.getMessage())).matches()) {
-				t = new ClosedChannelException();
-			}
-			future.setFailure(t);
-			if (iothread) {
-				fireExceptionCaught(channel, t);
-			} else {
-				fireExceptionCaughtLater(channel, t);
-			}
-		}
-	}
+        return true;
+    }
 }

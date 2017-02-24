@@ -20,8 +20,8 @@ package com.freeswitch.netty.buffer;
  * won't need to use this interface. It is used internally in most cases.
  */
 public interface WrappedChannelBuffer extends ChannelBuffer {
-	/**
-	 * Returns this buffer's parent that this buffer is wrapping.
-	 */
-	ChannelBuffer unwrap();
+    /**
+     * Returns this buffer's parent that this buffer is wrapping.
+     */
+    ChannelBuffer unwrap();
 }

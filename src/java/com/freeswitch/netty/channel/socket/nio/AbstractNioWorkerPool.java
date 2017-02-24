@@ -16,16 +16,16 @@
 
 package com.freeswitch.netty.channel.socket.nio;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.freeswitch.netty.channel.socket.Worker;
 import com.freeswitch.netty.logging.InternalLogger;
 import com.freeswitch.netty.logging.InternalLoggerFactory;
 import com.freeswitch.netty.util.ExternalResourceReleasable;
 import com.freeswitch.netty.util.internal.ExecutorUtil;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Abstract base class for {@link WorkerPool} implementations that create the
@@ -34,115 +34,112 @@ import com.freeswitch.netty.util.internal.ExecutorUtil;
  */
 public abstract class AbstractNioWorkerPool<E extends AbstractNioWorker> implements WorkerPool<E>, ExternalResourceReleasable {
 
-	/**
-	 * The worker pool raises an exception unless all worker threads start and
-	 * run within this timeout (in seconds.)
-	 */
-	private static final int INITIALIZATION_TIMEOUT = 10;
+    /**
+     * The worker pool raises an exception unless all worker threads start and
+     * run within this timeout (in seconds.)
+     */
+    private static final int INITIALIZATION_TIMEOUT = 10;
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(AbstractNioWorkerPool.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(AbstractNioWorkerPool.class);
 
-	private final AbstractNioWorker[] workers;
-	private final AtomicInteger workerIndex = new AtomicInteger();
-	private final Executor workerExecutor;
-	private final AtomicBoolean initialized = new AtomicBoolean(false);
+    private final AbstractNioWorker[] workers;
+    private final AtomicInteger workerIndex = new AtomicInteger();
+    private final Executor workerExecutor;
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
 
-	/**
-	 * Create a new instance
-	 *
-	 * @param workerExecutor
-	 *            the {@link Executor} to use for the {@link Worker}'s
-	 * @param workerCount
-	 *            the count of {@link Worker}'s to create
-	 */
-	AbstractNioWorkerPool(Executor workerExecutor, int workerCount) {
-		this(workerExecutor, workerCount, true);
-	}
+    /**
+     * Create a new instance
+     *
+     * @param workerExecutor the {@link Executor} to use for the {@link Worker}'s
+     * @param workerCount    the count of {@link Worker}'s to create
+     */
+    AbstractNioWorkerPool(Executor workerExecutor, int workerCount) {
+        this(workerExecutor, workerCount, true);
+    }
 
-	AbstractNioWorkerPool(Executor workerExecutor, int workerCount, boolean autoInit) {
-		if (workerExecutor == null) {
-			throw new NullPointerException("workerExecutor");
-		}
-		if (workerCount <= 0) {
-			throw new IllegalArgumentException("workerCount (" + workerCount + ") " + "must be a positive integer.");
-		}
-		workers = new AbstractNioWorker[workerCount];
-		this.workerExecutor = workerExecutor;
-		if (autoInit) {
-			init();
-		}
-	}
+    AbstractNioWorkerPool(Executor workerExecutor, int workerCount, boolean autoInit) {
+        if (workerExecutor == null) {
+            throw new NullPointerException("workerExecutor");
+        }
+        if (workerCount <= 0) {
+            throw new IllegalArgumentException("workerCount (" + workerCount + ") " + "must be a positive integer.");
+        }
+        workers = new AbstractNioWorker[workerCount];
+        this.workerExecutor = workerExecutor;
+        if (autoInit) {
+            init();
+        }
+    }
 
-	protected void init() {
-		if (!initialized.compareAndSet(false, true)) {
-			throw new IllegalStateException("initialized already");
-		}
+    protected void init() {
+        if (!initialized.compareAndSet(false, true)) {
+            throw new IllegalStateException("initialized already");
+        }
 
-		for (int i = 0; i < workers.length; i++) {
-			workers[i] = newWorker(workerExecutor);
-		}
+        for (int i = 0; i < workers.length; i++) {
+            workers[i] = newWorker(workerExecutor);
+        }
 
-		waitForWorkerThreads();
-	}
+        waitForWorkerThreads();
+    }
 
-	private void waitForWorkerThreads() {
-		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(INITIALIZATION_TIMEOUT);
-		boolean warn = false;
-		for (AbstractNioSelector worker : workers) {
-			long waitTime = deadline - System.nanoTime();
-			try {
-				if (waitTime <= 0) {
-					if (worker.thread == null) {
-						warn = true;
-						break;
-					}
-				} else if (!worker.startupLatch.await(waitTime, TimeUnit.NANOSECONDS)) {
-					warn = true;
-					break;
-				}
-			} catch (InterruptedException ignore) {
-				// Stop waiting for the worker threads and let someone else take
-				// care of the interruption.
-				Thread.currentThread().interrupt();
-				break;
-			}
-		}
+    private void waitForWorkerThreads() {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(INITIALIZATION_TIMEOUT);
+        boolean warn = false;
+        for (AbstractNioSelector worker : workers) {
+            long waitTime = deadline - System.nanoTime();
+            try {
+                if (waitTime <= 0) {
+                    if (worker.thread == null) {
+                        warn = true;
+                        break;
+                    }
+                } else if (!worker.startupLatch.await(waitTime, TimeUnit.NANOSECONDS)) {
+                    warn = true;
+                    break;
+                }
+            } catch (InterruptedException ignore) {
+                // Stop waiting for the worker threads and let someone else take
+                // care of the interruption.
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
 
-		if (warn) {
-			logger.warn("Failed to get all worker threads ready within " + INITIALIZATION_TIMEOUT + " second(s). " + "Make sure to specify the executor which has more threads than the requested workerCount. " + "If unsure, use Executors.newCachedThreadPool().");
-		}
-	}
+        if (warn) {
+            logger.warn("Failed to get all worker threads ready within " + INITIALIZATION_TIMEOUT + " second(s). " + "Make sure to specify the executor which has more threads than the requested workerCount. " + "If unsure, use Executors.newCachedThreadPool().");
+        }
+    }
 
-	/**
-	 * Create a new {@link Worker} which uses the given {@link Executor} to
-	 * service IO.
-	 *
-	 * @param executor
-	 *            the {@link Executor} to use
-	 * @return worker the new {@link Worker}
-	 */
-	protected abstract E newWorker(Executor executor);
+    /**
+     * Create a new {@link Worker} which uses the given {@link Executor} to
+     * service IO.
+     *
+     * @param executor the {@link Executor} to use
+     * @return worker the new {@link Worker}
+     */
+    protected abstract E newWorker(Executor executor);
 
-	@SuppressWarnings("unchecked")
-	public E nextWorker() {
-		return (E) workers[Math.abs(workerIndex.getAndIncrement() % workers.length)];
-	}
+    @SuppressWarnings("unchecked")
+    public E nextWorker() {
+        return (E) workers[Math.abs(workerIndex.getAndIncrement() % workers.length)];
+    }
 
-	public void rebuildSelectors() {
-		for (AbstractNioWorker worker : workers) {
-			worker.rebuildSelector();
-		}
-	}
+    public void rebuildSelectors() {
+        for (AbstractNioWorker worker : workers) {
+            worker.rebuildSelector();
+        }
+    }
 
-	public void releaseExternalResources() {
-		shutdown();
-		ExecutorUtil.shutdownNow(workerExecutor);
-	}
+    public void releaseExternalResources() {
+        shutdown();
+        ExecutorUtil.shutdownNow(workerExecutor);
+    }
 
-	public void shutdown() {
-		for (AbstractNioWorker worker : workers) {
-			worker.shutdown();
-		}
-	}
+    public void shutdown() {
+        for (AbstractNioWorker worker : workers) {
+            worker.shutdown();
+        }
+    }
 
 }

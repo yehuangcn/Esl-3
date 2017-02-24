@@ -22,16 +22,16 @@ import java.util.concurrent.Executor;
  */
 public final class ImmediateExecutor implements Executor {
 
-	/**
-	 * The default instance.
-	 */
-	public static final ImmediateExecutor INSTANCE = new ImmediateExecutor();
+    /**
+     * The default instance.
+     */
+    public static final ImmediateExecutor INSTANCE = new ImmediateExecutor();
 
-	public void execute(Runnable command) {
-		command.run();
-	}
+    private ImmediateExecutor() {
+        // should use static instance
+    }
 
-	private ImmediateExecutor() {
-		// should use static instance
-	}
+    public void execute(Runnable command) {
+        command.run();
+    }
 }

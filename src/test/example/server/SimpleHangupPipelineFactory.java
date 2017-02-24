@@ -15,19 +15,19 @@
  */
 package example.server;
 
-import com.freeswitch.esl.server.AbstractOutboundClientHandler;
-import com.freeswitch.esl.server.AbstractOutboundPipelineFactory;
+import com.freeswitch.esl.server.AbstractEslServerHandler;
+import com.freeswitch.esl.server.AbstractEslServerPipelineFactory;
 
 /**
  * Factory for the simple hangup handler
- * 
+ *
  * @author david varnes
  */
-public class SimpleHangupPipelineFactory extends AbstractOutboundPipelineFactory {
+public class SimpleHangupPipelineFactory extends AbstractEslServerPipelineFactory {
 
-	@Override
-	protected AbstractOutboundClientHandler makeHandler() {
-		return new SimpleHangupOutboundHandler();
-	}
+    @Override
+    protected AbstractEslServerHandler makeHandler() {
+        return new SimpleHangupOutboundHandler();
+    }
 
 }

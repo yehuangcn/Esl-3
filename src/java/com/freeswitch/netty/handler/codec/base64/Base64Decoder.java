@@ -18,9 +18,9 @@ package com.freeswitch.netty.handler.codec.base64;
 import com.freeswitch.netty.buffer.ChannelBuffer;
 import com.freeswitch.netty.buffer.ChannelBuffers;
 import com.freeswitch.netty.channel.Channel;
+import com.freeswitch.netty.channel.ChannelHandler.Sharable;
 import com.freeswitch.netty.channel.ChannelHandlerContext;
 import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelHandler.Sharable;
 import com.freeswitch.netty.handler.codec.frame.DelimiterBasedFrameDecoder;
 import com.freeswitch.netty.handler.codec.frame.Delimiters;
 import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
@@ -33,7 +33,7 @@ import com.freeswitch.netty.util.CharsetUtil;
  * a proper {@link FrameDecoder} such as {@link DelimiterBasedFrameDecoder} if
  * you are using a stream-based transport such as TCP/IP. A typical decoder
  * setup for TCP/IP would be:
- * 
+ * <p>
  * <pre>
  * {@link ChannelPipeline} pipeline = ...;
  *
@@ -44,36 +44,36 @@ import com.freeswitch.netty.util.CharsetUtil;
  * // Encoder
  * pipeline.addLast("base64Encoder", new {@link Base64Encoder}());
  * </pre>
- * 
+ *
  * @apiviz.landmark
  * @apiviz.uses org.jboss.netty.handler.codec.base64.Base64
  */
 @Sharable
 public class Base64Decoder extends OneToOneDecoder {
 
-	private final Base64Dialect dialect;
+    private final Base64Dialect dialect;
 
-	public Base64Decoder() {
-		this(Base64Dialect.STANDARD);
-	}
+    public Base64Decoder() {
+        this(Base64Dialect.STANDARD);
+    }
 
-	public Base64Decoder(Base64Dialect dialect) {
-		if (dialect == null) {
-			throw new NullPointerException("dialect");
-		}
-		this.dialect = dialect;
-	}
+    public Base64Decoder(Base64Dialect dialect) {
+        if (dialect == null) {
+            throw new NullPointerException("dialect");
+        }
+        this.dialect = dialect;
+    }
 
-	@Override
-	protected Object decode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
-		if (msg instanceof String) {
-			msg = ChannelBuffers.copiedBuffer((String) msg, CharsetUtil.US_ASCII);
-		} else if (!(msg instanceof ChannelBuffer)) {
-			return msg;
-		}
+    @Override
+    protected Object decode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
+        if (msg instanceof String) {
+            msg = ChannelBuffers.copiedBuffer((String) msg, CharsetUtil.US_ASCII);
+        } else if (!(msg instanceof ChannelBuffer)) {
+            return msg;
+        }
 
-		ChannelBuffer src = (ChannelBuffer) msg;
-		return Base64.decode(src, src.readerIndex(), src.readableBytes(), dialect);
-	}
+        ChannelBuffer src = (ChannelBuffer) msg;
+        return Base64.decode(src, src.readerIndex(), src.readableBytes(), dialect);
+    }
 
 }

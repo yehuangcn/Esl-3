@@ -14,247 +14,228 @@
  */
 package com.freeswitch.netty.handler.execution;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
 import com.freeswitch.netty.channel.ChannelEvent;
 import com.freeswitch.netty.channel.ChannelState;
 import com.freeswitch.netty.channel.ChannelStateEvent;
 import com.freeswitch.netty.util.ObjectSizeEstimator;
 import com.freeswitch.netty.util.internal.ConcurrentIdentityWeakKeyHashMap;
 
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 /**
  * This is a <b>fair</b> alternative of
  * {@link OrderedMemoryAwareThreadPoolExecutor} .
- *
+ * <p>
  * <h3>Unfair of {@link OrderedMemoryAwareThreadPoolExecutor}</h3> The task
  * executed in {@link OrderedMemoryAwareThreadPoolExecutor} is unfair in some
  * situations. For server, let's say there is only one executor thread that
  * handle the events from the two channels, and events are submitted in
  * sequence:
- * 
+ * <p>
  * <pre>
  *           Channel A (Event A1) , Channel B (Event B), Channel A (Event A2) , ... , Channel A (Event An)
  * </pre>
- * 
+ * <p>
  * Then the events maybe executed in this unfair order:
- * 
+ * <p>
  * <pre>
  *          ----------------------------------------&gt; Timeline --------------------------------&gt;
  *           Channel A (Event A1) , Channel A (Event A2) , ... , Channel A (Event An), Channel B (Event B)
  * </pre>
- * 
+ * <p>
  * As we see above, Channel B (Event B) maybe executed unfairly late. Even more,
  * if there are too much events come in Channel A, and one-by-one closely, then
  * Channel B (Event B) would be waiting for a long while and become "hungry".
- *
+ * <p>
  * <h3>Fair of FairOrderedMemoryAwareThreadPoolExecutor</h3> In the same case
  * above ( one executor thread and two channels ) , this implement will
  * guarantee execution order as:
- * 
+ * <p>
  * <pre>
  *          ----------------------------------------&gt; Timeline --------------------------------&gt;
  *           Channel A (Event A1) , Channel B (Event B), Channel A (Event A2) , ... , Channel A (Event An),
  * </pre>
- *
+ * <p>
  * <b>NOTE</b>: For convenience the case above use <b>one single executor
  * thread</b>, but the fair mechanism is suitable for <b>multiple executor
  * threads</b> situations.
  */
 public class FairOrderedMemoryAwareThreadPoolExecutor extends MemoryAwareThreadPoolExecutor {
 
-	// end sign
-	private final EventTask end = new EventTask(null);
+    protected final ConcurrentMap<Object, EventTask> map = newMap();
+    // end sign
+    private final EventTask end = new EventTask(null);
+    private final AtomicReferenceFieldUpdater<EventTask, EventTask> fieldUpdater = AtomicReferenceFieldUpdater.newUpdater(EventTask.class, EventTask.class, "next");
 
-	private final AtomicReferenceFieldUpdater<EventTask, EventTask> fieldUpdater = AtomicReferenceFieldUpdater.newUpdater(EventTask.class, EventTask.class, "next");
+    /**
+     * Creates a new instance.
+     *
+     * @param corePoolSize         the maximum number of active threads
+     * @param maxChannelMemorySize the maximum total size of the queued events per channel.
+     *                             Specify {@code 0} to disable.
+     * @param maxTotalMemorySize   the maximum total size of the queued events for this pool
+     *                             Specify {@code 0} to disable.
+     * @noinspection unused
+     */
+    public FairOrderedMemoryAwareThreadPoolExecutor(int corePoolSize, long maxChannelMemorySize, long maxTotalMemorySize) {
+        super(corePoolSize, maxChannelMemorySize, maxTotalMemorySize);
+    }
 
-	protected final ConcurrentMap<Object, EventTask> map = newMap();
+    /**
+     * Creates a new instance.
+     *
+     * @param corePoolSize         the maximum number of active threads
+     * @param maxChannelMemorySize the maximum total size of the queued events per channel.
+     *                             Specify {@code 0} to disable.
+     * @param maxTotalMemorySize   the maximum total size of the queued events for this pool
+     *                             Specify {@code 0} to disable.
+     * @param keepAliveTime        the amount of time for an inactive thread to shut itself down
+     * @param unit                 the {@link TimeUnit} of {@code keepAliveTime}
+     * @noinspection unused
+     */
+    public FairOrderedMemoryAwareThreadPoolExecutor(int corePoolSize, long maxChannelMemorySize, long maxTotalMemorySize, long keepAliveTime, TimeUnit unit) {
+        super(corePoolSize, maxChannelMemorySize, maxTotalMemorySize, keepAliveTime, unit);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param corePoolSize
-	 *            the maximum number of active threads
-	 * @param maxChannelMemorySize
-	 *            the maximum total size of the queued events per channel.
-	 *            Specify {@code 0} to disable.
-	 * @param maxTotalMemorySize
-	 *            the maximum total size of the queued events for this pool
-	 *            Specify {@code 0} to disable.
-	 * @noinspection unused
-	 */
-	public FairOrderedMemoryAwareThreadPoolExecutor(int corePoolSize, long maxChannelMemorySize, long maxTotalMemorySize) {
-		super(corePoolSize, maxChannelMemorySize, maxTotalMemorySize);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param corePoolSize         the maximum number of active threads
+     * @param maxChannelMemorySize the maximum total size of the queued events per channel.
+     *                             Specify {@code 0} to disable.
+     * @param maxTotalMemorySize   the maximum total size of the queued events for this pool
+     *                             Specify {@code 0} to disable.
+     * @param keepAliveTime        the amount of time for an inactive thread to shut itself down
+     * @param unit                 the {@link TimeUnit} of {@code keepAliveTime}
+     * @param threadFactory        the {@link ThreadFactory} of this pool
+     * @noinspection unused
+     */
+    public FairOrderedMemoryAwareThreadPoolExecutor(int corePoolSize, long maxChannelMemorySize, long maxTotalMemorySize, long keepAliveTime, TimeUnit unit, ThreadFactory threadFactory) {
+        super(corePoolSize, maxChannelMemorySize, maxTotalMemorySize, keepAliveTime, unit, threadFactory);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param corePoolSize
-	 *            the maximum number of active threads
-	 * @param maxChannelMemorySize
-	 *            the maximum total size of the queued events per channel.
-	 *            Specify {@code 0} to disable.
-	 * @param maxTotalMemorySize
-	 *            the maximum total size of the queued events for this pool
-	 *            Specify {@code 0} to disable.
-	 * @param keepAliveTime
-	 *            the amount of time for an inactive thread to shut itself down
-	 * @param unit
-	 *            the {@link TimeUnit} of {@code keepAliveTime}
-	 * @noinspection unused
-	 */
-	public FairOrderedMemoryAwareThreadPoolExecutor(int corePoolSize, long maxChannelMemorySize, long maxTotalMemorySize, long keepAliveTime, TimeUnit unit) {
-		super(corePoolSize, maxChannelMemorySize, maxTotalMemorySize, keepAliveTime, unit);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param corePoolSize         the maximum number of active threads
+     * @param maxChannelMemorySize the maximum total size of the queued events per channel.
+     *                             Specify {@code 0} to disable.
+     * @param maxTotalMemorySize   the maximum total size of the queued events for this pool
+     *                             Specify {@code 0} to disable.
+     * @param keepAliveTime        the amount of time for an inactive thread to shut itself down
+     * @param unit                 the {@link TimeUnit} of {@code keepAliveTime}
+     * @param threadFactory        the {@link ThreadFactory} of this pool
+     * @param objectSizeEstimator  the {@link ObjectSizeEstimator} of this pool
+     * @noinspection unused
+     */
+    public FairOrderedMemoryAwareThreadPoolExecutor(int corePoolSize, long maxChannelMemorySize, long maxTotalMemorySize, long keepAliveTime, TimeUnit unit, ObjectSizeEstimator objectSizeEstimator, ThreadFactory threadFactory) {
+        super(corePoolSize, maxChannelMemorySize, maxTotalMemorySize, keepAliveTime, unit, objectSizeEstimator, threadFactory);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param corePoolSize
-	 *            the maximum number of active threads
-	 * @param maxChannelMemorySize
-	 *            the maximum total size of the queued events per channel.
-	 *            Specify {@code 0} to disable.
-	 * @param maxTotalMemorySize
-	 *            the maximum total size of the queued events for this pool
-	 *            Specify {@code 0} to disable.
-	 * @param keepAliveTime
-	 *            the amount of time for an inactive thread to shut itself down
-	 * @param unit
-	 *            the {@link TimeUnit} of {@code keepAliveTime}
-	 * @param threadFactory
-	 *            the {@link ThreadFactory} of this pool
-	 * @noinspection unused
-	 */
-	public FairOrderedMemoryAwareThreadPoolExecutor(int corePoolSize, long maxChannelMemorySize, long maxTotalMemorySize, long keepAliveTime, TimeUnit unit, ThreadFactory threadFactory) {
-		super(corePoolSize, maxChannelMemorySize, maxTotalMemorySize, keepAliveTime, unit, threadFactory);
-	}
+    /**
+     * @noinspection WeakerAccess
+     */
+    protected ConcurrentMap<Object, EventTask> newMap() {
+        return new ConcurrentIdentityWeakKeyHashMap<Object, EventTask>();
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param corePoolSize
-	 *            the maximum number of active threads
-	 * @param maxChannelMemorySize
-	 *            the maximum total size of the queued events per channel.
-	 *            Specify {@code 0} to disable.
-	 * @param maxTotalMemorySize
-	 *            the maximum total size of the queued events for this pool
-	 *            Specify {@code 0} to disable.
-	 * @param keepAliveTime
-	 *            the amount of time for an inactive thread to shut itself down
-	 * @param unit
-	 *            the {@link TimeUnit} of {@code keepAliveTime}
-	 * @param threadFactory
-	 *            the {@link ThreadFactory} of this pool
-	 * @param objectSizeEstimator
-	 *            the {@link ObjectSizeEstimator} of this pool
-	 * @noinspection unused
-	 */
-	public FairOrderedMemoryAwareThreadPoolExecutor(int corePoolSize, long maxChannelMemorySize, long maxTotalMemorySize, long keepAliveTime, TimeUnit unit, ObjectSizeEstimator objectSizeEstimator, ThreadFactory threadFactory) {
-		super(corePoolSize, maxChannelMemorySize, maxTotalMemorySize, keepAliveTime, unit, objectSizeEstimator, threadFactory);
-	}
-
-	/** @noinspection WeakerAccess */
-	protected ConcurrentMap<Object, EventTask> newMap() {
-		return new ConcurrentIdentityWeakKeyHashMap<Object, EventTask>();
-	}
-
-	/**
-	 * Executes the specified task concurrently while maintaining the event
-	 * order.
-	 */
-	@Override
-	protected void doExecute(Runnable task) {
-		if (task instanceof ChannelEventRunnable) {
-			ChannelEventRunnable eventRunnable = (ChannelEventRunnable) task;
-			EventTask newEventTask = new EventTask(eventRunnable);
-			/*
+    /**
+     * Executes the specified task concurrently while maintaining the event
+     * order.
+     */
+    @Override
+    protected void doExecute(Runnable task) {
+        if (task instanceof ChannelEventRunnable) {
+            ChannelEventRunnable eventRunnable = (ChannelEventRunnable) task;
+            EventTask newEventTask = new EventTask(eventRunnable);
+            /*
 			 * e.g. Three event "Channel A (Event A1)","Channel A (Event A2)"
 			 * ,"Channel A (Event A3)" are submitted in sequence, then key
 			 * "Channel A" is refer to the value of "Event A3", and there is a
 			 * linked list: "Event A3" -> "Event A2" -> "Event A1" ( linked by
 			 * the field "next" in EventTask )
 			 */
-			Object key = getKey(eventRunnable.getEvent());
-			EventTask previousEventTask = map.put(key, newEventTask);
-			// Remove the entry when the channel closes.
-			removeIfClosed(eventRunnable, key);
-			// try to setup "previousEventTask -> newEventTask"
-			// if success, then "newEventTask" will be invoke by
-			// "previousEventTask"
-			if (previousEventTask != null) {
-				if (compareAndSetNext(previousEventTask, null, newEventTask)) {
-					return;
-				}
-			}
-			// Two situation here:
-			// 1. "newEventTask" is the header of linked list
-			// 2. the "previousEventTask.next" is already END
-			// At these two situations above, just execute "newEventTask"
-			// immediately
-			doUnorderedExecute(newEventTask);
-		} else {
-			doUnorderedExecute(task);
-		}
-	}
+            Object key = getKey(eventRunnable.getEvent());
+            EventTask previousEventTask = map.put(key, newEventTask);
+            // Remove the entry when the channel closes.
+            removeIfClosed(eventRunnable, key);
+            // try to setup "previousEventTask -> newEventTask"
+            // if success, then "newEventTask" will be invoke by
+            // "previousEventTask"
+            if (previousEventTask != null) {
+                if (compareAndSetNext(previousEventTask, null, newEventTask)) {
+                    return;
+                }
+            }
+            // Two situation here:
+            // 1. "newEventTask" is the header of linked list
+            // 2. the "previousEventTask.next" is already END
+            // At these two situations above, just execute "newEventTask"
+            // immediately
+            doUnorderedExecute(newEventTask);
+        } else {
+            doUnorderedExecute(task);
+        }
+    }
 
-	private void removeIfClosed(ChannelEventRunnable eventRunnable, Object key) {
-		ChannelEvent event = eventRunnable.getEvent();
-		if (event instanceof ChannelStateEvent) {
-			ChannelStateEvent se = (ChannelStateEvent) event;
-			if (se.getState() == ChannelState.OPEN && !event.getChannel().isOpen()) {
-				removeKey(key);
-			}
-		}
-	}
+    private void removeIfClosed(ChannelEventRunnable eventRunnable, Object key) {
+        ChannelEvent event = eventRunnable.getEvent();
+        if (event instanceof ChannelStateEvent) {
+            ChannelStateEvent se = (ChannelStateEvent) event;
+            if (se.getState() == ChannelState.OPEN && !event.getChannel().isOpen()) {
+                removeKey(key);
+            }
+        }
+    }
 
-	/**
-	 * call removeKey(Object key) when the life cycle of the key ends, such as
-	 * when the channel is closed
-	 */
-	protected boolean removeKey(Object key) {
-		return map.remove(key) != null;
-	}
+    /**
+     * call removeKey(Object key) when the life cycle of the key ends, such as
+     * when the channel is closed
+     */
+    protected boolean removeKey(Object key) {
+        return map.remove(key) != null;
+    }
 
-	protected Object getKey(ChannelEvent e) {
-		return e.getChannel();
-	}
+    protected Object getKey(ChannelEvent e) {
+        return e.getChannel();
+    }
 
-	@Override
-	protected boolean shouldCount(Runnable task) {
-		return !(task instanceof EventTask) && super.shouldCount(task);
-	}
+    @Override
+    protected boolean shouldCount(Runnable task) {
+        return !(task instanceof EventTask) && super.shouldCount(task);
+    }
 
-	protected final boolean compareAndSetNext(EventTask eventTask, EventTask expect, EventTask update) {
-		// because the "next" field is modified by method "doExecute()" and
-		// method "EventTask.run()", so use CAS for thread-safe
-		return fieldUpdater.compareAndSet(eventTask, expect, update);
-	}
+    protected final boolean compareAndSetNext(EventTask eventTask, EventTask expect, EventTask update) {
+        // because the "next" field is modified by method "doExecute()" and
+        // method "EventTask.run()", so use CAS for thread-safe
+        return fieldUpdater.compareAndSet(eventTask, expect, update);
+    }
 
-	protected final class EventTask implements Runnable {
-		/** @noinspection unused */
-		volatile EventTask next;
-		private final ChannelEventRunnable runnable;
+    protected final class EventTask implements Runnable {
+        private final ChannelEventRunnable runnable;
+        /**
+         * @noinspection unused
+         */
+        volatile EventTask next;
 
-		EventTask(ChannelEventRunnable runnable) {
-			this.runnable = runnable;
-		}
+        EventTask(ChannelEventRunnable runnable) {
+            this.runnable = runnable;
+        }
 
-		public void run() {
-			try {
-				runnable.run();
-			} finally {
-				// if "next" is not null, then trigger "next" to execute;
-				// else if "next" is null, set "next" to END, means end this
-				// linked list
-				if (!compareAndSetNext(this, null, end)) {
-					doUnorderedExecute(next);
-				}
-			}
-		}
-	}
+        public void run() {
+            try {
+                runnable.run();
+            } finally {
+                // if "next" is not null, then trigger "next" to execute;
+                // else if "next" is null, set "next" to END, means end this
+                // linked list
+                if (!compareAndSetNext(this, null, end)) {
+                    doUnorderedExecute(next);
+                }
+            }
+        }
+    }
 }

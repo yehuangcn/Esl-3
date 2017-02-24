@@ -18,11 +18,10 @@ package com.freeswitch.netty.handler.execution;
 /**
  * {@link ChannelEventRunnableFilter} implementation which matches
  * {@link ChannelDownstreamEventRunnable}
- *
  */
 public class ChannelDownstreamEventRunnableFilter implements ChannelEventRunnableFilter {
 
-	public boolean filter(ChannelEventRunnable event) {
-		return event instanceof ChannelDownstreamEventRunnable;
-	}
+    public boolean filter(ChannelEventRunnable event) {
+        return event instanceof ChannelDownstreamEventRunnable;
+    }
 }

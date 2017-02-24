@@ -15,18 +15,14 @@
  */
 package com.freeswitch.netty.channel.group;
 
-import java.net.SocketAddress;
-import java.util.Set;
-
 import com.freeswitch.netty.bootstrap.ServerBootstrap;
 import com.freeswitch.netty.buffer.ChannelBuffer;
 import com.freeswitch.netty.buffer.ChannelBuffers;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.ServerChannel;
-import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
+import com.freeswitch.netty.channel.*;
 import com.freeswitch.netty.util.CharsetUtil;
+
+import java.net.SocketAddress;
+import java.util.Set;
 
 /**
  * A thread-safe {@link Set} that contains open {@link Channel}s and provides
@@ -36,13 +32,13 @@ import com.freeswitch.netty.util.CharsetUtil;
  * collection, so that you don't need to worry about the life cycle of the added
  * {@link Channel}. A {@link Channel} can belong to more than one
  * {@link ChannelGroup}.
- *
+ * <p>
  * <h3>Broadcast a message to multiple {@link Channel}s</h3>
  * <p>
  * If you need to broadcast a message to more than one {@link Channel}, you can
  * add the {@link Channel}s associated with the recipients and call
  * {@link ChannelGroup#write(Object)}:
- * 
+ * <p>
  * <pre>
  * <strong>{@link ChannelGroup} recipients = new {@link DefaultChannelGroup}();</strong>
  * recipients.add(channelA);
@@ -52,7 +48,7 @@ import com.freeswitch.netty.util.CharsetUtil;
  *         "Service will shut down for maintenance in 5 minutes.",
  *         {@link CharsetUtil}.UTF_8));</strong>
  * </pre>
- *
+ * <p>
  * <h3>Simplify shutdown process with {@link ChannelGroup}</h3>
  * <p>
  * If both {@link ServerChannel}s and non-{@link ServerChannel}s exist in the
@@ -60,7 +56,7 @@ import com.freeswitch.netty.util.CharsetUtil;
  * performed for the {@link ServerChannel}s first and then for the others.
  * <p>
  * This rule is very useful when you shut down a server in one shot:
- *
+ * <p>
  * <pre>
  * <strong>{@link ChannelGroup} allChannels = new {@link DefaultChannelGroup}();</strong>
  *
@@ -89,95 +85,95 @@ import com.freeswitch.netty.util.CharsetUtil;
  *     }
  * }
  * </pre>
- * 
+ *
  * @apiviz.landmark
  * @apiviz.has org.jboss.netty.channel.group.ChannelGroupFuture oneway - -
- *             returns
+ * returns
  */
 public interface ChannelGroup extends Set<Channel>, Comparable<ChannelGroup> {
 
-	/**
-	 * Returns the name of this group. A group name is purely for helping you to
-	 * distinguish one group from others.
-	 */
-	String getName();
+    /**
+     * Returns the name of this group. A group name is purely for helping you to
+     * distinguish one group from others.
+     */
+    String getName();
 
-	/**
-	 * Returns the {@link Channel} whose ID matches the specified integer.
-	 *
-	 * @return the matching {@link Channel} if found. {@code null} otherwise.
-	 */
-	Channel find(Integer id);
+    /**
+     * Returns the {@link Channel} whose ID matches the specified integer.
+     *
+     * @return the matching {@link Channel} if found. {@code null} otherwise.
+     */
+    Channel find(Integer id);
 
-	/**
-	 * Calls {@link Channel#setInterestOps(int)} for all {@link Channel}s in
-	 * this group with the specified {@code interestOps}. Please note that this
-	 * operation is asynchronous as {@link Channel#setInterestOps(int)} is.
-	 *
-	 * @return the {@link ChannelGroupFuture} instance that notifies when the
-	 *         operation is done for all channels
-	 */
-	ChannelGroupFuture setInterestOps(int interestOps);
+    /**
+     * Calls {@link Channel#setInterestOps(int)} for all {@link Channel}s in
+     * this group with the specified {@code interestOps}. Please note that this
+     * operation is asynchronous as {@link Channel#setInterestOps(int)} is.
+     *
+     * @return the {@link ChannelGroupFuture} instance that notifies when the
+     * operation is done for all channels
+     */
+    ChannelGroupFuture setInterestOps(int interestOps);
 
-	/**
-	 * Calls {@link Channel#setReadable(boolean)} for all {@link Channel}s in
-	 * this group with the specified boolean flag. Please note that this
-	 * operation is asynchronous as {@link Channel#setReadable(boolean)} is.
-	 *
-	 * @return the {@link ChannelGroupFuture} instance that notifies when the
-	 *         operation is done for all channels
-	 */
-	ChannelGroupFuture setReadable(boolean readable);
+    /**
+     * Calls {@link Channel#setReadable(boolean)} for all {@link Channel}s in
+     * this group with the specified boolean flag. Please note that this
+     * operation is asynchronous as {@link Channel#setReadable(boolean)} is.
+     *
+     * @return the {@link ChannelGroupFuture} instance that notifies when the
+     * operation is done for all channels
+     */
+    ChannelGroupFuture setReadable(boolean readable);
 
-	/**
-	 * Writes the specified {@code message} to all {@link Channel}s in this
-	 * group. If the specified {@code message} is an instance of
-	 * {@link ChannelBuffer}, it is automatically
-	 * {@linkplain ChannelBuffer#duplicate() duplicated} to avoid a race
-	 * condition. Please note that this operation is asynchronous as
-	 * {@link Channel#write(Object)} is.
-	 *
-	 * @return the {@link ChannelGroupFuture} instance that notifies when the
-	 *         operation is done for all channels
-	 */
-	ChannelGroupFuture write(Object message);
+    /**
+     * Writes the specified {@code message} to all {@link Channel}s in this
+     * group. If the specified {@code message} is an instance of
+     * {@link ChannelBuffer}, it is automatically
+     * {@linkplain ChannelBuffer#duplicate() duplicated} to avoid a race
+     * condition. Please note that this operation is asynchronous as
+     * {@link Channel#write(Object)} is.
+     *
+     * @return the {@link ChannelGroupFuture} instance that notifies when the
+     * operation is done for all channels
+     */
+    ChannelGroupFuture write(Object message);
 
-	/**
-	 * Writes the specified {@code message} with the specified
-	 * {@code remoteAddress} to all {@link Channel}s in this group. If the
-	 * specified {@code message} is an instance of {@link ChannelBuffer}, it is
-	 * automatically {@linkplain ChannelBuffer#duplicate() duplicated} to avoid
-	 * a race condition. Please note that this operation is asynchronous as
-	 * {@link Channel#write(Object, SocketAddress)} is.
-	 *
-	 * @return the {@link ChannelGroupFuture} instance that notifies when the
-	 *         operation is done for all channels
-	 */
-	ChannelGroupFuture write(Object message, SocketAddress remoteAddress);
+    /**
+     * Writes the specified {@code message} with the specified
+     * {@code remoteAddress} to all {@link Channel}s in this group. If the
+     * specified {@code message} is an instance of {@link ChannelBuffer}, it is
+     * automatically {@linkplain ChannelBuffer#duplicate() duplicated} to avoid
+     * a race condition. Please note that this operation is asynchronous as
+     * {@link Channel#write(Object, SocketAddress)} is.
+     *
+     * @return the {@link ChannelGroupFuture} instance that notifies when the
+     * operation is done for all channels
+     */
+    ChannelGroupFuture write(Object message, SocketAddress remoteAddress);
 
-	/**
-	 * Disconnects all {@link Channel}s in this group from their remote peers.
-	 *
-	 * @return the {@link ChannelGroupFuture} instance that notifies when the
-	 *         operation is done for all channels
-	 */
-	ChannelGroupFuture disconnect();
+    /**
+     * Disconnects all {@link Channel}s in this group from their remote peers.
+     *
+     * @return the {@link ChannelGroupFuture} instance that notifies when the
+     * operation is done for all channels
+     */
+    ChannelGroupFuture disconnect();
 
-	/**
-	 * Unbinds all {@link Channel}s in this group from their local address.
-	 *
-	 * @return the {@link ChannelGroupFuture} instance that notifies when the
-	 *         operation is done for all channels
-	 */
-	ChannelGroupFuture unbind();
+    /**
+     * Unbinds all {@link Channel}s in this group from their local address.
+     *
+     * @return the {@link ChannelGroupFuture} instance that notifies when the
+     * operation is done for all channels
+     */
+    ChannelGroupFuture unbind();
 
-	/**
-	 * Closes all {@link Channel}s in this group. If the {@link Channel} is
-	 * connected to a remote peer or bound to a local address, it is
-	 * automatically disconnected and unbound.
-	 *
-	 * @return the {@link ChannelGroupFuture} instance that notifies when the
-	 *         operation is done for all channels
-	 */
-	ChannelGroupFuture close();
+    /**
+     * Closes all {@link Channel}s in this group. If the {@link Channel} is
+     * connected to a remote peer or bound to a local address, it is
+     * automatically disconnected and unbound.
+     *
+     * @return the {@link ChannelGroupFuture} instance that notifies when the
+     * operation is done for all channels
+     */
+    ChannelGroupFuture close();
 }

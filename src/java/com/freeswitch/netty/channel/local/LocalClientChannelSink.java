@@ -15,136 +15,125 @@
  */
 package com.freeswitch.netty.channel.local;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelBound;
-import static com.freeswitch.netty.channel.Channels.fireChannelConnected;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.succeededFuture;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.logging.InternalLogger;
+import com.freeswitch.netty.logging.InternalLoggerFactory;
 
 import java.io.IOException;
 import java.net.ConnectException;
 
-import com.freeswitch.netty.channel.AbstractChannelSink;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelException;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelState;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.logging.InternalLogger;
-import com.freeswitch.netty.logging.InternalLoggerFactory;
+import static com.freeswitch.netty.channel.Channels.*;
 
 /**
  */
 final class LocalClientChannelSink extends AbstractChannelSink {
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(LocalClientChannelSink.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(LocalClientChannelSink.class);
 
-	public void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception {
-		if (e instanceof ChannelStateEvent) {
-			ChannelStateEvent event = (ChannelStateEvent) e;
+    private static void bind(DefaultLocalChannel channel, ChannelFuture future, LocalAddress localAddress) {
+        try {
+            if (!LocalChannelRegistry.register(localAddress, channel)) {
+                throw new ChannelException("address already in use: " + localAddress);
+            }
 
-			DefaultLocalChannel channel = (DefaultLocalChannel) event.getChannel();
-			ChannelFuture future = event.getFuture();
-			ChannelState state = event.getState();
-			Object value = event.getValue();
-			switch (state) {
-			case OPEN:
-				if (Boolean.FALSE.equals(value)) {
-					channel.closeNow(future);
-				}
-				break;
-			case BOUND:
-				if (value != null) {
-					bind(channel, future, (LocalAddress) value);
-				} else {
-					channel.closeNow(future);
-				}
-				break;
-			case CONNECTED:
-				if (value != null) {
-					connect(channel, future, (LocalAddress) value);
-				} else {
-					channel.closeNow(future);
-				}
-				break;
-			case INTEREST_OPS:
-				// Unsupported - discard silently.
-				future.setSuccess();
-				break;
-			}
-		} else if (e instanceof MessageEvent) {
-			MessageEvent event = (MessageEvent) e;
-			DefaultLocalChannel channel = (DefaultLocalChannel) event.getChannel();
-			boolean offered = channel.writeBuffer.offer(event);
-			assert offered;
-			channel.flushWriteBuffer();
-		}
-	}
+            channel.setBound();
+            channel.localAddress = localAddress;
+            future.setSuccess();
+            fireChannelBound(channel, localAddress);
+        } catch (Throwable t) {
+            LocalChannelRegistry.unregister(localAddress);
+            future.setFailure(t);
+            fireExceptionCaught(channel, t);
+        }
+    }
 
-	private static void bind(DefaultLocalChannel channel, ChannelFuture future, LocalAddress localAddress) {
-		try {
-			if (!LocalChannelRegistry.register(localAddress, channel)) {
-				throw new ChannelException("address already in use: " + localAddress);
-			}
+    public void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception {
+        if (e instanceof ChannelStateEvent) {
+            ChannelStateEvent event = (ChannelStateEvent) e;
 
-			channel.setBound();
-			channel.localAddress = localAddress;
-			future.setSuccess();
-			fireChannelBound(channel, localAddress);
-		} catch (Throwable t) {
-			LocalChannelRegistry.unregister(localAddress);
-			future.setFailure(t);
-			fireExceptionCaught(channel, t);
-		}
-	}
+            DefaultLocalChannel channel = (DefaultLocalChannel) event.getChannel();
+            ChannelFuture future = event.getFuture();
+            ChannelState state = event.getState();
+            Object value = event.getValue();
+            switch (state) {
+                case OPEN:
+                    if (Boolean.FALSE.equals(value)) {
+                        channel.closeNow(future);
+                    }
+                    break;
+                case BOUND:
+                    if (value != null) {
+                        bind(channel, future, (LocalAddress) value);
+                    } else {
+                        channel.closeNow(future);
+                    }
+                    break;
+                case CONNECTED:
+                    if (value != null) {
+                        connect(channel, future, (LocalAddress) value);
+                    } else {
+                        channel.closeNow(future);
+                    }
+                    break;
+                case INTEREST_OPS:
+                    // Unsupported - discard silently.
+                    future.setSuccess();
+                    break;
+            }
+        } else if (e instanceof MessageEvent) {
+            MessageEvent event = (MessageEvent) e;
+            DefaultLocalChannel channel = (DefaultLocalChannel) event.getChannel();
+            boolean offered = channel.writeBuffer.offer(event);
+            assert offered;
+            channel.flushWriteBuffer();
+        }
+    }
 
-	private void connect(DefaultLocalChannel channel, ChannelFuture future, LocalAddress remoteAddress) {
-		Channel remoteChannel = LocalChannelRegistry.getChannel(remoteAddress);
-		if (!(remoteChannel instanceof DefaultLocalServerChannel)) {
-			future.setFailure(new ConnectException("connection refused: " + remoteAddress));
-			return;
-		}
+    private void connect(DefaultLocalChannel channel, ChannelFuture future, LocalAddress remoteAddress) {
+        Channel remoteChannel = LocalChannelRegistry.getChannel(remoteAddress);
+        if (!(remoteChannel instanceof DefaultLocalServerChannel)) {
+            future.setFailure(new ConnectException("connection refused: " + remoteAddress));
+            return;
+        }
 
-		DefaultLocalServerChannel serverChannel = (DefaultLocalServerChannel) remoteChannel;
-		ChannelPipeline pipeline;
-		try {
-			pipeline = serverChannel.getConfig().getPipelineFactory().getPipeline();
-		} catch (Exception e) {
-			future.setFailure(e);
-			fireExceptionCaught(channel, e);
-			if (logger.isWarnEnabled()) {
-				logger.warn("Failed to initialize an accepted socket.", e);
-			}
-			return;
-		}
+        DefaultLocalServerChannel serverChannel = (DefaultLocalServerChannel) remoteChannel;
+        ChannelPipeline pipeline;
+        try {
+            pipeline = serverChannel.getConfig().getPipelineFactory().getPipeline();
+        } catch (Exception e) {
+            future.setFailure(e);
+            fireExceptionCaught(channel, e);
+            if (logger.isWarnEnabled()) {
+                logger.warn("Failed to initialize an accepted socket.", e);
+            }
+            return;
+        }
 
-		future.setSuccess();
-		DefaultLocalChannel acceptedChannel = new DefaultLocalChannel(serverChannel, serverChannel.getFactory(), pipeline, this, channel);
-		channel.pairedChannel = acceptedChannel;
+        future.setSuccess();
+        DefaultLocalChannel acceptedChannel = new DefaultLocalChannel(serverChannel, serverChannel.getFactory(), pipeline, this, channel);
+        channel.pairedChannel = acceptedChannel;
 
-		// check if the channel was bound before. See #276
-		if (!channel.isBound()) {
-			bind(channel, succeededFuture(channel), new LocalAddress(LocalAddress.EPHEMERAL));
-		}
-		channel.remoteAddress = serverChannel.getLocalAddress();
-		channel.setConnected();
-		fireChannelConnected(channel, serverChannel.getLocalAddress());
+        // check if the channel was bound before. See #276
+        if (!channel.isBound()) {
+            bind(channel, succeededFuture(channel), new LocalAddress(LocalAddress.EPHEMERAL));
+        }
+        channel.remoteAddress = serverChannel.getLocalAddress();
+        channel.setConnected();
+        fireChannelConnected(channel, serverChannel.getLocalAddress());
 
-		acceptedChannel.localAddress = serverChannel.getLocalAddress();
-		try {
-			acceptedChannel.setBound();
-		} catch (IOException e) {
-			throw new Error(e);
-		}
-		fireChannelBound(acceptedChannel, channel.getRemoteAddress());
-		acceptedChannel.remoteAddress = channel.getLocalAddress();
-		acceptedChannel.setConnected();
-		fireChannelConnected(acceptedChannel, channel.getLocalAddress());
+        acceptedChannel.localAddress = serverChannel.getLocalAddress();
+        try {
+            acceptedChannel.setBound();
+        } catch (IOException e) {
+            throw new Error(e);
+        }
+        fireChannelBound(acceptedChannel, channel.getRemoteAddress());
+        acceptedChannel.remoteAddress = channel.getLocalAddress();
+        acceptedChannel.setConnected();
+        fireChannelConnected(acceptedChannel, channel.getLocalAddress());
 
-		// Flush something that was written in channelBound / channelConnected
-		channel.flushWriteBuffer();
-		acceptedChannel.flushWriteBuffer();
-	}
+        // Flush something that was written in channelBound / channelConnected
+        channel.flushWriteBuffer();
+        acceptedChannel.flushWriteBuffer();
+    }
 }

@@ -15,16 +15,16 @@
  */
 package com.freeswitch.netty.handler.ipfilter;
 
+import com.freeswitch.netty.channel.ChannelEvent;
+import com.freeswitch.netty.channel.ChannelHandler.Sharable;
+import com.freeswitch.netty.channel.ChannelHandlerContext;
+import com.freeswitch.netty.channel.ChannelState;
+import com.freeswitch.netty.channel.ChannelStateEvent;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelState;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.ChannelHandler.Sharable;
 
 /**
  * Handler that block any new connection if there are already a currently active
@@ -37,37 +37,39 @@ import com.freeswitch.netty.channel.ChannelHandler.Sharable;
  */
 @Sharable
 public class OneIpFilterHandler extends IpFilteringHandlerImpl {
-	/** HashMap of current remote connected InetAddress */
-	private final ConcurrentMap<InetAddress, Boolean> connectedSet = new ConcurrentHashMap<InetAddress, Boolean>();
+    /**
+     * HashMap of current remote connected InetAddress
+     */
+    private final ConcurrentMap<InetAddress, Boolean> connectedSet = new ConcurrentHashMap<InetAddress, Boolean>();
 
-	@Override
-	protected boolean accept(ChannelHandlerContext ctx, ChannelEvent e, InetSocketAddress inetSocketAddress) throws Exception {
-		InetAddress inetAddress = inetSocketAddress.getAddress();
-		if (connectedSet.containsKey(inetAddress)) {
-			return false;
-		}
-		connectedSet.put(inetAddress, Boolean.TRUE);
-		return true;
-	}
+    @Override
+    protected boolean accept(ChannelHandlerContext ctx, ChannelEvent e, InetSocketAddress inetSocketAddress) throws Exception {
+        InetAddress inetAddress = inetSocketAddress.getAddress();
+        if (connectedSet.containsKey(inetAddress)) {
+            return false;
+        }
+        connectedSet.put(inetAddress, Boolean.TRUE);
+        return true;
+    }
 
-	@Override
-	public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
-		super.handleUpstream(ctx, e);
-		// Try to remove entry from Map if already exists
-		if (e instanceof ChannelStateEvent) {
-			ChannelStateEvent evt = (ChannelStateEvent) e;
-			if (evt.getState() == ChannelState.CONNECTED) {
-				if (evt.getValue() == null) {
-					// DISCONNECTED but was this channel blocked or not
-					if (isBlocked(ctx)) {
-						// remove inetsocketaddress from set since this channel
-						// was not blocked before
-						InetSocketAddress inetSocketAddress = (InetSocketAddress) e.getChannel().getRemoteAddress();
-						connectedSet.remove(inetSocketAddress.getAddress());
-					}
-				}
-			}
-		}
-	}
+    @Override
+    public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
+        super.handleUpstream(ctx, e);
+        // Try to remove entry from Map if already exists
+        if (e instanceof ChannelStateEvent) {
+            ChannelStateEvent evt = (ChannelStateEvent) e;
+            if (evt.getState() == ChannelState.CONNECTED) {
+                if (evt.getValue() == null) {
+                    // DISCONNECTED but was this channel blocked or not
+                    if (isBlocked(ctx)) {
+                        // remove inetsocketaddress from set since this channel
+                        // was not blocked before
+                        InetSocketAddress inetSocketAddress = (InetSocketAddress) e.getChannel().getRemoteAddress();
+                        connectedSet.remove(inetSocketAddress.getAddress());
+                    }
+                }
+            }
+        }
+    }
 
 }

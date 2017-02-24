@@ -20,17 +20,17 @@ package com.freeswitch.netty.channel;
  * notifies it once the operationComplete method was called.
  */
 public final class ChannelFutureNotifier implements ChannelFutureListener {
-	private final ChannelFuture future;
+    private final ChannelFuture future;
 
-	public ChannelFutureNotifier(ChannelFuture future) {
-		this.future = future;
-	}
+    public ChannelFutureNotifier(ChannelFuture future) {
+        this.future = future;
+    }
 
-	public void operationComplete(ChannelFuture cf) throws Exception {
-		if (cf.isSuccess()) {
-			future.setSuccess();
-		} else {
-			future.setFailure(cf.getCause());
-		}
-	}
+    public void operationComplete(ChannelFuture cf) throws Exception {
+        if (cf.isSuccess()) {
+            future.setSuccess();
+        } else {
+            future.setFailure(cf.getCause());
+        }
+    }
 }

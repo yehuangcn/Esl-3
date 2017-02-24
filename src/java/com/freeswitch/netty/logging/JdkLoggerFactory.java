@@ -24,9 +24,9 @@ import java.util.logging.Logger;
  */
 public class JdkLoggerFactory extends InternalLoggerFactory {
 
-	@Override
-	public InternalLogger newInstance(String name) {
-		final Logger logger = Logger.getLogger(name);
-		return new JdkLogger(logger, name);
-	}
+    @Override
+    public InternalLogger newInstance(String name) {
+        final Logger logger = Logger.getLogger(name);
+        return new JdkLogger(logger, name);
+    }
 }

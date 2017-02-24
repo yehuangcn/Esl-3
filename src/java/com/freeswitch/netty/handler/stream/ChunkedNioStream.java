@@ -15,12 +15,12 @@
  */
 package com.freeswitch.netty.handler.stream;
 
-import static com.freeswitch.netty.buffer.ChannelBuffers.copiedBuffer;
+import com.freeswitch.netty.buffer.ChannelBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 
-import com.freeswitch.netty.buffer.ChannelBuffer;
+import static com.freeswitch.netty.buffer.ChannelBuffers.copiedBuffer;
 
 /**
  * A {@link ChunkedInput} that fetches data from a {@link ReadableByteChannel}
@@ -29,98 +29,96 @@ import com.freeswitch.netty.buffer.ChannelBuffer;
  */
 public class ChunkedNioStream implements ChunkedInput {
 
-	private final ReadableByteChannel in;
+    private final ReadableByteChannel in;
 
-	private final int chunkSize;
-	private long offset;
+    private final int chunkSize;
+    /**
+     * Associated ByteBuffer
+     */
+    private final ByteBuffer byteBuffer;
+    private long offset;
 
-	/**
-	 * Associated ByteBuffer
-	 */
-	private final ByteBuffer byteBuffer;
+    /**
+     * Creates a new instance that fetches data from the specified channel.
+     */
+    public ChunkedNioStream(ReadableByteChannel in) {
+        this(in, ChunkedStream.DEFAULT_CHUNK_SIZE);
+    }
 
-	/**
-	 * Creates a new instance that fetches data from the specified channel.
-	 */
-	public ChunkedNioStream(ReadableByteChannel in) {
-		this(in, ChunkedStream.DEFAULT_CHUNK_SIZE);
-	}
+    /**
+     * Creates a new instance that fetches data from the specified channel.
+     *
+     * @param chunkSize the number of bytes to fetch on each {@link #nextChunk()} call
+     */
+    public ChunkedNioStream(ReadableByteChannel in, int chunkSize) {
+        if (in == null) {
+            throw new NullPointerException("in");
+        }
+        if (chunkSize <= 0) {
+            throw new IllegalArgumentException("chunkSize: " + chunkSize + " (expected: a positive integer)");
+        }
+        this.in = in;
+        offset = 0;
+        this.chunkSize = chunkSize;
+        byteBuffer = ByteBuffer.allocate(chunkSize);
+    }
 
-	/**
-	 * Creates a new instance that fetches data from the specified channel.
-	 *
-	 * @param chunkSize
-	 *            the number of bytes to fetch on each {@link #nextChunk()} call
-	 */
-	public ChunkedNioStream(ReadableByteChannel in, int chunkSize) {
-		if (in == null) {
-			throw new NullPointerException("in");
-		}
-		if (chunkSize <= 0) {
-			throw new IllegalArgumentException("chunkSize: " + chunkSize + " (expected: a positive integer)");
-		}
-		this.in = in;
-		offset = 0;
-		this.chunkSize = chunkSize;
-		byteBuffer = ByteBuffer.allocate(chunkSize);
-	}
+    /**
+     * Returns the number of transferred bytes.
+     */
+    public long getTransferredBytes() {
+        return offset;
+    }
 
-	/**
-	 * Returns the number of transferred bytes.
-	 */
-	public long getTransferredBytes() {
-		return offset;
-	}
+    public boolean hasNextChunk() throws Exception {
+        if (byteBuffer.position() > 0) {
+            // A previous read was not over, so there is a next chunk in the
+            // buffer at least
+            return true;
+        }
+        if (in.isOpen()) {
+            // Try to read a new part, and keep this part (no rewind)
+            int b = in.read(byteBuffer);
+            if (b < 0) {
+                return false;
+            } else {
+                offset += b;
+                return true;
+            }
+        }
+        return false;
+    }
 
-	public boolean hasNextChunk() throws Exception {
-		if (byteBuffer.position() > 0) {
-			// A previous read was not over, so there is a next chunk in the
-			// buffer at least
-			return true;
-		}
-		if (in.isOpen()) {
-			// Try to read a new part, and keep this part (no rewind)
-			int b = in.read(byteBuffer);
-			if (b < 0) {
-				return false;
-			} else {
-				offset += b;
-				return true;
-			}
-		}
-		return false;
-	}
+    public boolean isEndOfInput() throws Exception {
+        return !hasNextChunk();
+    }
 
-	public boolean isEndOfInput() throws Exception {
-		return !hasNextChunk();
-	}
+    public void close() throws Exception {
+        in.close();
+    }
 
-	public void close() throws Exception {
-		in.close();
-	}
+    public Object nextChunk() throws Exception {
+        if (!hasNextChunk()) {
+            return null;
+        }
+        // buffer cannot be not be empty from there
+        int readBytes = byteBuffer.position();
+        for (; ; ) {
+            int localReadBytes = in.read(byteBuffer);
+            if (localReadBytes < 0) {
+                break;
+            }
+            readBytes += localReadBytes;
+            offset += localReadBytes;
 
-	public Object nextChunk() throws Exception {
-		if (!hasNextChunk()) {
-			return null;
-		}
-		// buffer cannot be not be empty from there
-		int readBytes = byteBuffer.position();
-		for (;;) {
-			int localReadBytes = in.read(byteBuffer);
-			if (localReadBytes < 0) {
-				break;
-			}
-			readBytes += localReadBytes;
-			offset += localReadBytes;
-
-			if (readBytes == chunkSize) {
-				break;
-			}
-		}
-		byteBuffer.flip();
-		// copy since buffer is keeped for next usage
-		ChannelBuffer buffer = copiedBuffer(byteBuffer);
-		byteBuffer.clear();
-		return buffer;
-	}
+            if (readBytes == chunkSize) {
+                break;
+            }
+        }
+        byteBuffer.flip();
+        // copy since buffer is keeped for next usage
+        ChannelBuffer buffer = copiedBuffer(byteBuffer);
+        byteBuffer.clear();
+        return buffer;
+    }
 }

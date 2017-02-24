@@ -15,11 +15,13 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelBound;
-import static com.freeswitch.netty.channel.Channels.fireChannelConnected;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.fireMessageReceived;
-import static com.freeswitch.netty.channel.Channels.succeededFuture;
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.buffer.ChannelBufferFactory;
+import com.freeswitch.netty.channel.Channel;
+import com.freeswitch.netty.channel.ChannelException;
+import com.freeswitch.netty.channel.ChannelFuture;
+import com.freeswitch.netty.channel.ReceiveBufferSizePredictor;
+import com.freeswitch.netty.util.ThreadNameDeterminer;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -29,154 +31,148 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.Executor;
 
-import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.buffer.ChannelBufferFactory;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelException;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ReceiveBufferSizePredictor;
-import com.freeswitch.netty.util.ThreadNameDeterminer;
+import static com.freeswitch.netty.channel.Channels.*;
 
 public class NioWorker extends AbstractNioWorker {
 
-	private final SocketReceiveBufferAllocator recvBufferPool = new SocketReceiveBufferAllocator();
+    private final SocketReceiveBufferAllocator recvBufferPool = new SocketReceiveBufferAllocator();
 
-	public NioWorker(Executor executor) {
-		super(executor);
-	}
+    public NioWorker(Executor executor) {
+        super(executor);
+    }
 
-	public NioWorker(Executor executor, ThreadNameDeterminer determiner) {
-		super(executor, determiner);
-	}
+    public NioWorker(Executor executor, ThreadNameDeterminer determiner) {
+        super(executor, determiner);
+    }
 
-	@Override
-	protected boolean read(SelectionKey k) {
-		final SocketChannel ch = (SocketChannel) k.channel();
-		final NioSocketChannel channel = (NioSocketChannel) k.attachment();
+    @Override
+    protected boolean read(SelectionKey k) {
+        final SocketChannel ch = (SocketChannel) k.channel();
+        final NioSocketChannel channel = (NioSocketChannel) k.attachment();
 
-		final ReceiveBufferSizePredictor predictor = channel.getConfig().getReceiveBufferSizePredictor();
-		final int predictedRecvBufSize = predictor.nextReceiveBufferSize();
-		final ChannelBufferFactory bufferFactory = channel.getConfig().getBufferFactory();
+        final ReceiveBufferSizePredictor predictor = channel.getConfig().getReceiveBufferSizePredictor();
+        final int predictedRecvBufSize = predictor.nextReceiveBufferSize();
+        final ChannelBufferFactory bufferFactory = channel.getConfig().getBufferFactory();
 
-		int ret = 0;
-		int readBytes = 0;
-		boolean failure = true;
+        int ret = 0;
+        int readBytes = 0;
+        boolean failure = true;
 
-		ByteBuffer bb = recvBufferPool.get(predictedRecvBufSize).order(bufferFactory.getDefaultOrder());
-		try {
-			while ((ret = ch.read(bb)) > 0) {
-				readBytes += ret;
-				if (!bb.hasRemaining()) {
-					break;
-				}
-			}
-			failure = false;
-		} catch (ClosedChannelException e) {
-			// Can happen, and does not need a user attention.
-		} catch (Throwable t) {
-			fireExceptionCaught(channel, t);
-		}
+        ByteBuffer bb = recvBufferPool.get(predictedRecvBufSize).order(bufferFactory.getDefaultOrder());
+        try {
+            while ((ret = ch.read(bb)) > 0) {
+                readBytes += ret;
+                if (!bb.hasRemaining()) {
+                    break;
+                }
+            }
+            failure = false;
+        } catch (ClosedChannelException e) {
+            // Can happen, and does not need a user attention.
+        } catch (Throwable t) {
+            fireExceptionCaught(channel, t);
+        }
 
-		if (readBytes > 0) {
-			bb.flip();
+        if (readBytes > 0) {
+            bb.flip();
 
-			final ChannelBuffer buffer = bufferFactory.getBuffer(readBytes);
-			buffer.setBytes(0, bb);
-			buffer.writerIndex(readBytes);
+            final ChannelBuffer buffer = bufferFactory.getBuffer(readBytes);
+            buffer.setBytes(0, bb);
+            buffer.writerIndex(readBytes);
 
-			// Update the predictor.
-			predictor.previousReceiveBufferSize(readBytes);
+            // Update the predictor.
+            predictor.previousReceiveBufferSize(readBytes);
 
-			// Fire the event.
-			fireMessageReceived(channel, buffer);
-		}
+            // Fire the event.
+            fireMessageReceived(channel, buffer);
+        }
 
-		if (ret < 0 || failure) {
-			k.cancel(); // Some JDK implementations run into an infinite loop
-						// without this.
-			close(channel, succeededFuture(channel));
-			return false;
-		}
+        if (ret < 0 || failure) {
+            k.cancel(); // Some JDK implementations run into an infinite loop
+            // without this.
+            close(channel, succeededFuture(channel));
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	@Override
-	protected boolean scheduleWriteIfNecessary(final AbstractNioChannel<?> channel) {
-		final Thread currentThread = Thread.currentThread();
-		final Thread workerThread = thread;
-		if (currentThread != workerThread) {
-			if (channel.writeTaskInTaskQueue.compareAndSet(false, true)) {
-				registerTask(channel.writeTask);
-			}
+    @Override
+    protected boolean scheduleWriteIfNecessary(final AbstractNioChannel<?> channel) {
+        final Thread currentThread = Thread.currentThread();
+        final Thread workerThread = thread;
+        if (currentThread != workerThread) {
+            if (channel.writeTaskInTaskQueue.compareAndSet(false, true)) {
+                registerTask(channel.writeTask);
+            }
 
-			return true;
-		}
+            return true;
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	@Override
-	protected Runnable createRegisterTask(Channel channel, ChannelFuture future) {
-		boolean server = !(channel instanceof NioClientSocketChannel);
-		return new RegisterTask((NioSocketChannel) channel, future, server);
-	}
+    @Override
+    protected Runnable createRegisterTask(Channel channel, ChannelFuture future) {
+        boolean server = !(channel instanceof NioClientSocketChannel);
+        return new RegisterTask((NioSocketChannel) channel, future, server);
+    }
 
-	private final class RegisterTask implements Runnable {
-		private final NioSocketChannel channel;
-		private final ChannelFuture future;
-		private final boolean server;
+    @Override
+    public void run() {
+        super.run();
+        recvBufferPool.releaseExternalResources();
+    }
 
-		RegisterTask(NioSocketChannel channel, ChannelFuture future, boolean server) {
+    private final class RegisterTask implements Runnable {
+        private final NioSocketChannel channel;
+        private final ChannelFuture future;
+        private final boolean server;
 
-			this.channel = channel;
-			this.future = future;
-			this.server = server;
-		}
+        RegisterTask(NioSocketChannel channel, ChannelFuture future, boolean server) {
 
-		public void run() {
-			SocketAddress localAddress = channel.getLocalAddress();
-			SocketAddress remoteAddress = channel.getRemoteAddress();
+            this.channel = channel;
+            this.future = future;
+            this.server = server;
+        }
 
-			if (localAddress == null || remoteAddress == null) {
-				if (future != null) {
-					future.setFailure(new ClosedChannelException());
-				}
-				close(channel, succeededFuture(channel));
-				return;
-			}
+        public void run() {
+            SocketAddress localAddress = channel.getLocalAddress();
+            SocketAddress remoteAddress = channel.getRemoteAddress();
 
-			try {
-				if (server) {
-					channel.channel.configureBlocking(false);
-				}
+            if (localAddress == null || remoteAddress == null) {
+                if (future != null) {
+                    future.setFailure(new ClosedChannelException());
+                }
+                close(channel, succeededFuture(channel));
+                return;
+            }
 
-				channel.channel.register(selector, channel.getInternalInterestOps(), channel);
+            try {
+                if (server) {
+                    channel.channel.configureBlocking(false);
+                }
 
-				if (future != null) {
-					channel.setConnected();
-					future.setSuccess();
-				}
+                channel.channel.register(selector, channel.getInternalInterestOps(), channel);
 
-				if (server || !((NioClientSocketChannel) channel).boundManually) {
-					fireChannelBound(channel, localAddress);
-				}
-				fireChannelConnected(channel, remoteAddress);
-			} catch (IOException e) {
-				if (future != null) {
-					future.setFailure(e);
-				}
-				close(channel, succeededFuture(channel));
-				if (!(e instanceof ClosedChannelException)) {
-					throw new ChannelException("Failed to register a socket to the selector.", e);
-				}
-			}
-		}
-	}
+                if (future != null) {
+                    channel.setConnected();
+                    future.setSuccess();
+                }
 
-	@Override
-	public void run() {
-		super.run();
-		recvBufferPool.releaseExternalResources();
-	}
+                if (server || !((NioClientSocketChannel) channel).boundManually) {
+                    fireChannelBound(channel, localAddress);
+                }
+                fireChannelConnected(channel, remoteAddress);
+            } catch (IOException e) {
+                if (future != null) {
+                    future.setFailure(e);
+                }
+                close(channel, succeededFuture(channel));
+                if (!(e instanceof ClosedChannelException)) {
+                    throw new ChannelException("Failed to register a socket to the selector.", e);
+                }
+            }
+        }
+    }
 }

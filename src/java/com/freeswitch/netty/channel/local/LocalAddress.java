@@ -21,116 +21,114 @@ import java.net.SocketAddress;
  * An endpoint in the local transport. Each endpoint is identified by a unique
  * case-insensitive string, except for the pre-defined value called
  * {@code "ephemeral"}.
- *
+ * <p>
  * <h3>Ephemeral Address</h3>
- *
+ * <p>
  * An ephemeral address is an anonymous address which is assigned temporarily
  * and is released as soon as the connection is closed. All ephemeral addresses
  * have the same ID, {@code "ephemeral"}, but they are not equal to each other.
- * 
+ *
  * @apiviz.landmark
  */
 public final class LocalAddress extends SocketAddress implements Comparable<LocalAddress> {
 
-	private static final long serialVersionUID = -3601961747680808645L;
+    public static final String EPHEMERAL = "ephemeral";
+    private static final long serialVersionUID = -3601961747680808645L;
+    private final String id;
+    private final boolean ephemeral;
 
-	public static final String EPHEMERAL = "ephemeral";
+    /**
+     * Creates a new instance with the specified ID.
+     */
+    public LocalAddress(int id) {
+        this(String.valueOf(id));
+    }
 
-	private final String id;
-	private final boolean ephemeral;
+    /**
+     * Creates a new instance with the specified ID.
+     */
+    public LocalAddress(String id) {
+        if (id == null) {
+            throw new NullPointerException("id");
+        }
+        id = id.trim().toLowerCase();
+        if (id.length() == 0) {
+            throw new IllegalArgumentException("empty id");
+        }
+        this.id = id;
+        ephemeral = "ephemeral".equals(id);
+    }
 
-	/**
-	 * Creates a new instance with the specified ID.
-	 */
-	public LocalAddress(int id) {
-		this(String.valueOf(id));
-	}
+    /**
+     * Returns the ID of this address.
+     */
+    public String getId() {
+        return id;
+    }
 
-	/**
-	 * Creates a new instance with the specified ID.
-	 */
-	public LocalAddress(String id) {
-		if (id == null) {
-			throw new NullPointerException("id");
-		}
-		id = id.trim().toLowerCase();
-		if (id.length() == 0) {
-			throw new IllegalArgumentException("empty id");
-		}
-		this.id = id;
-		ephemeral = "ephemeral".equals(id);
-	}
+    /**
+     * Returns {@code true} if and only if this address is ephemeral.
+     */
+    public boolean isEphemeral() {
+        return ephemeral;
+    }
 
-	/**
-	 * Returns the ID of this address.
-	 */
-	public String getId() {
-		return id;
-	}
+    @Override
+    public int hashCode() {
+        if (ephemeral) {
+            return System.identityHashCode(this);
+        } else {
+            return id.hashCode();
+        }
+    }
 
-	/**
-	 * Returns {@code true} if and only if this address is ephemeral.
-	 */
-	public boolean isEphemeral() {
-		return ephemeral;
-	}
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof LocalAddress)) {
+            return false;
+        }
 
-	@Override
-	public int hashCode() {
-		if (ephemeral) {
-			return System.identityHashCode(this);
-		} else {
-			return id.hashCode();
-		}
-	}
+        if (ephemeral) {
+            return this == o;
+        } else {
+            return getId().equals(((LocalAddress) o).getId());
+        }
+    }
 
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof LocalAddress)) {
-			return false;
-		}
+    // FIXME: This comparison is broken! Assign distinct port numbers for
+    // ephemeral ports, just like O/S does for port number 0. It will
+    // break backward compatibility though.
 
-		if (ephemeral) {
-			return this == o;
-		} else {
-			return getId().equals(((LocalAddress) o).getId());
-		}
-	}
+    public int compareTo(LocalAddress o) {
+        if (ephemeral) {
+            if (o.ephemeral) {
+                if (this == o) {
+                    return 0;
+                }
 
-	// FIXME: This comparison is broken! Assign distinct port numbers for
-	// ephemeral ports, just like O/S does for port number 0. It will
-	// break backward compatibility though.
+                int a = System.identityHashCode(this);
+                int b = System.identityHashCode(o);
+                if (a < b) {
+                    return -1;
+                } else if (a > b) {
+                    return 1;
+                } else {
+                    throw new Error("Two different ephemeral addresses have " + "same identityHashCode.");
+                }
+            } else {
+                return 1;
+            }
+        } else {
+            if (o.ephemeral) {
+                return -1;
+            } else {
+                return getId().compareTo(o.getId());
+            }
+        }
+    }
 
-	public int compareTo(LocalAddress o) {
-		if (ephemeral) {
-			if (o.ephemeral) {
-				if (this == o) {
-					return 0;
-				}
-
-				int a = System.identityHashCode(this);
-				int b = System.identityHashCode(o);
-				if (a < b) {
-					return -1;
-				} else if (a > b) {
-					return 1;
-				} else {
-					throw new Error("Two different ephemeral addresses have " + "same identityHashCode.");
-				}
-			} else {
-				return 1;
-			}
-		} else {
-			if (o.ephemeral) {
-				return -1;
-			} else {
-				return getId().compareTo(o.getId());
-			}
-		}
-	}
-
-	@Override
-	public String toString() {
-		return "local:" + getId();
-	}
+    @Override
+    public String toString() {
+        return "local:" + getId();
+    }
 }

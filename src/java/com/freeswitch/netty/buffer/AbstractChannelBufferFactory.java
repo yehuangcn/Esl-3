@@ -22,38 +22,37 @@ import java.nio.ByteOrder;
  */
 public abstract class AbstractChannelBufferFactory implements ChannelBufferFactory {
 
-	private final ByteOrder defaultOrder;
+    private final ByteOrder defaultOrder;
 
-	/**
-	 * Creates a new factory whose default {@link ByteOrder} is
-	 * {@link ByteOrder#BIG_ENDIAN}.
-	 */
-	protected AbstractChannelBufferFactory() {
-		this(ByteOrder.BIG_ENDIAN);
-	}
+    /**
+     * Creates a new factory whose default {@link ByteOrder} is
+     * {@link ByteOrder#BIG_ENDIAN}.
+     */
+    protected AbstractChannelBufferFactory() {
+        this(ByteOrder.BIG_ENDIAN);
+    }
 
-	/**
-	 * Creates a new factory with the specified default {@link ByteOrder}.
-	 *
-	 * @param defaultOrder
-	 *            the default {@link ByteOrder} of this factory
-	 */
-	protected AbstractChannelBufferFactory(ByteOrder defaultOrder) {
-		if (defaultOrder == null) {
-			throw new NullPointerException("defaultOrder");
-		}
-		this.defaultOrder = defaultOrder;
-	}
+    /**
+     * Creates a new factory with the specified default {@link ByteOrder}.
+     *
+     * @param defaultOrder the default {@link ByteOrder} of this factory
+     */
+    protected AbstractChannelBufferFactory(ByteOrder defaultOrder) {
+        if (defaultOrder == null) {
+            throw new NullPointerException("defaultOrder");
+        }
+        this.defaultOrder = defaultOrder;
+    }
 
-	public ChannelBuffer getBuffer(int capacity) {
-		return getBuffer(getDefaultOrder(), capacity);
-	}
+    public ChannelBuffer getBuffer(int capacity) {
+        return getBuffer(getDefaultOrder(), capacity);
+    }
 
-	public ChannelBuffer getBuffer(byte[] array, int offset, int length) {
-		return getBuffer(getDefaultOrder(), array, offset, length);
-	}
+    public ChannelBuffer getBuffer(byte[] array, int offset, int length) {
+        return getBuffer(getDefaultOrder(), array, offset, length);
+    }
 
-	public ByteOrder getDefaultOrder() {
-		return defaultOrder;
-	}
+    public ByteOrder getDefaultOrder() {
+        return defaultOrder;
+    }
 }

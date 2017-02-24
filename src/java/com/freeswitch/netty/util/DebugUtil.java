@@ -34,16 +34,16 @@ import com.freeswitch.netty.util.internal.SystemPropertyUtil;
  */
 public final class DebugUtil {
 
-	private static final boolean DEBUG_ENABLED = SystemPropertyUtil.getBoolean("org.jboss.netty.debug", false);
+    private static final boolean DEBUG_ENABLED = SystemPropertyUtil.getBoolean("org.jboss.netty.debug", false);
 
-	/**
-	 * Returns {@code true} if and only if Netty debug mode is enabled.
-	 */
-	public static boolean isDebugEnabled() {
-		return DEBUG_ENABLED;
-	}
+    private DebugUtil() {
+        // Unused
+    }
 
-	private DebugUtil() {
-		// Unused
-	}
+    /**
+     * Returns {@code true} if and only if Netty debug mode is enabled.
+     */
+    public static boolean isDebugEnabled() {
+        return DEBUG_ENABLED;
+    }
 }

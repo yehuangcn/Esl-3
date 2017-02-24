@@ -24,32 +24,32 @@ import com.freeswitch.netty.buffer.ChannelBuffer;
  */
 public class UnreplayableOperationException extends UnsupportedOperationException {
 
-	private static final long serialVersionUID = 8577363912862364021L;
+    private static final long serialVersionUID = 8577363912862364021L;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public UnreplayableOperationException() {
-	}
+    /**
+     * Creates a new instance.
+     */
+    public UnreplayableOperationException() {
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public UnreplayableOperationException(String message) {
-		super(message);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public UnreplayableOperationException(String message) {
+        super(message);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public UnreplayableOperationException(Throwable cause) {
-		super(cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public UnreplayableOperationException(Throwable cause) {
+        super(cause);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public UnreplayableOperationException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public UnreplayableOperationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

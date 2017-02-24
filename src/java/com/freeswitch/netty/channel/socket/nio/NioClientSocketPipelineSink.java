@@ -15,120 +15,112 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelBound;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.succeededFuture;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.logging.InternalLogger;
+import com.freeswitch.netty.logging.InternalLoggerFactory;
 
 import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
 
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelFutureListener;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelState;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.logging.InternalLogger;
-import com.freeswitch.netty.logging.InternalLoggerFactory;
+import static com.freeswitch.netty.channel.Channels.*;
 
 class NioClientSocketPipelineSink extends AbstractNioChannelSink {
 
-	static final InternalLogger logger = InternalLoggerFactory.getInstance(NioClientSocketPipelineSink.class);
+    static final InternalLogger logger = InternalLoggerFactory.getInstance(NioClientSocketPipelineSink.class);
 
-	private final BossPool<NioClientBoss> bossPool;
+    private final BossPool<NioClientBoss> bossPool;
 
-	NioClientSocketPipelineSink(BossPool<NioClientBoss> bossPool) {
-		this.bossPool = bossPool;
-	}
+    NioClientSocketPipelineSink(BossPool<NioClientBoss> bossPool) {
+        this.bossPool = bossPool;
+    }
 
-	public void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception {
-		if (e instanceof ChannelStateEvent) {
-			ChannelStateEvent event = (ChannelStateEvent) e;
-			NioClientSocketChannel channel = (NioClientSocketChannel) event.getChannel();
-			ChannelFuture future = event.getFuture();
-			ChannelState state = event.getState();
-			Object value = event.getValue();
+    private static void bind(NioClientSocketChannel channel, ChannelFuture future, SocketAddress localAddress) {
+        try {
+            channel.channel.socket().bind(localAddress);
+            channel.boundManually = true;
+            channel.setBound();
+            future.setSuccess();
+            fireChannelBound(channel, channel.getLocalAddress());
+        } catch (Throwable t) {
+            future.setFailure(t);
+            fireExceptionCaught(channel, t);
+        }
+    }
 
-			switch (state) {
-			case OPEN:
-				if (Boolean.FALSE.equals(value)) {
-					channel.worker.close(channel, future);
-				}
-				break;
-			case BOUND:
-				if (value != null) {
-					bind(channel, future, (SocketAddress) value);
-				} else {
-					channel.worker.close(channel, future);
-				}
-				break;
-			case CONNECTED:
-				if (value != null) {
-					connect(channel, future, (SocketAddress) value);
-				} else {
-					channel.worker.close(channel, future);
-				}
-				break;
-			case INTEREST_OPS:
-				channel.worker.setInterestOps(channel, future, ((Integer) value).intValue());
-				break;
-			}
-		} else if (e instanceof MessageEvent) {
-			MessageEvent event = (MessageEvent) e;
-			NioSocketChannel channel = (NioSocketChannel) event.getChannel();
-			boolean offered = channel.writeBufferQueue.offer(event);
-			assert offered;
-			channel.worker.writeFromUserCode(channel);
-		}
-	}
+    public void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception {
+        if (e instanceof ChannelStateEvent) {
+            ChannelStateEvent event = (ChannelStateEvent) e;
+            NioClientSocketChannel channel = (NioClientSocketChannel) event.getChannel();
+            ChannelFuture future = event.getFuture();
+            ChannelState state = event.getState();
+            Object value = event.getValue();
 
-	private static void bind(NioClientSocketChannel channel, ChannelFuture future, SocketAddress localAddress) {
-		try {
-			channel.channel.socket().bind(localAddress);
-			channel.boundManually = true;
-			channel.setBound();
-			future.setSuccess();
-			fireChannelBound(channel, channel.getLocalAddress());
-		} catch (Throwable t) {
-			future.setFailure(t);
-			fireExceptionCaught(channel, t);
-		}
-	}
+            switch (state) {
+                case OPEN:
+                    if (Boolean.FALSE.equals(value)) {
+                        channel.worker.close(channel, future);
+                    }
+                    break;
+                case BOUND:
+                    if (value != null) {
+                        bind(channel, future, (SocketAddress) value);
+                    } else {
+                        channel.worker.close(channel, future);
+                    }
+                    break;
+                case CONNECTED:
+                    if (value != null) {
+                        connect(channel, future, (SocketAddress) value);
+                    } else {
+                        channel.worker.close(channel, future);
+                    }
+                    break;
+                case INTEREST_OPS:
+                    channel.worker.setInterestOps(channel, future, ((Integer) value).intValue());
+                    break;
+            }
+        } else if (e instanceof MessageEvent) {
+            MessageEvent event = (MessageEvent) e;
+            NioSocketChannel channel = (NioSocketChannel) event.getChannel();
+            boolean offered = channel.writeBufferQueue.offer(event);
+            assert offered;
+            channel.worker.writeFromUserCode(channel);
+        }
+    }
 
-	private void connect(final NioClientSocketChannel channel, final ChannelFuture cf, SocketAddress remoteAddress) {
-		channel.requestedRemoteAddress = remoteAddress;
-		try {
-			if (channel.channel.connect(remoteAddress)) {
-				channel.worker.register(channel, cf);
-			} else {
-				channel.getCloseFuture().addListener(new ChannelFutureListener() {
-					public void operationComplete(ChannelFuture f) throws Exception {
-						if (!cf.isDone()) {
-							cf.setFailure(new ClosedChannelException());
-						}
-					}
-				});
-				cf.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
-				channel.connectFuture = cf;
-				nextBoss().register(channel, cf);
-			}
+    private void connect(final NioClientSocketChannel channel, final ChannelFuture cf, SocketAddress remoteAddress) {
+        channel.requestedRemoteAddress = remoteAddress;
+        try {
+            if (channel.channel.connect(remoteAddress)) {
+                channel.worker.register(channel, cf);
+            } else {
+                channel.getCloseFuture().addListener(new ChannelFutureListener() {
+                    public void operationComplete(ChannelFuture f) throws Exception {
+                        if (!cf.isDone()) {
+                            cf.setFailure(new ClosedChannelException());
+                        }
+                    }
+                });
+                cf.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+                channel.connectFuture = cf;
+                nextBoss().register(channel, cf);
+            }
 
-		} catch (Throwable t) {
-			if (t instanceof ConnectException) {
-				Throwable newT = new ConnectException(t.getMessage() + ": " + remoteAddress);
-				newT.setStackTrace(t.getStackTrace());
-				t = newT;
-			}
-			cf.setFailure(t);
-			fireExceptionCaught(channel, t);
-			channel.worker.close(channel, succeededFuture(channel));
-		}
-	}
+        } catch (Throwable t) {
+            if (t instanceof ConnectException) {
+                Throwable newT = new ConnectException(t.getMessage() + ": " + remoteAddress);
+                newT.setStackTrace(t.getStackTrace());
+                t = newT;
+            }
+            cf.setFailure(t);
+            fireExceptionCaught(channel, t);
+            channel.worker.close(channel, succeededFuture(channel));
+        }
+    }
 
-	private NioClientBoss nextBoss() {
-		return bossPool.nextBoss();
-	}
+    private NioClientBoss nextBoss() {
+        return bossPool.nextBoss();
+    }
 
 }

@@ -16,17 +16,16 @@
 
 package com.freeswitch.netty.handler.ssl.util;
 
-import java.security.KeyStore;
-import java.security.cert.X509Certificate;
+import com.freeswitch.netty.logging.InternalLogger;
+import com.freeswitch.netty.logging.InternalLoggerFactory;
+import com.freeswitch.netty.util.internal.EmptyArrays;
 
 import javax.net.ssl.ManagerFactoryParameters;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
-
-import com.freeswitch.netty.logging.InternalLogger;
-import com.freeswitch.netty.logging.InternalLoggerFactory;
-import com.freeswitch.netty.util.internal.EmptyArrays;
+import java.security.KeyStore;
+import java.security.cert.X509Certificate;
 
 /**
  * An insecure {@link TrustManagerFactory} that trusts all X.509 certificates
@@ -38,37 +37,35 @@ import com.freeswitch.netty.util.internal.EmptyArrays;
  */
 public final class InsecureTrustManagerFactory extends SimpleTrustManagerFactory {
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(InsecureTrustManagerFactory.class);
+    public static final TrustManagerFactory INSTANCE = new InsecureTrustManagerFactory();
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(InsecureTrustManagerFactory.class);
+    private static final TrustManager tm = new X509TrustManager() {
+        public void checkClientTrusted(X509Certificate[] chain, String s) {
+            logger.debug("Accepting a client certificate: " + chain[0].getSubjectDN());
+        }
 
-	public static final TrustManagerFactory INSTANCE = new InsecureTrustManagerFactory();
+        public void checkServerTrusted(X509Certificate[] chain, String s) {
+            logger.debug("Accepting a server certificate: " + chain[0].getSubjectDN());
+        }
 
-	private static final TrustManager tm = new X509TrustManager() {
-		public void checkClientTrusted(X509Certificate[] chain, String s) {
-			logger.debug("Accepting a client certificate: " + chain[0].getSubjectDN());
-		}
+        public X509Certificate[] getAcceptedIssuers() {
+            return EmptyArrays.EMPTY_X509_CERTIFICATES;
+        }
+    };
 
-		public void checkServerTrusted(X509Certificate[] chain, String s) {
-			logger.debug("Accepting a server certificate: " + chain[0].getSubjectDN());
-		}
+    private InsecureTrustManagerFactory() {
+    }
 
-		public X509Certificate[] getAcceptedIssuers() {
-			return EmptyArrays.EMPTY_X509_CERTIFICATES;
-		}
-	};
+    @Override
+    protected void engineInit(KeyStore keyStore) throws Exception {
+    }
 
-	private InsecureTrustManagerFactory() {
-	}
+    @Override
+    protected void engineInit(ManagerFactoryParameters managerFactoryParameters) throws Exception {
+    }
 
-	@Override
-	protected void engineInit(KeyStore keyStore) throws Exception {
-	}
-
-	@Override
-	protected void engineInit(ManagerFactoryParameters managerFactoryParameters) throws Exception {
-	}
-
-	@Override
-	protected TrustManager[] engineGetTrustManagers() {
-		return new TrustManager[] { tm };
-	}
+    @Override
+    protected TrustManager[] engineGetTrustManagers() {
+        return new TrustManager[]{tm};
+    }
 }

@@ -15,97 +15,97 @@
  */
 package com.freeswitch.netty.handler.codec.http;
 
-import java.util.Map;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
 import com.freeswitch.netty.buffer.ChannelBuffers;
 import com.freeswitch.netty.util.internal.StringUtil;
+
+import java.util.Map;
 
 /**
  * The default {@link HttpChunkTrailer} implementation.
  */
 public class DefaultHttpChunkTrailer implements HttpChunkTrailer {
 
-	private final HttpHeaders trailingHeaders = new TrailingHeaders(true);
+    private final HttpHeaders trailingHeaders = new TrailingHeaders(true);
 
-	public boolean isLast() {
-		return true;
-	}
+    public boolean isLast() {
+        return true;
+    }
 
-	public ChannelBuffer getContent() {
-		return ChannelBuffers.EMPTY_BUFFER;
-	}
+    public ChannelBuffer getContent() {
+        return ChannelBuffers.EMPTY_BUFFER;
+    }
 
-	public void setContent(ChannelBuffer content) {
-		throw new IllegalStateException("read-only");
-	}
+    public void setContent(ChannelBuffer content) {
+        throw new IllegalStateException("read-only");
+    }
 
-	public HttpHeaders trailingHeaders() {
-		return trailingHeaders;
-	}
+    public HttpHeaders trailingHeaders() {
+        return trailingHeaders;
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder buf = new StringBuilder(super.toString());
-		buf.append(StringUtil.NEWLINE);
-		appendHeaders(buf);
+    @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder(super.toString());
+        buf.append(StringUtil.NEWLINE);
+        appendHeaders(buf);
 
-		// Remove the last newline.
-		buf.setLength(buf.length() - StringUtil.NEWLINE.length());
-		return buf.toString();
-	}
+        // Remove the last newline.
+        buf.setLength(buf.length() - StringUtil.NEWLINE.length());
+        return buf.toString();
+    }
 
-	private void appendHeaders(StringBuilder buf) {
-		for (Map.Entry<String, String> e : trailingHeaders()) {
-			buf.append(e.getKey());
-			buf.append(": ");
-			buf.append(e.getValue());
-			buf.append(StringUtil.NEWLINE);
-		}
-	}
+    private void appendHeaders(StringBuilder buf) {
+        for (Map.Entry<String, String> e : trailingHeaders()) {
+            buf.append(e.getKey());
+            buf.append(": ");
+            buf.append(e.getValue());
+            buf.append(StringUtil.NEWLINE);
+        }
+    }
 
-	private static final class TrailingHeaders extends DefaultHttpHeaders {
+    private static final class TrailingHeaders extends DefaultHttpHeaders {
 
-		TrailingHeaders(boolean validateHeaders) {
-			super(validateHeaders);
-		}
+        TrailingHeaders(boolean validateHeaders) {
+            super(validateHeaders);
+        }
 
-		@Override
-		public HttpHeaders add(String name, Object value) {
-			if (validate) {
-				validateName(name);
-			}
-			return super.add(name, value);
-		}
+        private static void validateName(String name) {
+            if (name.equalsIgnoreCase(HttpHeaders.Names.CONTENT_LENGTH) || name.equalsIgnoreCase(HttpHeaders.Names.TRANSFER_ENCODING) || name.equalsIgnoreCase(HttpHeaders.Names.TRAILER)) {
+                throw new IllegalArgumentException("prohibited trailing header: " + name);
+            }
+        }
 
-		@Override
-		public HttpHeaders add(String name, Iterable<?> values) {
-			if (validate) {
-				validateName(name);
-			}
-			return super.add(name, values);
-		}
+        @Override
+        public HttpHeaders add(String name, Object value) {
+            if (validate) {
+                validateName(name);
+            }
+            return super.add(name, value);
+        }
 
-		@Override
-		public HttpHeaders set(String name, Iterable<?> values) {
-			if (validate) {
-				validateName(name);
-			}
-			return super.set(name, values);
-		}
+        @Override
+        public HttpHeaders add(String name, Iterable<?> values) {
+            if (validate) {
+                validateName(name);
+            }
+            return super.add(name, values);
+        }
 
-		@Override
-		public HttpHeaders set(String name, Object value) {
-			if (validate) {
-				validateName(name);
-			}
-			return super.set(name, value);
-		}
+        @Override
+        public HttpHeaders set(String name, Iterable<?> values) {
+            if (validate) {
+                validateName(name);
+            }
+            return super.set(name, values);
+        }
 
-		private static void validateName(String name) {
-			if (name.equalsIgnoreCase(HttpHeaders.Names.CONTENT_LENGTH) || name.equalsIgnoreCase(HttpHeaders.Names.TRANSFER_ENCODING) || name.equalsIgnoreCase(HttpHeaders.Names.TRAILER)) {
-				throw new IllegalArgumentException("prohibited trailing header: " + name);
-			}
-		}
-	}
+        @Override
+        public HttpHeaders set(String name, Object value) {
+            if (validate) {
+                validateName(name);
+            }
+            return super.set(name, value);
+        }
+    }
 }

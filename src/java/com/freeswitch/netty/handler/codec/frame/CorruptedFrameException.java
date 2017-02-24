@@ -23,32 +23,32 @@ package com.freeswitch.netty.handler.codec.frame;
  */
 public class CorruptedFrameException extends Exception {
 
-	private static final long serialVersionUID = 3918052232492988408L;
+    private static final long serialVersionUID = 3918052232492988408L;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public CorruptedFrameException() {
-	}
+    /**
+     * Creates a new instance.
+     */
+    public CorruptedFrameException() {
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public CorruptedFrameException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public CorruptedFrameException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public CorruptedFrameException(String message) {
-		super(message);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public CorruptedFrameException(String message) {
+        super(message);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public CorruptedFrameException(Throwable cause) {
-		super(cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public CorruptedFrameException(Throwable cause) {
+        super(cause);
+    }
 }

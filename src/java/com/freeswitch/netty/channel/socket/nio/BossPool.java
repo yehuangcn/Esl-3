@@ -19,9 +19,8 @@ package com.freeswitch.netty.channel.socket.nio;
  * A Pool that holds {@link Boss} instances
  */
 public interface BossPool<E extends Boss> extends NioSelectorPool {
-	/**
-	 * Return the next {@link Boss} to use
-	 *
-	 */
-	E nextBoss();
+    /**
+     * Return the next {@link Boss} to use
+     */
+    E nextBoss();
 }

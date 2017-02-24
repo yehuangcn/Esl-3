@@ -15,91 +15,86 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
+import com.freeswitch.netty.channel.*;
+
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
-
 public class NioSocketChannel extends AbstractNioChannel<SocketChannel> implements com.freeswitch.netty.channel.socket.SocketChannel {
 
-	private static final int ST_OPEN = 0;
-	private static final int ST_BOUND = 1;
-	private static final int ST_CONNECTED = 2;
-	private static final int ST_CLOSED = -1;
-	@SuppressWarnings("RedundantFieldInitialization")
-	volatile int state = ST_OPEN;
+    private static final int ST_OPEN = 0;
+    private static final int ST_BOUND = 1;
+    private static final int ST_CONNECTED = 2;
+    private static final int ST_CLOSED = -1;
+    private final NioSocketChannelConfig config;
+    @SuppressWarnings("RedundantFieldInitialization")
+    volatile int state = ST_OPEN;
 
-	private final NioSocketChannelConfig config;
+    public NioSocketChannel(Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, SocketChannel socket, NioWorker worker) {
+        super(parent, factory, pipeline, sink, worker, socket);
+        config = new DefaultNioSocketChannelConfig(socket.socket());
+    }
 
-	public NioSocketChannel(Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, SocketChannel socket, NioWorker worker) {
-		super(parent, factory, pipeline, sink, worker, socket);
-		config = new DefaultNioSocketChannelConfig(socket.socket());
-	}
+    @Override
+    public NioWorker getWorker() {
+        return (NioWorker) super.getWorker();
+    }
 
-	@Override
-	public NioWorker getWorker() {
-		return (NioWorker) super.getWorker();
-	}
+    @Override
+    public NioSocketChannelConfig getConfig() {
+        return config;
+    }
 
-	@Override
-	public NioSocketChannelConfig getConfig() {
-		return config;
-	}
+    @Override
+    public boolean isOpen() {
+        return state >= ST_OPEN;
+    }
 
-	@Override
-	public boolean isOpen() {
-		return state >= ST_OPEN;
-	}
+    public boolean isBound() {
+        return state >= ST_BOUND;
+    }
 
-	public boolean isBound() {
-		return state >= ST_BOUND;
-	}
+    public boolean isConnected() {
+        return state == ST_CONNECTED;
+    }
 
-	public boolean isConnected() {
-		return state == ST_CONNECTED;
-	}
+    final void setBound() {
+        assert state == ST_OPEN : "Invalid state: " + state;
+        state = ST_BOUND;
+    }
 
-	final void setBound() {
-		assert state == ST_OPEN : "Invalid state: " + state;
-		state = ST_BOUND;
-	}
+    final void setConnected() {
+        if (state != ST_CLOSED) {
+            state = ST_CONNECTED;
+        }
+    }
 
-	final void setConnected() {
-		if (state != ST_CLOSED) {
-			state = ST_CONNECTED;
-		}
-	}
+    @Override
+    protected boolean setClosed() {
+        if (super.setClosed()) {
+            state = ST_CLOSED;
+            return true;
+        }
+        return false;
+    }
 
-	@Override
-	protected boolean setClosed() {
-		if (super.setClosed()) {
-			state = ST_CLOSED;
-			return true;
-		}
-		return false;
-	}
+    @Override
+    InetSocketAddress getLocalSocketAddress() throws Exception {
+        return (InetSocketAddress) channel.socket().getLocalSocketAddress();
+    }
 
-	@Override
-	InetSocketAddress getLocalSocketAddress() throws Exception {
-		return (InetSocketAddress) channel.socket().getLocalSocketAddress();
-	}
+    @Override
+    InetSocketAddress getRemoteSocketAddress() throws Exception {
+        return (InetSocketAddress) channel.socket().getRemoteSocketAddress();
+    }
 
-	@Override
-	InetSocketAddress getRemoteSocketAddress() throws Exception {
-		return (InetSocketAddress) channel.socket().getRemoteSocketAddress();
-	}
-
-	@Override
-	public ChannelFuture write(Object message, SocketAddress remoteAddress) {
-		if (remoteAddress == null || remoteAddress.equals(getRemoteAddress())) {
-			return super.write(message, null);
-		} else {
-			return getUnsupportedOperationFuture();
-		}
-	}
+    @Override
+    public ChannelFuture write(Object message, SocketAddress remoteAddress) {
+        if (remoteAddress == null || remoteAddress.equals(getRemoteAddress())) {
+            return super.write(message, null);
+        } else {
+            return getUnsupportedOperationFuture();
+        }
+    }
 }

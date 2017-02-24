@@ -19,10 +19,9 @@ import java.util.concurrent.Executor;
 
 public interface ChannelEventRunnableFilter {
 
-	/**
-	 * Return {@code true} if the {@link ChannelEventRunnable} should get
-	 * handled by the {@link Executor}
-	 *
-	 */
-	boolean filter(ChannelEventRunnable event);
+    /**
+     * Return {@code true} if the {@link ChannelEventRunnable} should get
+     * handled by the {@link Executor}
+     */
+    boolean filter(ChannelEventRunnable event);
 }

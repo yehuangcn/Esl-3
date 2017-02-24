@@ -24,8 +24,8 @@ package com.freeswitch.netty.channel;
  */
 public interface ExceptionEvent extends ChannelEvent {
 
-	/**
-	 * Returns the raised exception.
-	 */
-	Throwable getCause();
+    /**
+     * Returns the raised exception.
+     */
+    Throwable getCause();
 }

@@ -22,14 +22,15 @@ package com.freeswitch.netty.handler.ipfilter;
  */
 public interface IpFilteringHandler {
 
-	/**
-	 * Sets the filter listener.
-	 *
-	 * @param listener
-	 *            the new ip filter listener
-	 */
-	void setIpFilterListener(IpFilterListener listener);
+    /**
+     * Sets the filter listener.
+     *
+     * @param listener the new ip filter listener
+     */
+    void setIpFilterListener(IpFilterListener listener);
 
-	/** Remove the filter listener. */
-	void removeIpFilterListener();
+    /**
+     * Remove the filter listener.
+     */
+    void removeIpFilterListener();
 }

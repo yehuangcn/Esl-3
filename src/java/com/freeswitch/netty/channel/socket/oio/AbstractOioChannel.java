@@ -15,98 +15,92 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.channel.socket.Worker;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
-import com.freeswitch.netty.channel.AbstractChannel;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
-import com.freeswitch.netty.channel.socket.Worker;
-
 abstract class AbstractOioChannel extends AbstractChannel {
-	private volatile InetSocketAddress localAddress;
-	volatile InetSocketAddress remoteAddress;
-	volatile Thread workerThread;
-	volatile Worker worker;
+    final Object interestOpsLock = new Object();
+    volatile InetSocketAddress remoteAddress;
+    volatile Thread workerThread;
+    volatile Worker worker;
+    private volatile InetSocketAddress localAddress;
 
-	final Object interestOpsLock = new Object();
+    AbstractOioChannel(Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
+        super(parent, factory, pipeline, sink);
+    }
 
-	AbstractOioChannel(Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
-		super(parent, factory, pipeline, sink);
-	}
+    @Override
+    protected boolean setClosed() {
+        return super.setClosed();
+    }
 
-	@Override
-	protected boolean setClosed() {
-		return super.setClosed();
-	}
+    @Override
+    protected int getInternalInterestOps() {
+        return super.getInternalInterestOps();
+    }
 
-	@Override
-	protected int getInternalInterestOps() {
-		return super.getInternalInterestOps();
-	}
+    @Override
+    protected void setInternalInterestOps(int interestOps) {
+        super.setInternalInterestOps(interestOps);
+    }
 
-	@Override
-	protected void setInternalInterestOps(int interestOps) {
-		super.setInternalInterestOps(interestOps);
-	}
+    @Override
+    public ChannelFuture write(Object message, SocketAddress remoteAddress) {
+        if (remoteAddress == null || remoteAddress.equals(getRemoteAddress())) {
+            return super.write(message, null);
+        } else {
+            return super.write(message, remoteAddress);
+        }
+    }
 
-	@Override
-	public ChannelFuture write(Object message, SocketAddress remoteAddress) {
-		if (remoteAddress == null || remoteAddress.equals(getRemoteAddress())) {
-			return super.write(message, null);
-		} else {
-			return super.write(message, remoteAddress);
-		}
-	}
+    public boolean isBound() {
+        return isOpen() && isSocketBound();
+    }
 
-	public boolean isBound() {
-		return isOpen() && isSocketBound();
-	}
+    public boolean isConnected() {
+        return isOpen() && isSocketConnected();
+    }
 
-	public boolean isConnected() {
-		return isOpen() && isSocketConnected();
-	}
+    public InetSocketAddress getLocalAddress() {
+        InetSocketAddress localAddress = this.localAddress;
+        if (localAddress == null) {
+            try {
+                this.localAddress = localAddress = getLocalSocketAddress();
+            } catch (Throwable t) {
+                // Sometimes fails on a closed socket in Windows.
+                return null;
+            }
+        }
+        return localAddress;
+    }
 
-	public InetSocketAddress getLocalAddress() {
-		InetSocketAddress localAddress = this.localAddress;
-		if (localAddress == null) {
-			try {
-				this.localAddress = localAddress = getLocalSocketAddress();
-			} catch (Throwable t) {
-				// Sometimes fails on a closed socket in Windows.
-				return null;
-			}
-		}
-		return localAddress;
-	}
+    public InetSocketAddress getRemoteAddress() {
+        InetSocketAddress remoteAddress = this.remoteAddress;
+        if (remoteAddress == null) {
+            try {
+                this.remoteAddress = remoteAddress = getRemoteSocketAddress();
+            } catch (Throwable t) {
+                // Sometimes fails on a closed socket in Windows.
+                return null;
+            }
+        }
+        return remoteAddress;
+    }
 
-	public InetSocketAddress getRemoteAddress() {
-		InetSocketAddress remoteAddress = this.remoteAddress;
-		if (remoteAddress == null) {
-			try {
-				this.remoteAddress = remoteAddress = getRemoteSocketAddress();
-			} catch (Throwable t) {
-				// Sometimes fails on a closed socket in Windows.
-				return null;
-			}
-		}
-		return remoteAddress;
-	}
+    abstract boolean isSocketBound();
 
-	abstract boolean isSocketBound();
+    abstract boolean isSocketConnected();
 
-	abstract boolean isSocketConnected();
+    abstract boolean isSocketClosed();
 
-	abstract boolean isSocketClosed();
+    abstract InetSocketAddress getLocalSocketAddress() throws Exception;
 
-	abstract InetSocketAddress getLocalSocketAddress() throws Exception;
+    abstract InetSocketAddress getRemoteSocketAddress() throws Exception;
 
-	abstract InetSocketAddress getRemoteSocketAddress() throws Exception;
-
-	abstract void closeSocket() throws IOException;
+    abstract void closeSocket() throws IOException;
 
 }

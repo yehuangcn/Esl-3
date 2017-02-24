@@ -26,47 +26,47 @@ import com.freeswitch.netty.channel.ChannelPipeline;
  * is 'chunked. If you prefer not to receive {@link HttpChunk} in your handler,
  * please {@link HttpChunkAggregator} after {@link HttpMessageDecoder} in the
  * {@link ChannelPipeline}.
- * 
+ *
  * @apiviz.landmark
  */
 public interface HttpChunk {
 
-	/**
-	 * The 'end of content' marker in chunked encoding.
-	 */
-	HttpChunkTrailer LAST_CHUNK = new HttpChunkTrailer() {
-		public ChannelBuffer getContent() {
-			return ChannelBuffers.EMPTY_BUFFER;
-		}
+    /**
+     * The 'end of content' marker in chunked encoding.
+     */
+    HttpChunkTrailer LAST_CHUNK = new HttpChunkTrailer() {
+        public ChannelBuffer getContent() {
+            return ChannelBuffers.EMPTY_BUFFER;
+        }
 
-		public void setContent(ChannelBuffer content) {
-			throw new IllegalStateException("read-only");
-		}
+        public void setContent(ChannelBuffer content) {
+            throw new IllegalStateException("read-only");
+        }
 
-		public boolean isLast() {
-			return true;
-		}
+        public boolean isLast() {
+            return true;
+        }
 
-		public HttpHeaders trailingHeaders() {
-			return HttpHeaders.EMPTY_HEADERS;
-		}
-	};
+        public HttpHeaders trailingHeaders() {
+            return HttpHeaders.EMPTY_HEADERS;
+        }
+    };
 
-	/**
-	 * Returns {@code true} if and only if this chunk is the 'end of content'
-	 * marker.
-	 */
-	boolean isLast();
+    /**
+     * Returns {@code true} if and only if this chunk is the 'end of content'
+     * marker.
+     */
+    boolean isLast();
 
-	/**
-	 * Returns the content of this chunk. If this is the 'end of content'
-	 * marker, {@link ChannelBuffers#EMPTY_BUFFER} will be returned.
-	 */
-	ChannelBuffer getContent();
+    /**
+     * Returns the content of this chunk. If this is the 'end of content'
+     * marker, {@link ChannelBuffers#EMPTY_BUFFER} will be returned.
+     */
+    ChannelBuffer getContent();
 
-	/**
-	 * Sets the content of this chunk. If an empty buffer is specified, this
-	 * chunk becomes the 'end of content' marker.
-	 */
-	void setContent(ChannelBuffer content);
+    /**
+     * Sets the content of this chunk. If an empty buffer is specified, this
+     * chunk becomes the 'end of content' marker.
+     */
+    void setContent(ChannelBuffer content);
 }

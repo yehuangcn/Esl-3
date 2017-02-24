@@ -15,57 +15,57 @@
  */
 package com.freeswitch.netty.handler.timeout;
 
-import static com.freeswitch.netty.channel.Channels.succeededFuture;
+import com.freeswitch.netty.channel.Channel;
+import com.freeswitch.netty.channel.ChannelFuture;
 
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelFuture;
+import static com.freeswitch.netty.channel.Channels.succeededFuture;
 
 /**
  * The default {@link IdleStateEvent} implementation.
  */
 public class DefaultIdleStateEvent implements IdleStateEvent {
 
-	private final Channel channel;
-	private final IdleState state;
-	private final long lastActivityTimeMillis;
+    private final Channel channel;
+    private final IdleState state;
+    private final long lastActivityTimeMillis;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public DefaultIdleStateEvent(Channel channel, IdleState state, long lastActivityTimeMillis) {
-		if (channel == null) {
-			throw new NullPointerException("channel");
-		}
-		if (state == null) {
-			throw new NullPointerException("state");
-		}
-		this.channel = channel;
-		this.state = state;
-		this.lastActivityTimeMillis = lastActivityTimeMillis;
-	}
+    /**
+     * Creates a new instance.
+     */
+    public DefaultIdleStateEvent(Channel channel, IdleState state, long lastActivityTimeMillis) {
+        if (channel == null) {
+            throw new NullPointerException("channel");
+        }
+        if (state == null) {
+            throw new NullPointerException("state");
+        }
+        this.channel = channel;
+        this.state = state;
+        this.lastActivityTimeMillis = lastActivityTimeMillis;
+    }
 
-	public Channel getChannel() {
-		return channel;
-	}
+    public Channel getChannel() {
+        return channel;
+    }
 
-	public ChannelFuture getFuture() {
-		return succeededFuture(getChannel());
-	}
+    public ChannelFuture getFuture() {
+        return succeededFuture(getChannel());
+    }
 
-	public IdleState getState() {
-		return state;
-	}
+    public IdleState getState() {
+        return state;
+    }
 
-	public long getLastActivityTimeMillis() {
-		return lastActivityTimeMillis;
-	}
+    public long getLastActivityTimeMillis() {
+        return lastActivityTimeMillis;
+    }
 
-	@Override
-	public String toString() {
-		return getChannel().toString() + ' ' + getState() + " since " + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.US).format(new Date(getLastActivityTimeMillis()));
-	}
+    @Override
+    public String toString() {
+        return getChannel().toString() + ' ' + getState() + " since " + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.US).format(new Date(getLastActivityTimeMillis()));
+    }
 }

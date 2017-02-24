@@ -17,7 +17,7 @@ package com.freeswitch.netty.handler.codec.http;
 
 /**
  * An HTTP response.
- *
+ * <p>
  * <h3>Accessing Cookies</h3>
  * <p>
  * Unlike the Servlet API,
@@ -36,13 +36,13 @@ package com.freeswitch.netty.handler.codec.http;
  */
 public interface HttpResponse extends HttpMessage {
 
-	/**
-	 * Returns the status of this response.
-	 */
-	HttpResponseStatus getStatus();
+    /**
+     * Returns the status of this response.
+     */
+    HttpResponseStatus getStatus();
 
-	/**
-	 * Sets the status of this response.
-	 */
-	void setStatus(HttpResponseStatus status);
+    /**
+     * Sets the status of this response.
+     */
+    void setStatus(HttpResponseStatus status);
 }

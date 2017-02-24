@@ -22,51 +22,49 @@ package com.freeswitch.netty.channel;
  */
 public class FailedChannelFuture extends CompleteChannelFuture {
 
-	private final Throwable cause;
+    private final Throwable cause;
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param channel
-	 *            the {@link Channel} associated with this future
-	 * @param cause
-	 *            the cause of failure
-	 */
-	public FailedChannelFuture(Channel channel, Throwable cause) {
-		super(channel);
-		if (cause == null) {
-			throw new NullPointerException("cause");
-		}
-		this.cause = cause;
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param channel the {@link Channel} associated with this future
+     * @param cause   the cause of failure
+     */
+    public FailedChannelFuture(Channel channel, Throwable cause) {
+        super(channel);
+        if (cause == null) {
+            throw new NullPointerException("cause");
+        }
+        this.cause = cause;
+    }
 
-	public Throwable getCause() {
-		return cause;
-	}
+    public Throwable getCause() {
+        return cause;
+    }
 
-	public boolean isSuccess() {
-		return false;
-	}
+    public boolean isSuccess() {
+        return false;
+    }
 
-	public ChannelFuture sync() throws InterruptedException {
-		rethrow();
-		return this;
-	}
+    public ChannelFuture sync() throws InterruptedException {
+        rethrow();
+        return this;
+    }
 
-	public ChannelFuture syncUninterruptibly() {
-		rethrow();
-		return this;
-	}
+    public ChannelFuture syncUninterruptibly() {
+        rethrow();
+        return this;
+    }
 
-	private void rethrow() {
-		if (cause instanceof RuntimeException) {
-			throw (RuntimeException) cause;
-		}
+    private void rethrow() {
+        if (cause instanceof RuntimeException) {
+            throw (RuntimeException) cause;
+        }
 
-		if (cause instanceof Error) {
-			throw (Error) cause;
-		}
+        if (cause instanceof Error) {
+            throw (Error) cause;
+        }
 
-		throw new ChannelException(cause);
-	}
+        throw new ChannelException(cause);
+    }
 }

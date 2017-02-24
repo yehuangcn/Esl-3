@@ -23,16 +23,16 @@ import com.freeswitch.netty.channel.ChannelHandlerContext;
 /**
  * A decoder that splits the received {@link ChannelBuffer}s by the fixed number
  * of bytes. For server, if you received the following four fragmented packets:
- * 
+ * <p>
  * <pre>
  * +---+----+------+----+
  * | A | BC | DEFG | HI |
  * +---+----+------+----+
  * </pre>
- * 
+ * <p>
  * A {@link FixedLengthFrameDecoder}{@code (3)} will decode them into the
  * following three packets with the fixed length:
- * 
+ * <p>
  * <pre>
  * +-----+-----+-----+
  * | ABC | DEF | GHI |
@@ -41,50 +41,48 @@ import com.freeswitch.netty.channel.ChannelHandlerContext;
  */
 public class FixedLengthFrameDecoder extends FrameDecoder {
 
-	private final int frameLength;
-	private final boolean allocateFullBuffer;
+    private final int frameLength;
+    private final boolean allocateFullBuffer;
 
-	/**
-	 * Calls {@link #FixedLengthFrameDecoder(int, boolean)} with {@code false}
-	 */
-	public FixedLengthFrameDecoder(int frameLength) {
-		this(frameLength, false);
-	}
+    /**
+     * Calls {@link #FixedLengthFrameDecoder(int, boolean)} with {@code false}
+     */
+    public FixedLengthFrameDecoder(int frameLength) {
+        this(frameLength, false);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param frameLength
-	 *            the length of the frame
-	 * @param allocateFullBuffer
-	 *            {@code true} if the cumulative {@link ChannelBuffer} should
-	 *            use the {@link #frameLength} as its initial size
-	 */
-	public FixedLengthFrameDecoder(int frameLength, boolean allocateFullBuffer) {
-		if (frameLength <= 0) {
-			throw new IllegalArgumentException("frameLength must be a positive integer: " + frameLength);
-		}
-		this.frameLength = frameLength;
-		this.allocateFullBuffer = allocateFullBuffer;
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param frameLength        the length of the frame
+     * @param allocateFullBuffer {@code true} if the cumulative {@link ChannelBuffer} should
+     *                           use the {@link #frameLength} as its initial size
+     */
+    public FixedLengthFrameDecoder(int frameLength, boolean allocateFullBuffer) {
+        if (frameLength <= 0) {
+            throw new IllegalArgumentException("frameLength must be a positive integer: " + frameLength);
+        }
+        this.frameLength = frameLength;
+        this.allocateFullBuffer = allocateFullBuffer;
+    }
 
-	@Override
-	protected Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) throws Exception {
-		if (buffer.readableBytes() < frameLength) {
-			return null;
-		} else {
-			ChannelBuffer frame = extractFrame(buffer, buffer.readerIndex(), frameLength);
-			buffer.skipBytes(frameLength);
-			return frame;
-		}
-	}
+    @Override
+    protected Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) throws Exception {
+        if (buffer.readableBytes() < frameLength) {
+            return null;
+        } else {
+            ChannelBuffer frame = extractFrame(buffer, buffer.readerIndex(), frameLength);
+            buffer.skipBytes(frameLength);
+            return frame;
+        }
+    }
 
-	@Override
-	protected ChannelBuffer newCumulationBuffer(ChannelHandlerContext ctx, int minimumCapacity) {
-		ChannelBufferFactory factory = ctx.getChannel().getConfig().getBufferFactory();
-		if (allocateFullBuffer) {
-			return factory.getBuffer(frameLength);
-		}
-		return super.newCumulationBuffer(ctx, minimumCapacity);
-	}
+    @Override
+    protected ChannelBuffer newCumulationBuffer(ChannelHandlerContext ctx, int minimumCapacity) {
+        ChannelBufferFactory factory = ctx.getChannel().getConfig().getBufferFactory();
+        if (allocateFullBuffer) {
+            return factory.getBuffer(frameLength);
+        }
+        return super.newCumulationBuffer(ctx, minimumCapacity);
+    }
 }

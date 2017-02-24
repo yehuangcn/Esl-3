@@ -16,6 +16,5 @@
 
 /**
  * Base package for codecs
- *
  */
 package com.freeswitch.netty.handler.codec;

@@ -24,7 +24,7 @@ import java.net.SocketAddress;
  * {@linkplain ChannelStateEvent#getValue() value} of a
  * {@link ChannelStateEvent} and the direction of the event in a
  * {@link ChannelPipeline}:
- *
+ * <p>
  * <table border="1" cellspacing="0" cellpadding="6">
  * <tr>
  * <th>Direction</th>
@@ -122,25 +122,25 @@ import java.net.SocketAddress;
  * {@link ChannelEvent}.
  */
 public enum ChannelState {
-	/**
-	 * Represents a {@link Channel}'s {@link Channel#isOpen() open} property
-	 */
-	OPEN,
+    /**
+     * Represents a {@link Channel}'s {@link Channel#isOpen() open} property
+     */
+    OPEN,
 
-	/**
-	 * Represents a {@link Channel}'s {@link Channel#isBound() bound} property
-	 */
-	BOUND,
+    /**
+     * Represents a {@link Channel}'s {@link Channel#isBound() bound} property
+     */
+    BOUND,
 
-	/**
-	 * Represents a {@link Channel}'s {@link Channel#isConnected() connected}
-	 * property
-	 */
-	CONNECTED,
+    /**
+     * Represents a {@link Channel}'s {@link Channel#isConnected() connected}
+     * property
+     */
+    CONNECTED,
 
-	/**
-	 * Represents a {@link Channel}'s {@link Channel#getInterestOps()
-	 * interestOps} property
-	 */
-	INTEREST_OPS
+    /**
+     * Represents a {@link Channel}'s {@link Channel#getInterestOps()
+     * interestOps} property
+     */
+    INTEREST_OPS
 }

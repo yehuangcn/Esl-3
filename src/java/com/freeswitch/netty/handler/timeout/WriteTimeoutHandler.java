@@ -15,30 +15,19 @@
  */
 package com.freeswitch.netty.handler.timeout;
 
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
+import com.freeswitch.netty.bootstrap.ServerBootstrap;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.channel.ChannelHandler.Sharable;
+import com.freeswitch.netty.util.*;
 
 import java.util.concurrent.TimeUnit;
 
-import com.freeswitch.netty.bootstrap.ServerBootstrap;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelFutureListener;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelPipelineFactory;
-import com.freeswitch.netty.channel.Channels;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.channel.SimpleChannelDownstreamHandler;
-import com.freeswitch.netty.channel.ChannelHandler.Sharable;
-import com.freeswitch.netty.util.ExternalResourceReleasable;
-import com.freeswitch.netty.util.HashedWheelTimer;
-import com.freeswitch.netty.util.Timeout;
-import com.freeswitch.netty.util.Timer;
-import com.freeswitch.netty.util.TimerTask;
+import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
 
 /**
  * Raises a {@link WriteTimeoutException} when no data was written within a
  * certain period of time.
- *
+ * <p>
  * <pre>
  * public class MyPipelineFactory implements {@link ChannelPipelineFactory} {
  *
@@ -61,161 +50,154 @@ import com.freeswitch.netty.util.TimerTask;
  * ...
  * bootstrap.setPipelineFactory(new MyPipelineFactory(timer));
  * </pre>
- *
+ * <p>
  * The {@link Timer} which was specified when the {@link ReadTimeoutHandler} is
  * created should be stopped manually by calling
  * {@link #releaseExternalResources()} or {@link Timer#stop()} when your
  * application shuts down.
- * 
- * @see ReadTimeoutHandler
- * @see IdleStateHandler
  *
  * @apiviz.landmark
  * @apiviz.uses org.jboss.netty.util.HashedWheelTimer
  * @apiviz.has org.jboss.netty.handler.timeout.TimeoutException oneway - -
- *             raises
+ * raises
+ * @see ReadTimeoutHandler
+ * @see IdleStateHandler
  */
 @Sharable
 public class WriteTimeoutHandler extends SimpleChannelDownstreamHandler implements ExternalResourceReleasable {
 
-	static final WriteTimeoutException EXCEPTION = new WriteTimeoutException();
+    static final WriteTimeoutException EXCEPTION = new WriteTimeoutException();
 
-	private final Timer timer;
-	private final long timeoutMillis;
+    private final Timer timer;
+    private final long timeoutMillis;
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param timer
-	 *            the {@link Timer} that is used to trigger the scheduled event.
-	 *            The recommended {@link Timer} implementation is
-	 *            {@link HashedWheelTimer}.
-	 * @param timeoutSeconds
-	 *            write timeout in seconds
-	 */
-	public WriteTimeoutHandler(Timer timer, int timeoutSeconds) {
-		this(timer, timeoutSeconds, TimeUnit.SECONDS);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param timer          the {@link Timer} that is used to trigger the scheduled event.
+     *                       The recommended {@link Timer} implementation is
+     *                       {@link HashedWheelTimer}.
+     * @param timeoutSeconds write timeout in seconds
+     */
+    public WriteTimeoutHandler(Timer timer, int timeoutSeconds) {
+        this(timer, timeoutSeconds, TimeUnit.SECONDS);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param timer
-	 *            the {@link Timer} that is used to trigger the scheduled event.
-	 *            The recommended {@link Timer} implementation is
-	 *            {@link HashedWheelTimer}.
-	 * @param timeout
-	 *            write timeout
-	 * @param unit
-	 *            the {@link TimeUnit} of {@code timeout}
-	 */
-	public WriteTimeoutHandler(Timer timer, long timeout, TimeUnit unit) {
-		if (timer == null) {
-			throw new NullPointerException("timer");
-		}
-		if (unit == null) {
-			throw new NullPointerException("unit");
-		}
+    /**
+     * Creates a new instance.
+     *
+     * @param timer   the {@link Timer} that is used to trigger the scheduled event.
+     *                The recommended {@link Timer} implementation is
+     *                {@link HashedWheelTimer}.
+     * @param timeout write timeout
+     * @param unit    the {@link TimeUnit} of {@code timeout}
+     */
+    public WriteTimeoutHandler(Timer timer, long timeout, TimeUnit unit) {
+        if (timer == null) {
+            throw new NullPointerException("timer");
+        }
+        if (unit == null) {
+            throw new NullPointerException("unit");
+        }
 
-		this.timer = timer;
-		if (timeout <= 0) {
-			timeoutMillis = 0;
-		} else {
-			timeoutMillis = Math.max(unit.toMillis(timeout), 1);
-		}
-	}
+        this.timer = timer;
+        if (timeout <= 0) {
+            timeoutMillis = 0;
+        } else {
+            timeoutMillis = Math.max(unit.toMillis(timeout), 1);
+        }
+    }
 
-	/**
-	 * Stops the {@link Timer} which was specified in the constructor of this
-	 * handler. You should not call this method if the {@link Timer} is in use
-	 * by other objects.
-	 */
-	public void releaseExternalResources() {
-		timer.stop();
-	}
+    /**
+     * Stops the {@link Timer} which was specified in the constructor of this
+     * handler. You should not call this method if the {@link Timer} is in use
+     * by other objects.
+     */
+    public void releaseExternalResources() {
+        timer.stop();
+    }
 
-	/**
-	 * Returns the write timeout of the specified event. By default, this method
-	 * returns the timeout value you specified in the constructor. Override this
-	 * method to determine the timeout value depending on the message being
-	 * written.
-	 *
-	 * @param e
-	 *            the message being written
-	 */
-	protected long getTimeoutMillis(MessageEvent e) {
-		return timeoutMillis;
-	}
+    /**
+     * Returns the write timeout of the specified event. By default, this method
+     * returns the timeout value you specified in the constructor. Override this
+     * method to determine the timeout value depending on the message being
+     * written.
+     *
+     * @param e the message being written
+     */
+    protected long getTimeoutMillis(MessageEvent e) {
+        return timeoutMillis;
+    }
 
-	@Override
-	public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+    @Override
+    public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
 
-		long timeoutMillis = getTimeoutMillis(e);
-		if (timeoutMillis > 0) {
-			// Set timeout only when getTimeoutMillis() returns a positive
-			// value.
-			ChannelFuture future = e.getFuture();
-			final Timeout timeout = timer.newTimeout(new WriteTimeoutTask(ctx, future), timeoutMillis, TimeUnit.MILLISECONDS);
+        long timeoutMillis = getTimeoutMillis(e);
+        if (timeoutMillis > 0) {
+            // Set timeout only when getTimeoutMillis() returns a positive
+            // value.
+            ChannelFuture future = e.getFuture();
+            final Timeout timeout = timer.newTimeout(new WriteTimeoutTask(ctx, future), timeoutMillis, TimeUnit.MILLISECONDS);
 
-			future.addListener(new TimeoutCanceller(timeout));
-		}
+            future.addListener(new TimeoutCanceller(timeout));
+        }
 
-		super.writeRequested(ctx, e);
-	}
+        super.writeRequested(ctx, e);
+    }
 
-	protected void writeTimedOut(ChannelHandlerContext ctx) throws Exception {
-		fireExceptionCaught(ctx, EXCEPTION);
-	}
+    protected void writeTimedOut(ChannelHandlerContext ctx) throws Exception {
+        fireExceptionCaught(ctx, EXCEPTION);
+    }
 
-	private final class WriteTimeoutTask implements TimerTask {
+    private static final class TimeoutCanceller implements ChannelFutureListener {
+        private final Timeout timeout;
 
-		private final ChannelHandlerContext ctx;
-		private final ChannelFuture future;
+        TimeoutCanceller(Timeout timeout) {
+            this.timeout = timeout;
+        }
 
-		WriteTimeoutTask(ChannelHandlerContext ctx, ChannelFuture future) {
-			this.ctx = ctx;
-			this.future = future;
-		}
+        public void operationComplete(ChannelFuture future) throws Exception {
+            timeout.cancel();
+        }
+    }
 
-		public void run(Timeout timeout) throws Exception {
-			if (timeout.isCancelled()) {
-				return;
-			}
+    private final class WriteTimeoutTask implements TimerTask {
 
-			if (!ctx.getChannel().isOpen()) {
-				return;
-			}
+        private final ChannelHandlerContext ctx;
+        private final ChannelFuture future;
 
-			// Mark the future as failure
-			if (future.setFailure(EXCEPTION)) {
-				// If succeeded to mark as failure, notify the pipeline, too.
-				fireWriteTimeOut(ctx);
-			}
-		}
+        WriteTimeoutTask(ChannelHandlerContext ctx, ChannelFuture future) {
+            this.ctx = ctx;
+            this.future = future;
+        }
 
-		private void fireWriteTimeOut(final ChannelHandlerContext ctx) {
-			ctx.getPipeline().execute(new Runnable() {
+        public void run(Timeout timeout) throws Exception {
+            if (timeout.isCancelled()) {
+                return;
+            }
 
-				public void run() {
-					try {
-						writeTimedOut(ctx);
-					} catch (Throwable t) {
-						fireExceptionCaught(ctx, t);
-					}
-				}
-			});
-		}
-	}
+            if (!ctx.getChannel().isOpen()) {
+                return;
+            }
 
-	private static final class TimeoutCanceller implements ChannelFutureListener {
-		private final Timeout timeout;
+            // Mark the future as failure
+            if (future.setFailure(EXCEPTION)) {
+                // If succeeded to mark as failure, notify the pipeline, too.
+                fireWriteTimeOut(ctx);
+            }
+        }
 
-		TimeoutCanceller(Timeout timeout) {
-			this.timeout = timeout;
-		}
+        private void fireWriteTimeOut(final ChannelHandlerContext ctx) {
+            ctx.getPipeline().execute(new Runnable() {
 
-		public void operationComplete(ChannelFuture future) throws Exception {
-			timeout.cancel();
-		}
-	}
+                public void run() {
+                    try {
+                        writeTimedOut(ctx);
+                    } catch (Throwable t) {
+                        fireExceptionCaught(ctx, t);
+                    }
+                }
+            });
+        }
+    }
 }

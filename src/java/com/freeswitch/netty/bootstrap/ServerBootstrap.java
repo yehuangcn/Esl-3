@@ -15,8 +15,7 @@
  */
 package com.freeswitch.netty.bootstrap;
 
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.pipeline;
+import com.freeswitch.netty.channel.*;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -24,38 +23,23 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelConfig;
-import com.freeswitch.netty.channel.ChannelException;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelFutureListener;
-import com.freeswitch.netty.channel.ChannelHandler;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelPipelineFactory;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.Channels;
-import com.freeswitch.netty.channel.ChildChannelStateEvent;
-import com.freeswitch.netty.channel.DefaultChannelFuture;
-import com.freeswitch.netty.channel.ExceptionEvent;
-import com.freeswitch.netty.channel.ServerChannelFactory;
-import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
+import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
+import static com.freeswitch.netty.channel.Channels.pipeline;
 
 /**
  * A helper class which creates a new server-side {@link Channel} and accepts
  * incoming connections.
- *
+ * <p>
  * <h3>Only for connection oriented transports</h3>
- *
+ * <p>
  * This bootstrap is for connection oriented transports only such as TCP/IP and
  * local transport. Use {@link ConnectionlessBootstrap} instead for
  * connectionless transports. Do not use this helper if you are using a
  * connectionless transport such as UDP/IP which does not accept an incoming
  * connection but receives messages by itself without creating a child channel.
- *
+ * <p>
  * <h3>Parent channel and its children</h3>
- *
+ * <p>
  * A parent channel is a channel which is supposed to accept incoming
  * connections. It is created by this bootstrap's {@link ChannelFactory} via
  * {@link #bind()} and {@link #bind(SocketAddress)}.
@@ -63,14 +47,14 @@ import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
  * Once successfully bound, the parent channel starts to accept incoming
  * connections, and the accepted connections become the children of the parent
  * channel.
- *
+ * <p>
  * <h3>Configuring channels</h3>
- *
+ * <p>
  * {@link #setOption(String, Object) Options} are used to configure both a
  * parent channel and its child channels. To configure the child channels,
  * prepend {@code "child."} prefix to the actual option names of a child
  * channel:
- *
+ * <p>
  * <pre>
  * {@link ServerBootstrap} b = ...;
  *
@@ -82,12 +66,12 @@ import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
  * b.setOption("child.tcpNoDelay", true);
  * b.setOption("child.receiveBufferSize", 1048576);
  * </pre>
- *
+ * <p>
  * For the detailed list of available options, please refer to
  * {@link ChannelConfig} and its sub-types.
- *
+ * <p>
  * <h3>Configuring a parent channel pipeline</h3>
- *
+ * <p>
  * It is rare to customize the pipeline of a parent channel because what it is
  * supposed to do is very typical. However, you might want to add a handler to
  * deal with some special needs such as degrading the process
@@ -96,15 +80,15 @@ import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
  * user and changing the current VM security manager for better security. To
  * support such a case, the {@link #setParentHandler(ChannelHandler)
  * parentHandler} property is provided.
- *
+ * <p>
  * <h3>Configuring a child channel pipeline</h3>
- *
+ * <p>
  * Every channel has its own {@link ChannelPipeline} and you can configure it in
  * two ways.
- *
+ * <p>
  * The recommended approach is to specify a {@link ChannelPipelineFactory} by
  * calling {@link #setPipelineFactory(ChannelPipelineFactory)}.
- *
+ * <p>
  * <pre>
  * {@link ServerBootstrap} b = ...;
  * b.setPipelineFactory(new MyPipelineFactory());
@@ -120,12 +104,12 @@ import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
  *   }
  * }
  * </pre>
- * 
+ * <p>
  * <p>
  * The alternative approach, which works only in a certain situation, is to use
  * the default pipeline and let the bootstrap to shallow-copy the default
  * pipeline for each new channel:
- *
+ * <p>
  * <pre>
  * {@link ServerBootstrap} b = ...;
  * {@link ChannelPipeline} p = b.getPipeline();
@@ -135,15 +119,15 @@ import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
  * p.addLast("decoder", new DecodingHandler());
  * p.addLast("logic",   new LogicHandler());
  * </pre>
- *
+ * <p>
  * Please note 'shallow-copy' here means that the added {@link ChannelHandler}s
  * are not cloned but only their references are added to the new pipeline.
  * Therefore, you cannot use this approach if you are going to open more than
  * one {@link Channel}s or run a server that accepts incoming connections to
  * create its child channels.
- *
+ * <p>
  * <h3>Applying different settings for different {@link Channel}s</h3>
- *
+ * <p>
  * {@link ServerBootstrap} is just a helper class. It neither allocates nor
  * manages any resources. What manages the resources is the
  * {@link ChannelFactory} implementation you specified in the constructor of
@@ -156,248 +140,233 @@ import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
  */
 public class ServerBootstrap extends Bootstrap {
 
-	private volatile ChannelHandler parentHandler;
+    private volatile ChannelHandler parentHandler;
 
-	/**
-	 * Creates a new instance with no {@link ChannelFactory} set.
-	 * {@link #setFactory(ChannelFactory)} must be called before any I/O
-	 * operation is requested.
-	 */
-	public ServerBootstrap() {
-	}
+    /**
+     * Creates a new instance with no {@link ChannelFactory} set.
+     * {@link #setFactory(ChannelFactory)} must be called before any I/O
+     * operation is requested.
+     */
+    public ServerBootstrap() {
+    }
 
-	/**
-	 * Creates a new instance with the specified initial {@link ChannelFactory}.
-	 */
-	public ServerBootstrap(ChannelFactory channelFactory) {
-		super(channelFactory);
-	}
+    /**
+     * Creates a new instance with the specified initial {@link ChannelFactory}.
+     */
+    public ServerBootstrap(ChannelFactory channelFactory) {
+        super(channelFactory);
+    }
 
-	/**
-	 * Sets the {@link ServerChannelFactory} that will be used to perform an I/O
-	 * operation. This method can be called only once and can't be called at all
-	 * if the factory was specified in the constructor.
-	 *
-	 * @throws IllegalStateException
-	 *             if the factory is already set
-	 * @throws IllegalArgumentException
-	 *             if the specified {@code factory} is not a
-	 *             {@link ServerChannelFactory}
-	 */
-	@Override
-	public void setFactory(ChannelFactory factory) {
-		if (factory == null) {
-			throw new NullPointerException("factory");
-		}
-		if (!(factory instanceof ServerChannelFactory)) {
-			throw new IllegalArgumentException("factory must be a " + ServerChannelFactory.class.getSimpleName() + ": " + factory.getClass());
-		}
-		super.setFactory(factory);
-	}
+    /**
+     * Sets the {@link ServerChannelFactory} that will be used to perform an I/O
+     * operation. This method can be called only once and can't be called at all
+     * if the factory was specified in the constructor.
+     *
+     * @throws IllegalStateException    if the factory is already set
+     * @throws IllegalArgumentException if the specified {@code factory} is not a
+     *                                  {@link ServerChannelFactory}
+     */
+    @Override
+    public void setFactory(ChannelFactory factory) {
+        if (factory == null) {
+            throw new NullPointerException("factory");
+        }
+        if (!(factory instanceof ServerChannelFactory)) {
+            throw new IllegalArgumentException("factory must be a " + ServerChannelFactory.class.getSimpleName() + ": " + factory.getClass());
+        }
+        super.setFactory(factory);
+    }
 
-	/**
-	 * Returns an optional {@link ChannelHandler} which intercepts an event of a
-	 * newly bound server-side channel which accepts incoming connections.
-	 *
-	 * @return the parent channel handler. {@code null} if no parent channel
-	 *         handler is set.
-	 */
-	public ChannelHandler getParentHandler() {
-		return parentHandler;
-	}
+    /**
+     * Returns an optional {@link ChannelHandler} which intercepts an event of a
+     * newly bound server-side channel which accepts incoming connections.
+     *
+     * @return the parent channel handler. {@code null} if no parent channel
+     * handler is set.
+     */
+    public ChannelHandler getParentHandler() {
+        return parentHandler;
+    }
 
-	/**
-	 * Sets an optional {@link ChannelHandler} which intercepts an event of a
-	 * newly bound server-side channel which accepts incoming connections.
-	 *
-	 * @param parentHandler
-	 *            the parent channel handler. {@code null} to unset the current
-	 *            parent channel handler.
-	 */
-	public void setParentHandler(ChannelHandler parentHandler) {
-		this.parentHandler = parentHandler;
-	}
+    /**
+     * Sets an optional {@link ChannelHandler} which intercepts an event of a
+     * newly bound server-side channel which accepts incoming connections.
+     *
+     * @param parentHandler the parent channel handler. {@code null} to unset the current
+     *                      parent channel handler.
+     */
+    public void setParentHandler(ChannelHandler parentHandler) {
+        this.parentHandler = parentHandler;
+    }
 
-	/**
-	 * Creates a new channel which is bound to the local address which was
-	 * specified in the current {@code "localAddress"} option. This method is
-	 * similar to the following code:
-	 *
-	 * <pre>
-	 * {@link ServerBootstrap} b = ...;
-	 * b.bind(b.getOption("localAddress"));
-	 * </pre>
-	 *
-	 * This operation will block until the channel is bound.
-	 *
-	 * @return a new bound channel which accepts incoming connections
-	 *
-	 * @throws IllegalStateException
-	 *             if {@code "localAddress"} option was not set
-	 * @throws ClassCastException
-	 *             if {@code "localAddress"} option's value is neither a
-	 *             {@link SocketAddress} nor {@code null}
-	 * @throws ChannelException
-	 *             if failed to create a new channel and bind it to the local
-	 *             address
-	 */
-	public Channel bind() {
-		SocketAddress localAddress = (SocketAddress) getOption("localAddress");
-		if (localAddress == null) {
-			throw new IllegalStateException("localAddress option is not set.");
-		}
-		return bind(localAddress);
-	}
+    /**
+     * Creates a new channel which is bound to the local address which was
+     * specified in the current {@code "localAddress"} option. This method is
+     * similar to the following code:
+     * <p>
+     * <pre>
+     * {@link ServerBootstrap} b = ...;
+     * b.bind(b.getOption("localAddress"));
+     * </pre>
+     * <p>
+     * This operation will block until the channel is bound.
+     *
+     * @return a new bound channel which accepts incoming connections
+     * @throws IllegalStateException if {@code "localAddress"} option was not set
+     * @throws ClassCastException    if {@code "localAddress"} option's value is neither a
+     *                               {@link SocketAddress} nor {@code null}
+     * @throws ChannelException      if failed to create a new channel and bind it to the local
+     *                               address
+     */
+    public Channel bind() {
+        SocketAddress localAddress = (SocketAddress) getOption("localAddress");
+        if (localAddress == null) {
+            throw new IllegalStateException("localAddress option is not set.");
+        }
+        return bind(localAddress);
+    }
 
-	/**
-	 * Creates a new channel which is bound to the specified local address. This
-	 * operation will block until the channel is bound.
-	 *
-	 * @return a new bound channel which accepts incoming connections
-	 *
-	 * @throws ChannelException
-	 *             if failed to create a new channel and bind it to the local
-	 *             address
-	 */
-	public Channel bind(final SocketAddress localAddress) {
-		ChannelFuture future = bindAsync(localAddress);
+    /**
+     * Creates a new channel which is bound to the specified local address. This
+     * operation will block until the channel is bound.
+     *
+     * @return a new bound channel which accepts incoming connections
+     * @throws ChannelException if failed to create a new channel and bind it to the local
+     *                          address
+     */
+    public Channel bind(final SocketAddress localAddress) {
+        ChannelFuture future = bindAsync(localAddress);
 
-		// Wait for the future.
-		future.awaitUninterruptibly();
-		if (!future.isSuccess()) {
-			future.getChannel().close().awaitUninterruptibly();
-			throw new ChannelException("Failed to bind to: " + localAddress, future.getCause());
-		}
+        // Wait for the future.
+        future.awaitUninterruptibly();
+        if (!future.isSuccess()) {
+            future.getChannel().close().awaitUninterruptibly();
+            throw new ChannelException("Failed to bind to: " + localAddress, future.getCause());
+        }
 
-		return future.getChannel();
-	}
+        return future.getChannel();
+    }
 
-	/**
-	 * Bind a channel asynchronous to the local address specified in the current
-	 * {@code "localAddress"} option. This method is similar to the following
-	 * code:
-	 *
-	 * <pre>
-	 * {@link ServerBootstrap} b = ...;
-	 * b.bindAsync(b.getOption("localAddress"));
-	 * </pre>
-	 *
-	 *
-	 * @return a new {@link ChannelFuture} which will be notified once the
-	 *         Channel is bound and accepts incoming connections
-	 *
-	 * @throws IllegalStateException
-	 *             if {@code "localAddress"} option was not set
-	 * @throws ClassCastException
-	 *             if {@code "localAddress"} option's value is neither a
-	 *             {@link SocketAddress} nor {@code null}
-	 * @throws ChannelException
-	 *             if failed to create a new channel and bind it to the local
-	 *             address
-	 */
-	public ChannelFuture bindAsync() {
-		SocketAddress localAddress = (SocketAddress) getOption("localAddress");
-		if (localAddress == null) {
-			throw new IllegalStateException("localAddress option is not set.");
-		}
-		return bindAsync(localAddress);
-	}
+    /**
+     * Bind a channel asynchronous to the local address specified in the current
+     * {@code "localAddress"} option. This method is similar to the following
+     * code:
+     * <p>
+     * <pre>
+     * {@link ServerBootstrap} b = ...;
+     * b.bindAsync(b.getOption("localAddress"));
+     * </pre>
+     *
+     * @return a new {@link ChannelFuture} which will be notified once the
+     * Channel is bound and accepts incoming connections
+     * @throws IllegalStateException if {@code "localAddress"} option was not set
+     * @throws ClassCastException    if {@code "localAddress"} option's value is neither a
+     *                               {@link SocketAddress} nor {@code null}
+     * @throws ChannelException      if failed to create a new channel and bind it to the local
+     *                               address
+     */
+    public ChannelFuture bindAsync() {
+        SocketAddress localAddress = (SocketAddress) getOption("localAddress");
+        if (localAddress == null) {
+            throw new IllegalStateException("localAddress option is not set.");
+        }
+        return bindAsync(localAddress);
+    }
 
-	/**
-	 * Bind a channel asynchronous to the specified local address.
-	 *
-	 * @return a new {@link ChannelFuture} which will be notified once the
-	 *         Channel is bound and accepts incoming connections
-	 *
-	 */
-	public ChannelFuture bindAsync(final SocketAddress localAddress) {
-		if (localAddress == null) {
-			throw new NullPointerException("localAddress");
-		}
-		Binder binder = new Binder(localAddress);
-		ChannelHandler parentHandler = getParentHandler();
+    /**
+     * Bind a channel asynchronous to the specified local address.
+     *
+     * @return a new {@link ChannelFuture} which will be notified once the
+     * Channel is bound and accepts incoming connections
+     */
+    public ChannelFuture bindAsync(final SocketAddress localAddress) {
+        if (localAddress == null) {
+            throw new NullPointerException("localAddress");
+        }
+        Binder binder = new Binder(localAddress);
+        ChannelHandler parentHandler = getParentHandler();
 
-		ChannelPipeline bossPipeline = pipeline();
-		bossPipeline.addLast("binder", binder);
-		if (parentHandler != null) {
-			bossPipeline.addLast("userHandler", parentHandler);
-		}
+        ChannelPipeline bossPipeline = pipeline();
+        bossPipeline.addLast("binder", binder);
+        if (parentHandler != null) {
+            bossPipeline.addLast("userHandler", parentHandler);
+        }
 
-		Channel channel = getFactory().newChannel(bossPipeline);
-		final ChannelFuture bfuture = new DefaultChannelFuture(channel, false);
-		binder.bindFuture.addListener(new ChannelFutureListener() {
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (future.isSuccess()) {
-					bfuture.setSuccess();
-				} else {
-					// Call close on bind failure
-					bfuture.getChannel().close();
-					bfuture.setFailure(future.getCause());
-				}
-			}
-		});
-		return bfuture;
-	}
+        Channel channel = getFactory().newChannel(bossPipeline);
+        final ChannelFuture bfuture = new DefaultChannelFuture(channel, false);
+        binder.bindFuture.addListener(new ChannelFutureListener() {
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if (future.isSuccess()) {
+                    bfuture.setSuccess();
+                } else {
+                    // Call close on bind failure
+                    bfuture.getChannel().close();
+                    bfuture.setFailure(future.getCause());
+                }
+            }
+        });
+        return bfuture;
+    }
 
-	private final class Binder extends SimpleChannelUpstreamHandler {
+    private final class Binder extends SimpleChannelUpstreamHandler {
 
-		private final SocketAddress localAddress;
-		private final Map<String, Object> childOptions = new HashMap<String, Object>();
-		private final DefaultChannelFuture bindFuture = new DefaultChannelFuture(null, false);
+        private final SocketAddress localAddress;
+        private final Map<String, Object> childOptions = new HashMap<String, Object>();
+        private final DefaultChannelFuture bindFuture = new DefaultChannelFuture(null, false);
 
-		Binder(SocketAddress localAddress) {
-			this.localAddress = localAddress;
-		}
+        Binder(SocketAddress localAddress) {
+            this.localAddress = localAddress;
+        }
 
-		@Override
-		public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent evt) {
+        @Override
+        public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent evt) {
 
-			try {
-				evt.getChannel().getConfig().setPipelineFactory(getPipelineFactory());
+            try {
+                evt.getChannel().getConfig().setPipelineFactory(getPipelineFactory());
 
-				// Split options into two categories: parent and child.
-				Map<String, Object> allOptions = getOptions();
-				Map<String, Object> parentOptions = new HashMap<String, Object>();
-				for (Entry<String, Object> e : allOptions.entrySet()) {
-					if (e.getKey().startsWith("child.")) {
-						childOptions.put(e.getKey().substring(6), e.getValue());
-					} else if (!"pipelineFactory".equals(e.getKey())) {
-						parentOptions.put(e.getKey(), e.getValue());
-					}
-				}
+                // Split options into two categories: parent and child.
+                Map<String, Object> allOptions = getOptions();
+                Map<String, Object> parentOptions = new HashMap<String, Object>();
+                for (Entry<String, Object> e : allOptions.entrySet()) {
+                    if (e.getKey().startsWith("child.")) {
+                        childOptions.put(e.getKey().substring(6), e.getValue());
+                    } else if (!"pipelineFactory".equals(e.getKey())) {
+                        parentOptions.put(e.getKey(), e.getValue());
+                    }
+                }
 
-				// Apply parent options.
-				evt.getChannel().getConfig().setOptions(parentOptions);
-			} finally {
-				ctx.sendUpstream(evt);
-			}
+                // Apply parent options.
+                evt.getChannel().getConfig().setOptions(parentOptions);
+            } finally {
+                ctx.sendUpstream(evt);
+            }
 
-			evt.getChannel().bind(localAddress).addListener(new ChannelFutureListener() {
-				public void operationComplete(ChannelFuture future) throws Exception {
-					if (future.isSuccess()) {
-						bindFuture.setSuccess();
-					} else {
-						bindFuture.setFailure(future.getCause());
-					}
-				}
-			});
-		}
+            evt.getChannel().bind(localAddress).addListener(new ChannelFutureListener() {
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    if (future.isSuccess()) {
+                        bindFuture.setSuccess();
+                    } else {
+                        bindFuture.setFailure(future.getCause());
+                    }
+                }
+            });
+        }
 
-		@Override
-		public void childChannelOpen(ChannelHandlerContext ctx, ChildChannelStateEvent e) throws Exception {
-			// Apply child options.
-			try {
-				e.getChildChannel().getConfig().setOptions(childOptions);
-			} catch (Throwable t) {
-				fireExceptionCaught(e.getChildChannel(), t);
-			}
-			ctx.sendUpstream(e);
-		}
+        @Override
+        public void childChannelOpen(ChannelHandlerContext ctx, ChildChannelStateEvent e) throws Exception {
+            // Apply child options.
+            try {
+                e.getChildChannel().getConfig().setOptions(childOptions);
+            } catch (Throwable t) {
+                fireExceptionCaught(e.getChildChannel(), t);
+            }
+            ctx.sendUpstream(e);
+        }
 
-		@Override
-		public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
-			bindFuture.setFailure(e.getCause());
-			ctx.sendUpstream(e);
-		}
-	}
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+            bindFuture.setFailure(e.getCause());
+            ctx.sendUpstream(e);
+        }
+    }
 }

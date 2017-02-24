@@ -15,49 +15,44 @@
  */
 package com.freeswitch.netty.channel.local;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
+import com.freeswitch.netty.channel.*;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.freeswitch.netty.channel.AbstractServerChannel;
-import com.freeswitch.netty.channel.ChannelConfig;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
-import com.freeswitch.netty.channel.DefaultServerChannelConfig;
+import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
 
 /**
  */
 final class DefaultLocalServerChannel extends AbstractServerChannel implements LocalServerChannel {
 
-	final ChannelConfig channelConfig;
-	final AtomicBoolean bound = new AtomicBoolean();
-	volatile LocalAddress localAddress;
+    final ChannelConfig channelConfig;
+    final AtomicBoolean bound = new AtomicBoolean();
+    volatile LocalAddress localAddress;
 
-	DefaultLocalServerChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
-		super(factory, pipeline, sink);
-		channelConfig = new DefaultServerChannelConfig();
-		fireChannelOpen(this);
-	}
+    DefaultLocalServerChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
+        super(factory, pipeline, sink);
+        channelConfig = new DefaultServerChannelConfig();
+        fireChannelOpen(this);
+    }
 
-	public ChannelConfig getConfig() {
-		return channelConfig;
-	}
+    public ChannelConfig getConfig() {
+        return channelConfig;
+    }
 
-	public boolean isBound() {
-		return isOpen() && bound.get();
-	}
+    public boolean isBound() {
+        return isOpen() && bound.get();
+    }
 
-	public LocalAddress getLocalAddress() {
-		return isBound() ? localAddress : null;
-	}
+    public LocalAddress getLocalAddress() {
+        return isBound() ? localAddress : null;
+    }
 
-	public LocalAddress getRemoteAddress() {
-		return null;
-	}
+    public LocalAddress getRemoteAddress() {
+        return null;
+    }
 
-	@Override
-	protected boolean setClosed() {
-		return super.setClosed();
-	}
+    @Override
+    protected boolean setClosed() {
+        return super.setClosed();
+    }
 }

@@ -15,24 +15,6 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelBound;
-import static com.freeswitch.netty.channel.Channels.fireChannelClosed;
-import static com.freeswitch.netty.channel.Channels.fireChannelUnbound;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.succeededFuture;
-
-import java.io.IOException;
-import java.net.SocketAddress;
-import java.net.SocketTimeoutException;
-import java.nio.channels.CancelledKeyException;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.concurrent.Executor;
-
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelFuture;
 import com.freeswitch.netty.channel.ChannelPipeline;
@@ -40,165 +22,175 @@ import com.freeswitch.netty.channel.ChannelSink;
 import com.freeswitch.netty.util.ThreadNameDeterminer;
 import com.freeswitch.netty.util.ThreadRenamingRunnable;
 
+import java.io.IOException;
+import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
+import java.nio.channels.*;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.concurrent.Executor;
+
+import static com.freeswitch.netty.channel.Channels.*;
+
 /**
  * Boss implementation which handles accepting of new connections
  */
 public final class NioServerBoss extends AbstractNioSelector implements Boss {
 
-	NioServerBoss(Executor bossExecutor) {
-		super(bossExecutor);
-	}
+    NioServerBoss(Executor bossExecutor) {
+        super(bossExecutor);
+    }
 
-	NioServerBoss(Executor bossExecutor, ThreadNameDeterminer determiner) {
-		super(bossExecutor, determiner);
-	}
+    NioServerBoss(Executor bossExecutor, ThreadNameDeterminer determiner) {
+        super(bossExecutor, determiner);
+    }
 
-	void bind(final NioServerSocketChannel channel, final ChannelFuture future, final SocketAddress localAddress) {
-		registerTask(new RegisterTask(channel, future, localAddress));
-	}
+    private static void registerAcceptedChannel(NioServerSocketChannel parent, SocketChannel acceptedSocket, Thread currentThread) {
+        try {
+            ChannelSink sink = parent.getPipeline().getSink();
+            ChannelPipeline pipeline = parent.getConfig().getPipelineFactory().getPipeline();
+            NioWorker worker = parent.workerPool.nextWorker();
+            worker.register(new NioAcceptedSocketChannel(parent.getFactory(), pipeline, parent, sink, acceptedSocket, worker, currentThread), null);
+        } catch (Exception e) {
+            if (logger.isWarnEnabled()) {
+                logger.warn("Failed to initialize an accepted socket.", e);
+            }
 
-	@Override
-	protected void close(SelectionKey k) {
-		NioServerSocketChannel ch = (NioServerSocketChannel) k.attachment();
-		close(ch, succeededFuture(ch));
-	}
+            try {
+                acceptedSocket.close();
+            } catch (IOException e2) {
+                if (logger.isWarnEnabled()) {
+                    logger.warn("Failed to close a partially accepted socket.", e2);
+                }
+            }
+        }
+    }
 
-	void close(NioServerSocketChannel channel, ChannelFuture future) {
-		boolean bound = channel.isBound();
+    void bind(final NioServerSocketChannel channel, final ChannelFuture future, final SocketAddress localAddress) {
+        registerTask(new RegisterTask(channel, future, localAddress));
+    }
 
-		try {
-			channel.socket.close();
-			increaseCancelledKeys();
+    @Override
+    protected void close(SelectionKey k) {
+        NioServerSocketChannel ch = (NioServerSocketChannel) k.attachment();
+        close(ch, succeededFuture(ch));
+    }
 
-			if (channel.setClosed()) {
-				future.setSuccess();
+    void close(NioServerSocketChannel channel, ChannelFuture future) {
+        boolean bound = channel.isBound();
 
-				if (bound) {
-					fireChannelUnbound(channel);
-				}
-				fireChannelClosed(channel);
-			} else {
-				future.setSuccess();
-			}
-		} catch (Throwable t) {
-			future.setFailure(t);
-			fireExceptionCaught(channel, t);
-		}
-	}
+        try {
+            channel.socket.close();
+            increaseCancelledKeys();
 
-	@Override
-	protected void process(Selector selector) {
-		Set<SelectionKey> selectedKeys = selector.selectedKeys();
-		if (selectedKeys.isEmpty()) {
-			return;
-		}
-		for (Iterator<SelectionKey> i = selectedKeys.iterator(); i.hasNext();) {
-			SelectionKey k = i.next();
-			i.remove();
-			NioServerSocketChannel channel = (NioServerSocketChannel) k.attachment();
+            if (channel.setClosed()) {
+                future.setSuccess();
 
-			try {
-				// accept connections in a for loop until no new connection is
-				// ready
-				for (;;) {
-					SocketChannel acceptedSocket = channel.socket.accept();
-					if (acceptedSocket == null) {
-						break;
-					}
-					registerAcceptedChannel(channel, acceptedSocket, thread);
-				}
-			} catch (CancelledKeyException e) {
-				// Raised by accept() when the server socket was closed.
-				k.cancel();
-				channel.close();
-			} catch (SocketTimeoutException e) {
-				// Thrown every second to get ClosedChannelException
-				// raised.
-			} catch (ClosedChannelException e) {
-				// Closed as requested.
-			} catch (Throwable t) {
-				if (logger.isWarnEnabled()) {
-					logger.warn("Failed to accept a connection.", t);
-				}
+                if (bound) {
+                    fireChannelUnbound(channel);
+                }
+                fireChannelClosed(channel);
+            } else {
+                future.setSuccess();
+            }
+        } catch (Throwable t) {
+            future.setFailure(t);
+            fireExceptionCaught(channel, t);
+        }
+    }
 
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e1) {
-					// Ignore
-				}
-			}
-		}
-	}
+    @Override
+    protected void process(Selector selector) {
+        Set<SelectionKey> selectedKeys = selector.selectedKeys();
+        if (selectedKeys.isEmpty()) {
+            return;
+        }
+        for (Iterator<SelectionKey> i = selectedKeys.iterator(); i.hasNext(); ) {
+            SelectionKey k = i.next();
+            i.remove();
+            NioServerSocketChannel channel = (NioServerSocketChannel) k.attachment();
 
-	private static void registerAcceptedChannel(NioServerSocketChannel parent, SocketChannel acceptedSocket, Thread currentThread) {
-		try {
-			ChannelSink sink = parent.getPipeline().getSink();
-			ChannelPipeline pipeline = parent.getConfig().getPipelineFactory().getPipeline();
-			NioWorker worker = parent.workerPool.nextWorker();
-			worker.register(new NioAcceptedSocketChannel(parent.getFactory(), pipeline, parent, sink, acceptedSocket, worker, currentThread), null);
-		} catch (Exception e) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("Failed to initialize an accepted socket.", e);
-			}
+            try {
+                // accept connections in a for loop until no new connection is
+                // ready
+                for (; ; ) {
+                    SocketChannel acceptedSocket = channel.socket.accept();
+                    if (acceptedSocket == null) {
+                        break;
+                    }
+                    registerAcceptedChannel(channel, acceptedSocket, thread);
+                }
+            } catch (CancelledKeyException e) {
+                // Raised by accept() when the server socket was closed.
+                k.cancel();
+                channel.close();
+            } catch (SocketTimeoutException e) {
+                // Thrown every second to get ClosedChannelException
+                // raised.
+            } catch (ClosedChannelException e) {
+                // Closed as requested.
+            } catch (Throwable t) {
+                if (logger.isWarnEnabled()) {
+                    logger.warn("Failed to accept a connection.", t);
+                }
 
-			try {
-				acceptedSocket.close();
-			} catch (IOException e2) {
-				if (logger.isWarnEnabled()) {
-					logger.warn("Failed to close a partially accepted socket.", e2);
-				}
-			}
-		}
-	}
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e1) {
+                    // Ignore
+                }
+            }
+        }
+    }
 
-	@Override
-	protected int select(Selector selector) throws IOException {
-		// Just do a blocking select without any timeout
-		// as this thread does not execute anything else.
-		return selector.select();
-	}
+    @Override
+    protected int select(Selector selector) throws IOException {
+        // Just do a blocking select without any timeout
+        // as this thread does not execute anything else.
+        return selector.select();
+    }
 
-	@Override
-	protected ThreadRenamingRunnable newThreadRenamingRunnable(int id, ThreadNameDeterminer determiner) {
-		return new ThreadRenamingRunnable(this, "New I/O server boss #" + id, determiner);
-	}
+    @Override
+    protected ThreadRenamingRunnable newThreadRenamingRunnable(int id, ThreadNameDeterminer determiner) {
+        return new ThreadRenamingRunnable(this, "New I/O server boss #" + id, determiner);
+    }
 
-	@Override
-	protected Runnable createRegisterTask(Channel channel, ChannelFuture future) {
-		return new RegisterTask((NioServerSocketChannel) channel, future, null);
-	}
+    @Override
+    protected Runnable createRegisterTask(Channel channel, ChannelFuture future) {
+        return new RegisterTask((NioServerSocketChannel) channel, future, null);
+    }
 
-	private final class RegisterTask implements Runnable {
-		private final NioServerSocketChannel channel;
-		private final ChannelFuture future;
-		private final SocketAddress localAddress;
+    private final class RegisterTask implements Runnable {
+        private final NioServerSocketChannel channel;
+        private final ChannelFuture future;
+        private final SocketAddress localAddress;
 
-		public RegisterTask(final NioServerSocketChannel channel, final ChannelFuture future, final SocketAddress localAddress) {
-			this.channel = channel;
-			this.future = future;
-			this.localAddress = localAddress;
-		}
+        public RegisterTask(final NioServerSocketChannel channel, final ChannelFuture future, final SocketAddress localAddress) {
+            this.channel = channel;
+            this.future = future;
+            this.localAddress = localAddress;
+        }
 
-		public void run() {
-			boolean bound = false;
-			boolean registered = false;
-			try {
-				channel.socket.socket().bind(localAddress, channel.getConfig().getBacklog());
-				bound = true;
+        public void run() {
+            boolean bound = false;
+            boolean registered = false;
+            try {
+                channel.socket.socket().bind(localAddress, channel.getConfig().getBacklog());
+                bound = true;
 
-				future.setSuccess();
-				fireChannelBound(channel, channel.getLocalAddress());
-				channel.socket.register(selector, SelectionKey.OP_ACCEPT, channel);
+                future.setSuccess();
+                fireChannelBound(channel, channel.getLocalAddress());
+                channel.socket.register(selector, SelectionKey.OP_ACCEPT, channel);
 
-				registered = true;
-			} catch (Throwable t) {
-				future.setFailure(t);
-				fireExceptionCaught(channel, t);
-			} finally {
-				if (!registered && bound) {
-					close(channel, future);
-				}
-			}
-		}
-	}
+                registered = true;
+            } catch (Throwable t) {
+                future.setFailure(t);
+                fireExceptionCaught(channel, t);
+            } finally {
+                if (!registered && bound) {
+                    close(channel, future);
+                }
+            }
+        }
+    }
 }

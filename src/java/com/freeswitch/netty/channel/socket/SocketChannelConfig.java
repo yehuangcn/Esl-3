@@ -15,19 +15,19 @@
  */
 package com.freeswitch.netty.channel.socket;
 
+import com.freeswitch.netty.channel.ChannelConfig;
+
 import java.net.Socket;
 import java.net.StandardSocketOptions;
 
-import com.freeswitch.netty.channel.ChannelConfig;
-
 /**
  * A {@link ChannelConfig} for a {@link SocketChannel}.
- *
+ * <p>
  * <h3>Available options</h3>
- *
+ * <p>
  * In addition to the options provided by {@link ChannelConfig},
  * {@link SocketChannelConfig} allows the following options in the option map:
- *
+ * <p>
  * <table border="1" cellspacing="0" cellpadding="6">
  * <tr>
  * <th>Name</th>
@@ -65,79 +65,79 @@ import com.freeswitch.netty.channel.ChannelConfig;
  */
 public interface SocketChannelConfig extends ChannelConfig {
 
-	/**
-	 * Gets the {@link StandardSocketOptions#TCP_NODELAY} option.
-	 */
-	boolean isTcpNoDelay();
+    /**
+     * Gets the {@link StandardSocketOptions#TCP_NODELAY} option.
+     */
+    boolean isTcpNoDelay();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#TCP_NODELAY} option.
-	 */
-	void setTcpNoDelay(boolean tcpNoDelay);
+    /**
+     * Sets the {@link StandardSocketOptions#TCP_NODELAY} option.
+     */
+    void setTcpNoDelay(boolean tcpNoDelay);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_LINGER} option.
-	 */
-	int getSoLinger();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_LINGER} option.
+     */
+    int getSoLinger();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_LINGER} option.
-	 */
-	void setSoLinger(int soLinger);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_LINGER} option.
+     */
+    void setSoLinger(int soLinger);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_SNDBUF} option.
-	 */
-	int getSendBufferSize();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_SNDBUF} option.
+     */
+    int getSendBufferSize();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_SNDBUF} option.
-	 */
-	void setSendBufferSize(int sendBufferSize);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_SNDBUF} option.
+     */
+    void setSendBufferSize(int sendBufferSize);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_RCVBUF} option.
-	 */
-	int getReceiveBufferSize();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_RCVBUF} option.
+     */
+    int getReceiveBufferSize();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_RCVBUF} option.
-	 */
-	void setReceiveBufferSize(int receiveBufferSize);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_RCVBUF} option.
+     */
+    void setReceiveBufferSize(int receiveBufferSize);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_KEEPALIVE} option.
-	 */
-	boolean isKeepAlive();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_KEEPALIVE} option.
+     */
+    boolean isKeepAlive();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_KEEPALIVE} option.
-	 */
-	void setKeepAlive(boolean keepAlive);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_KEEPALIVE} option.
+     */
+    void setKeepAlive(boolean keepAlive);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#IP_TOS} option.
-	 */
-	int getTrafficClass();
+    /**
+     * Gets the {@link StandardSocketOptions#IP_TOS} option.
+     */
+    int getTrafficClass();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#IP_TOS} option.
-	 */
-	void setTrafficClass(int trafficClass);
+    /**
+     * Sets the {@link StandardSocketOptions#IP_TOS} option.
+     */
+    void setTrafficClass(int trafficClass);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_REUSEADDR} option.
-	 */
-	boolean isReuseAddress();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_REUSEADDR} option.
+     */
+    boolean isReuseAddress();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_REUSEADDR} option.
-	 */
-	void setReuseAddress(boolean reuseAddress);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_REUSEADDR} option.
+     */
+    void setReuseAddress(boolean reuseAddress);
 
-	/**
-	 * Sets the performance preferences as specified in
-	 * {@link Socket#setPerformancePreferences(int, int, int)}.
-	 */
-	void setPerformancePreferences(int connectionTime, int latency, int bandwidth);
+    /**
+     * Sets the performance preferences as specified in
+     * {@link Socket#setPerformancePreferences(int, int, int)}.
+     */
+    void setPerformancePreferences(int connectionTime, int latency, int bandwidth);
 }

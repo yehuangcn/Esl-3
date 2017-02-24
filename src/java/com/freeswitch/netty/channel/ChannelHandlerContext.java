@@ -19,26 +19,26 @@ package com.freeswitch.netty.channel;
  * Enables a {@link ChannelHandler} to interact with its {@link ChannelPipeline}
  * and other handlers. A handler can send a {@link ChannelEvent} upstream or
  * downstream, modify the {@link ChannelPipeline} it belongs to dynamically.
- *
+ * <p>
  * <h3>Sending an event</h3>
- *
+ * <p>
  * You can send or forward a {@link ChannelEvent} to the closest handler in the
  * same {@link ChannelPipeline} by calling {@link #sendUpstream(ChannelEvent)}
  * or {@link #sendDownstream(ChannelEvent)}. Please refer to
  * {@link ChannelPipeline} to understand how an event flows.
- *
+ * <p>
  * <h3>Modifying a pipeline</h3>
- *
+ * <p>
  * You can get the {@link ChannelPipeline} your handler belongs to by calling
  * {@link #getPipeline()}. A non-trivial application could insert, remove, or
  * replace handlers in the pipeline dynamically in runtime.
- *
+ * <p>
  * <h3>Retrieving for later use</h3>
- *
+ * <p>
  * You can keep the {@link ChannelHandlerContext} for later use, such as
  * triggering an event outside the handler methods, even from a different
  * thread.
- * 
+ * <p>
  * <pre>
  * public class MyHandler extends {@link SimpleChannelHandler}
  *                        implements {@link LifeCycleAwareChannelHandler} {
@@ -58,16 +58,16 @@ package com.freeswitch.netty.channel;
  *     ...
  * }
  * </pre>
- *
+ * <p>
  * <h3>Storing stateful information</h3>
- *
+ * <p>
  * {@link #setAttachment(Object)} and {@link #getAttachment()} allow you to
  * store and access stateful information that is related with a handler and its
  * context. Please refer to {@link ChannelHandler} to learn various recommended
  * ways to manage stateful information.
- *
+ * <p>
  * <h3>A handler can have more than one context</h3>
- *
+ * <p>
  * Please note that a {@link ChannelHandler} instance can be added to more than
  * one {@link ChannelPipeline}. It means a single {@link ChannelHandler}
  * instance can have more than one {@link ChannelHandlerContext} and therefore
@@ -78,7 +78,7 @@ package com.freeswitch.netty.channel;
  * For server, the following handler will have as many independent attachments
  * as how many times it is added to pipelines, regardless if it is added to the
  * same pipeline multiple times or added to different pipelines multiple times:
- * 
+ * <p>
  * <pre>
  * public class FactorialHandler extends {@link SimpleChannelHandler} {
  *
@@ -111,7 +111,7 @@ package com.freeswitch.netty.channel;
  * p2.addLast("f3", fh);
  * p2.addLast("f4", fh);
  * </pre>
- *
+ * <p>
  * <h3>Additional resources worth reading</h3>
  * <p>
  * Please refer to the {@link ChannelHandler}, {@link ChannelEvent}, and
@@ -123,72 +123,72 @@ package com.freeswitch.netty.channel;
  */
 public interface ChannelHandlerContext {
 
-	/**
-	 * Returns the {@link Channel} that the {@link ChannelPipeline} belongs to.
-	 * This method is a shortcut to <tt>getPipeline().getChannel()</tt>.
-	 */
-	Channel getChannel();
+    /**
+     * Returns the {@link Channel} that the {@link ChannelPipeline} belongs to.
+     * This method is a shortcut to <tt>getPipeline().getChannel()</tt>.
+     */
+    Channel getChannel();
 
-	/**
-	 * Returns the {@link ChannelPipeline} that the {@link ChannelHandler}
-	 * belongs to.
-	 */
-	ChannelPipeline getPipeline();
+    /**
+     * Returns the {@link ChannelPipeline} that the {@link ChannelHandler}
+     * belongs to.
+     */
+    ChannelPipeline getPipeline();
 
-	/**
-	 * Returns the name of the {@link ChannelHandler} in the
-	 * {@link ChannelPipeline}.
-	 */
-	String getName();
+    /**
+     * Returns the name of the {@link ChannelHandler} in the
+     * {@link ChannelPipeline}.
+     */
+    String getName();
 
-	/**
-	 * Returns the {@link ChannelHandler} that this context object is serving.
-	 */
-	ChannelHandler getHandler();
+    /**
+     * Returns the {@link ChannelHandler} that this context object is serving.
+     */
+    ChannelHandler getHandler();
 
-	/**
-	 * Returns {@code true} if and only if the {@link ChannelHandler} is an
-	 * instance of {@link ChannelUpstreamHandler}.
-	 */
-	boolean canHandleUpstream();
+    /**
+     * Returns {@code true} if and only if the {@link ChannelHandler} is an
+     * instance of {@link ChannelUpstreamHandler}.
+     */
+    boolean canHandleUpstream();
 
-	/**
-	 * Returns {@code true} if and only if the {@link ChannelHandler} is an
-	 * instance of {@link ChannelDownstreamHandler}.
-	 */
-	boolean canHandleDownstream();
+    /**
+     * Returns {@code true} if and only if the {@link ChannelHandler} is an
+     * instance of {@link ChannelDownstreamHandler}.
+     */
+    boolean canHandleDownstream();
 
-	/**
-	 * Sends the specified {@link ChannelEvent} to the
-	 * {@link ChannelUpstreamHandler} which is placed in the closest upstream
-	 * from the handler associated with this context. It is recommended to use
-	 * the shortcut methods in {@link Channels} rather than calling this method
-	 * directly.
-	 */
-	void sendUpstream(ChannelEvent e);
+    /**
+     * Sends the specified {@link ChannelEvent} to the
+     * {@link ChannelUpstreamHandler} which is placed in the closest upstream
+     * from the handler associated with this context. It is recommended to use
+     * the shortcut methods in {@link Channels} rather than calling this method
+     * directly.
+     */
+    void sendUpstream(ChannelEvent e);
 
-	/**
-	 * Sends the specified {@link ChannelEvent} to the
-	 * {@link ChannelDownstreamHandler} which is placed in the closest
-	 * downstream from the handler associated with this context. It is
-	 * recommended to use the shortcut methods in {@link Channels} rather than
-	 * calling this method directly.
-	 */
-	void sendDownstream(ChannelEvent e);
+    /**
+     * Sends the specified {@link ChannelEvent} to the
+     * {@link ChannelDownstreamHandler} which is placed in the closest
+     * downstream from the handler associated with this context. It is
+     * recommended to use the shortcut methods in {@link Channels} rather than
+     * calling this method directly.
+     */
+    void sendDownstream(ChannelEvent e);
 
-	/**
-	 * Retrieves an object which is {@link #setAttachment(Object) attached} to
-	 * this context.
-	 *
-	 * @return {@code null} if no object was attached or {@code null} was
-	 *         attached
-	 */
-	Object getAttachment();
+    /**
+     * Retrieves an object which is {@link #setAttachment(Object) attached} to
+     * this context.
+     *
+     * @return {@code null} if no object was attached or {@code null} was
+     * attached
+     */
+    Object getAttachment();
 
-	/**
-	 * Attaches an object to this context to store a stateful information
-	 * specific to the {@link ChannelHandler} which is associated with this
-	 * context.
-	 */
-	void setAttachment(Object attachment);
+    /**
+     * Attaches an object to this context to store a stateful information
+     * specific to the {@link ChannelHandler} which is associated with this
+     * context.
+     */
+    void setAttachment(Object attachment);
 }

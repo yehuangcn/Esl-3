@@ -25,9 +25,9 @@ package com.freeswitch.netty.channel;
  * will not be invoked. Like a usual {@link ChannelFutureListener} that this
  * interface extends, {@link #operationComplete(ChannelFuture)} will be called
  * when the future is marked as complete.
- *
+ * <p>
  * <h3>Return the control to the caller quickly</h3>
- *
+ * <p>
  * {@link #operationProgressed(ChannelFuture, long, long, long)} and
  * {@link #operationComplete(ChannelFuture)} is directly called by an I/O
  * thread. Therefore, performing a time consuming task or a blocking operation
@@ -37,12 +37,11 @@ package com.freeswitch.netty.channel;
  */
 public interface ChannelFutureProgressListener extends ChannelFutureListener {
 
-	/**
-	 * Invoked when the I/O operation associated with the {@link ChannelFuture}
-	 * has been progressed.
-	 *
-	 * @param future
-	 *            the source {@link ChannelFuture} which called this callback
-	 */
-	void operationProgressed(ChannelFuture future, long amount, long current, long total) throws Exception;
+    /**
+     * Invoked when the I/O operation associated with the {@link ChannelFuture}
+     * has been progressed.
+     *
+     * @param future the source {@link ChannelFuture} which called this callback
+     */
+    void operationProgressed(ChannelFuture future, long amount, long current, long total) throws Exception;
 }

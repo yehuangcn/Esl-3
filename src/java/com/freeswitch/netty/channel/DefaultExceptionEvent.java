@@ -22,37 +22,37 @@ import static com.freeswitch.netty.channel.Channels.succeededFuture;
  */
 public class DefaultExceptionEvent implements ExceptionEvent {
 
-	private final Channel channel;
-	private final Throwable cause;
+    private final Channel channel;
+    private final Throwable cause;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public DefaultExceptionEvent(Channel channel, Throwable cause) {
-		if (channel == null) {
-			throw new NullPointerException("channel");
-		}
-		if (cause == null) {
-			throw new NullPointerException("cause");
-		}
-		this.channel = channel;
-		this.cause = cause;
-	}
+    /**
+     * Creates a new instance.
+     */
+    public DefaultExceptionEvent(Channel channel, Throwable cause) {
+        if (channel == null) {
+            throw new NullPointerException("channel");
+        }
+        if (cause == null) {
+            throw new NullPointerException("cause");
+        }
+        this.channel = channel;
+        this.cause = cause;
+    }
 
-	public Channel getChannel() {
-		return channel;
-	}
+    public Channel getChannel() {
+        return channel;
+    }
 
-	public ChannelFuture getFuture() {
-		return succeededFuture(getChannel());
-	}
+    public ChannelFuture getFuture() {
+        return succeededFuture(getChannel());
+    }
 
-	public Throwable getCause() {
-		return cause;
-	}
+    public Throwable getCause() {
+        return cause;
+    }
 
-	@Override
-	public String toString() {
-		return getChannel().toString() + " EXCEPTION: " + cause;
-	}
+    @Override
+    public String toString() {
+        return getChannel().toString() + " EXCEPTION: " + cause;
+    }
 }

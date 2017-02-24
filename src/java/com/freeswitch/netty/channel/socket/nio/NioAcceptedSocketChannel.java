@@ -15,27 +15,27 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
-
-import java.nio.channels.SocketChannel;
-
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelFactory;
 import com.freeswitch.netty.channel.ChannelPipeline;
 import com.freeswitch.netty.channel.ChannelSink;
 
+import java.nio.channels.SocketChannel;
+
+import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
+
 final class NioAcceptedSocketChannel extends NioSocketChannel {
 
-	final Thread bossThread;
+    final Thread bossThread;
 
-	NioAcceptedSocketChannel(ChannelFactory factory, ChannelPipeline pipeline, Channel parent, ChannelSink sink, SocketChannel socket, NioWorker worker, Thread bossThread) {
+    NioAcceptedSocketChannel(ChannelFactory factory, ChannelPipeline pipeline, Channel parent, ChannelSink sink, SocketChannel socket, NioWorker worker, Thread bossThread) {
 
-		super(parent, factory, pipeline, sink, socket, worker);
+        super(parent, factory, pipeline, sink, socket, worker);
 
-		this.bossThread = bossThread;
+        this.bossThread = bossThread;
 
-		setConnected();
+        setConnected();
 
-		fireChannelOpen(this);
-	}
+        fireChannelOpen(this);
+    }
 }

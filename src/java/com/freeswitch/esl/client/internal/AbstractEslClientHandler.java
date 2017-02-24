@@ -15,26 +15,21 @@
  */
 package com.freeswitch.esl.client.internal;
 
+import com.freeswitch.esl.transport.event.EslEvent;
+import com.freeswitch.esl.transport.message.EslHeaders.Name;
+import com.freeswitch.esl.transport.message.EslHeaders.Value;
+import com.freeswitch.esl.transport.message.EslMessage;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.handler.execution.ExecutionHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.freeswitch.esl.transport.event.EslEvent;
-import com.freeswitch.esl.transport.message.EslHeaders.Name;
-import com.freeswitch.esl.transport.message.EslHeaders.Value;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelUpstreamHandler;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
-import com.freeswitch.netty.handler.execution.ExecutionHandler;
-import com.freeswitch.esl.transport.message.EslMessage;
 
 /**
  * Specialised {@link ChannelUpstreamHandler} that implements the logic of an
@@ -55,170 +50,168 @@ import com.freeswitch.esl.transport.message.EslMessage;
  * placed in the processing pipeline prior to this handler. This will ensure
  * that each incoming message is processed in its own thread (although still
  * guaranteed to be processed in the order of receipt).
- * 
+ *
  * @author david varnes
  */
 public abstract class AbstractEslClientHandler extends SimpleChannelUpstreamHandler {
-	public static final String MESSAGE_TERMINATOR = "\n\n";
-	public static final String LINE_TERMINATOR = "\n";
+    public static final String MESSAGE_TERMINATOR = "\n\n";
+    public static final String LINE_TERMINATOR = "\n";
 
-	protected final Logger log = LoggerFactory.getLogger(this.getClass());
+    protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
-	private final Lock syncLock = new ReentrantLock();
-	private final Queue<SyncCallback> syncCallbacks = new ConcurrentLinkedQueue<SyncCallback>();
+    private final Lock syncLock = new ReentrantLock();
+    private final Queue<SyncCallback> syncCallbacks = new ConcurrentLinkedQueue<SyncCallback>();
 
-	@Override
-	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-		if (e.getMessage() instanceof EslMessage) {
-			EslMessage message = (EslMessage) e.getMessage();
-			String contentType = message.getContentType();
-			if (contentType.equals(Value.TEXT_EVENT_PLAIN) || contentType.equals(Value.TEXT_EVENT_XML)) {
-				// transform into an event
-				EslEvent eslEvent = new EslEvent(message);
-				handleEslEvent(ctx, eslEvent);
-			} else {
-				handleEslMessage(ctx, (EslMessage) e.getMessage());
-			}
-		} else {
-			throw new IllegalStateException("Unexpected message type: " + e.getMessage().getClass());
-		}
-	}
+    @Override
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+        if (e.getMessage() instanceof EslMessage) {
+            EslMessage message = (EslMessage) e.getMessage();
+            String contentType = message.getContentType();
+            if (contentType.equals(Value.TEXT_EVENT_PLAIN) || contentType.equals(Value.TEXT_EVENT_XML)) {
+                // transform into an event
+                EslEvent eslEvent = new EslEvent(message);
+                handleEslEvent(ctx, eslEvent);
+            } else {
+                handleEslMessage(ctx, (EslMessage) e.getMessage());
+            }
+        } else {
+            throw new IllegalStateException("Unexpected message type: " + e.getMessage().getClass());
+        }
+    }
 
-	/**
-	 * Synthesise a synchronous command/response by creating a callback object
-	 * which is placed in queue and blocks waiting for another IO thread to
-	 * process an incoming {@link EslMessage} and attach it to the callback.
-	 * 
-	 * @param channel
-	 * @param command
-	 *            single string to send
-	 * @return the {@link EslMessage} attached to this command's callback
-	 */
-	public EslMessage sendSyncSingleLineCommand(Channel channel, final String command) {
-		SyncCallback callback = new SyncCallback();
-		syncLock.lock();
-		try {
-			syncCallbacks.add(callback);
-			channel.write(command + MESSAGE_TERMINATOR);
-		} finally {
-			syncLock.unlock();
-		}
+    /**
+     * Synthesise a synchronous command/response by creating a callback object
+     * which is placed in queue and blocks waiting for another IO thread to
+     * process an incoming {@link EslMessage} and attach it to the callback.
+     *
+     * @param channel
+     * @param command single string to send
+     * @return the {@link EslMessage} attached to this command's callback
+     */
+    public EslMessage sendSyncSingleLineCommand(Channel channel, final String command) {
+        SyncCallback callback = new SyncCallback();
+        syncLock.lock();
+        try {
+            syncCallbacks.add(callback);
+            channel.write(command + MESSAGE_TERMINATOR);
+        } finally {
+            syncLock.unlock();
+        }
 
-		// Block until the response is available
-		return callback.get();
-	}
+        // Block until the response is available
+        return callback.get();
+    }
 
-	/**
-	 * Synthesise a synchronous command/response by creating a callback object
-	 * which is placed in queue and blocks waiting for another IO thread to
-	 * process an incoming {@link EslMessage} and attach it to the callback.
-	 * 
-	 * @param channel
-	 * @param command
-	 *            List of command lines to send
-	 * @return the {@link EslMessage} attached to this command's callback
-	 */
-	public EslMessage sendSyncMultiLineCommand(Channel channel, final List<String> commandLines) {
-		SyncCallback callback = new SyncCallback();
-		// Build command with double line terminator at the end
-		StringBuilder sb = new StringBuilder();
-		for (String line : commandLines) {
-			sb.append(line);
-			sb.append(LINE_TERMINATOR);
-		}
-		sb.append(LINE_TERMINATOR);
+    /**
+     * Synthesise a synchronous command/response by creating a callback object
+     * which is placed in queue and blocks waiting for another IO thread to
+     * process an incoming {@link EslMessage} and attach it to the callback.
+     *
+     * @param channel
+     * @param command List of command lines to send
+     * @return the {@link EslMessage} attached to this command's callback
+     */
+    public EslMessage sendSyncMultiLineCommand(Channel channel, final List<String> commandLines) {
+        SyncCallback callback = new SyncCallback();
+        // Build command with double line terminator at the end
+        StringBuilder sb = new StringBuilder();
+        for (String line : commandLines) {
+            sb.append(line);
+            sb.append(LINE_TERMINATOR);
+        }
+        sb.append(LINE_TERMINATOR);
 
-		syncLock.lock();
-		try {
-			syncCallbacks.add(callback);
-			channel.write(sb.toString());
-		} finally {
-			syncLock.unlock();
-		}
+        syncLock.lock();
+        try {
+            syncCallbacks.add(callback);
+            channel.write(sb.toString());
+        } finally {
+            syncLock.unlock();
+        }
 
-		// Block until the response is available
-		return callback.get();
-	}
+        // Block until the response is available
+        return callback.get();
+    }
 
-	/**
-	 * Returns the Job UUID of that the response event will have.
-	 * 
-	 * @param channel
-	 * @param command
-	 * @return Job-UUID as a string
-	 */
-	public String sendAsyncCommand(Channel channel, final String command) {
-		/*
+    /**
+     * Returns the Job UUID of that the response event will have.
+     *
+     * @param channel
+     * @param command
+     * @return Job-UUID as a string
+     */
+    public String sendAsyncCommand(Channel channel, final String command) {
+        /*
 		 * Send synchronously to get the Job-UUID to return, the results of the
 		 * actual job request will be returned by the server as an async event.
 		 */
-		EslMessage response = sendSyncSingleLineCommand(channel, command);
-		if (response.hasHeader(Name.JOB_UUID)) {
-			return response.getHeaderValue(Name.JOB_UUID);
-		} else {
-			throw new IllegalStateException("Missing Job-UUID header in bgapi response");
-		}
-	}
+        EslMessage response = sendSyncSingleLineCommand(channel, command);
+        if (response.hasHeader(Name.JOB_UUID)) {
+            return response.getHeaderValue(Name.JOB_UUID);
+        } else {
+            throw new IllegalStateException("Missing Job-UUID header in bgapi response");
+        }
+    }
 
-	protected void handleEslMessage(ChannelHandlerContext ctx, EslMessage message) {
-		String contentType = message.getContentType();
+    protected void handleEslMessage(ChannelHandlerContext ctx, EslMessage message) {
+        String contentType = message.getContentType();
 
-		if (contentType.equals(Value.API_RESPONSE)) {
-			log.debug("Api response received [{}]", message);
-			syncCallbacks.poll().handle(message);
-		} else if (contentType.equals(Value.COMMAND_REPLY)) {
-			log.trace("Command reply received [{}]", message);
-			syncCallbacks.poll().handle(message);
-		} else if (contentType.equals(Value.AUTH_REQUEST)) {
-			log.trace("Auth request received [{}]", message);
-			handleAuthRequest(ctx);
-		} else if (contentType.equals(Value.TEXT_DISCONNECT_NOTICE)) {
-			log.debug("Disconnect notice received [{}]", message);
-			handleDisconnectionNotice();
-		} else {
-			log.warn("Unexpected message content type [{}]", contentType);
-		}
-	}
+        if (contentType.equals(Value.API_RESPONSE)) {
+            log.debug("Api response received [{}]", message);
+            syncCallbacks.poll().handle(message);
+        } else if (contentType.equals(Value.COMMAND_REPLY)) {
+            log.trace("Command reply received [{}]", message);
+            syncCallbacks.poll().handle(message);
+        } else if (contentType.equals(Value.AUTH_REQUEST)) {
+            log.trace("Auth request received [{}]", message);
+            handleAuthRequest(ctx);
+        } else if (contentType.equals(Value.TEXT_DISCONNECT_NOTICE)) {
+            log.debug("Disconnect notice received [{}]", message);
+            handleDisconnectionNotice();
+        } else {
+            log.warn("Unexpected message content type [{}]", contentType);
+        }
+    }
 
-	protected abstract void handleEslEvent(ChannelHandlerContext ctx, EslEvent event);
+    protected abstract void handleEslEvent(ChannelHandlerContext ctx, EslEvent event);
 
-	protected abstract void handleAuthRequest(ChannelHandlerContext ctx);
+    protected abstract void handleAuthRequest(ChannelHandlerContext ctx);
 
-	protected abstract void handleDisconnectionNotice();
+    protected abstract void handleDisconnectionNotice();
 
-	private static class SyncCallback {
-		private static final Logger log = LoggerFactory.getLogger(SyncCallback.class);
-		private final CountDownLatch latch = new CountDownLatch(1);
-		private EslMessage response;
+    private static class SyncCallback {
+        private static final Logger log = LoggerFactory.getLogger(SyncCallback.class);
+        private final CountDownLatch latch = new CountDownLatch(1);
+        private EslMessage response;
 
-		/**
-		 * Block waiting for the countdown latch to be released, then return the
-		 * associated response object.
-		 * 
-		 * @return
-		 */
-		EslMessage get() {
-			try {
-				log.trace("awaiting latch ... ");
-				latch.await();
-			} catch (InterruptedException e) {
-				throw new RuntimeException(e);
-			}
+        /**
+         * Block waiting for the countdown latch to be released, then return the
+         * associated response object.
+         *
+         * @return
+         */
+        EslMessage get() {
+            try {
+                log.trace("awaiting latch ... ");
+                latch.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
 
-			log.trace("returning response [{}]", response);
-			return response;
-		}
+            log.trace("returning response [{}]", response);
+            return response;
+        }
 
-		/**
-		 * Attach this response to the callback and release the countdown latch.
-		 * 
-		 * @param response
-		 */
-		void handle(EslMessage response) {
-			this.response = response;
-			log.trace("releasing latch for response [{}]", response);
-			latch.countDown();
-		}
-	}
+        /**
+         * Attach this response to the callback and release the countdown latch.
+         *
+         * @param response
+         */
+        void handle(EslMessage response) {
+            this.response = response;
+            log.trace("releasing latch for response [{}]", response);
+            latch.countDown();
+        }
+    }
 
 }

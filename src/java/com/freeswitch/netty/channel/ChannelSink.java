@@ -23,25 +23,25 @@ package com.freeswitch.netty.channel;
  * their code.
  *
  * @apiviz.uses org.jboss.netty.channel.ChannelPipeline - - sends events
- *              upstream
+ * upstream
  */
 public interface ChannelSink {
 
-	/**
-	 * Invoked by {@link ChannelPipeline} when a downstream {@link ChannelEvent}
-	 * has reached its terminal (the head of the pipeline).
-	 */
-	void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception;
+    /**
+     * Invoked by {@link ChannelPipeline} when a downstream {@link ChannelEvent}
+     * has reached its terminal (the head of the pipeline).
+     */
+    void eventSunk(ChannelPipeline pipeline, ChannelEvent e) throws Exception;
 
-	/**
-	 * Invoked by {@link ChannelPipeline} when an exception was raised while one
-	 * of its {@link ChannelHandler}s process a {@link ChannelEvent}.
-	 */
-	void exceptionCaught(ChannelPipeline pipeline, ChannelEvent e, ChannelPipelineException cause) throws Exception;
+    /**
+     * Invoked by {@link ChannelPipeline} when an exception was raised while one
+     * of its {@link ChannelHandler}s process a {@link ChannelEvent}.
+     */
+    void exceptionCaught(ChannelPipeline pipeline, ChannelEvent e, ChannelPipelineException cause) throws Exception;
 
-	/**
-	 * Execute the given {@link Runnable} later in the io-thread. Some
-	 * implementation may not support this and just execute it directly.
-	 */
-	ChannelFuture execute(ChannelPipeline pipeline, Runnable task);
+    /**
+     * Execute the given {@link Runnable} later in the io-thread. Some
+     * implementation may not support this and just execute it directly.
+     */
+    ChannelFuture execute(ChannelPipeline pipeline, Runnable task);
 }

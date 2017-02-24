@@ -15,6 +15,11 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.channel.socket.DefaultSocketChannelConfig;
+import com.freeswitch.netty.channel.socket.SocketChannel;
+import com.freeswitch.netty.channel.socket.SocketChannelConfig;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PushbackInputStream;
@@ -22,68 +27,59 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelException;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
-import com.freeswitch.netty.channel.socket.DefaultSocketChannelConfig;
-import com.freeswitch.netty.channel.socket.SocketChannel;
-import com.freeswitch.netty.channel.socket.SocketChannelConfig;
-
 abstract class OioSocketChannel extends AbstractOioChannel implements SocketChannel {
 
-	final Socket socket;
-	private final SocketChannelConfig config;
+    final Socket socket;
+    private final SocketChannelConfig config;
 
-	OioSocketChannel(Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, Socket socket) {
+    OioSocketChannel(Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, Socket socket) {
 
-		super(parent, factory, pipeline, sink);
+        super(parent, factory, pipeline, sink);
 
-		this.socket = socket;
-		try {
-			socket.setSoTimeout(1000);
-		} catch (SocketException e) {
-			throw new ChannelException("Failed to configure the OioSocketChannel socket timeout.", e);
-		}
-		config = new DefaultSocketChannelConfig(socket);
-	}
+        this.socket = socket;
+        try {
+            socket.setSoTimeout(1000);
+        } catch (SocketException e) {
+            throw new ChannelException("Failed to configure the OioSocketChannel socket timeout.", e);
+        }
+        config = new DefaultSocketChannelConfig(socket);
+    }
 
-	public SocketChannelConfig getConfig() {
-		return config;
-	}
+    public SocketChannelConfig getConfig() {
+        return config;
+    }
 
-	abstract PushbackInputStream getInputStream();
+    abstract PushbackInputStream getInputStream();
 
-	abstract OutputStream getOutputStream();
+    abstract OutputStream getOutputStream();
 
-	@Override
-	boolean isSocketBound() {
-		return socket.isBound();
-	}
+    @Override
+    boolean isSocketBound() {
+        return socket.isBound();
+    }
 
-	@Override
-	boolean isSocketConnected() {
-		return socket.isConnected();
-	}
+    @Override
+    boolean isSocketConnected() {
+        return socket.isConnected();
+    }
 
-	@Override
-	InetSocketAddress getLocalSocketAddress() throws Exception {
-		return (InetSocketAddress) socket.getLocalSocketAddress();
-	}
+    @Override
+    InetSocketAddress getLocalSocketAddress() throws Exception {
+        return (InetSocketAddress) socket.getLocalSocketAddress();
+    }
 
-	@Override
-	InetSocketAddress getRemoteSocketAddress() throws Exception {
-		return (InetSocketAddress) socket.getRemoteSocketAddress();
-	}
+    @Override
+    InetSocketAddress getRemoteSocketAddress() throws Exception {
+        return (InetSocketAddress) socket.getRemoteSocketAddress();
+    }
 
-	@Override
-	void closeSocket() throws IOException {
-		socket.close();
-	}
+    @Override
+    void closeSocket() throws IOException {
+        socket.close();
+    }
 
-	@Override
-	boolean isSocketClosed() {
-		return socket.isClosed();
-	}
+    @Override
+    boolean isSocketClosed() {
+        return socket.isClosed();
+    }
 }

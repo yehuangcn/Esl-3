@@ -15,8 +15,10 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelInterestChanged;
-import static com.freeswitch.netty.channel.socket.nio.AbstractNioWorker.isIoThread;
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.channel.socket.nio.SocketSendBufferPool.SendBuffer;
+import com.freeswitch.netty.util.internal.ThreadLocalBoolean;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectableChannel;
@@ -26,280 +28,269 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.channel.AbstractChannel;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.channel.socket.nio.SocketSendBufferPool.SendBuffer;
-import com.freeswitch.netty.util.internal.ThreadLocalBoolean;
+import static com.freeswitch.netty.channel.Channels.fireChannelInterestChanged;
+import static com.freeswitch.netty.channel.socket.nio.AbstractNioWorker.isIoThread;
 
 abstract class AbstractNioChannel<C extends SelectableChannel & WritableByteChannel> extends AbstractChannel {
 
-	/**
-	 * The {@link AbstractNioWorker}.
-	 */
-	final AbstractNioWorker worker;
+    /**
+     * The {@link AbstractNioWorker}.
+     */
+    final AbstractNioWorker worker;
 
-	/**
-	 * Monitor object for synchronizing access to the {@link WriteRequestQueue}.
-	 */
-	final Object writeLock = new Object();
+    /**
+     * Monitor object for synchronizing access to the {@link WriteRequestQueue}.
+     */
+    final Object writeLock = new Object();
 
-	/**
-	 * WriteTask that performs write operations.
-	 */
-	final Runnable writeTask = new WriteTask();
+    /**
+     * WriteTask that performs write operations.
+     */
+    final Runnable writeTask = new WriteTask();
 
-	/**
-	 * Indicates if there is a {@link WriteTask} in the task queue.
-	 */
-	final AtomicBoolean writeTaskInTaskQueue = new AtomicBoolean();
+    /**
+     * Indicates if there is a {@link WriteTask} in the task queue.
+     */
+    final AtomicBoolean writeTaskInTaskQueue = new AtomicBoolean();
 
-	/**
-	 * Queue of write {@link MessageEvent}s.
-	 */
-	final WriteRequestQueue writeBufferQueue = new WriteRequestQueue();
+    /**
+     * Queue of write {@link MessageEvent}s.
+     */
+    final WriteRequestQueue writeBufferQueue = new WriteRequestQueue();
 
-	/**
-	 * Keeps track of the number of bytes that the {@link WriteRequestQueue}
-	 * currently contains.
-	 */
-	final AtomicInteger writeBufferSize = new AtomicInteger();
+    /**
+     * Keeps track of the number of bytes that the {@link WriteRequestQueue}
+     * currently contains.
+     */
+    final AtomicInteger writeBufferSize = new AtomicInteger();
 
-	/**
-	 * Keeps track of the highWaterMark.
-	 */
-	final AtomicInteger highWaterMarkCounter = new AtomicInteger();
+    /**
+     * Keeps track of the highWaterMark.
+     */
+    final AtomicInteger highWaterMarkCounter = new AtomicInteger();
+    final C channel;
+    /**
+     * The current write {@link MessageEvent}
+     */
+    MessageEvent currentWriteEvent;
+    SendBuffer currentWriteBuffer;
+    /**
+     * Boolean that indicates that write operation is in progress.
+     */
+    boolean inWriteNowLoop;
+    boolean writeSuspended;
+    volatile InetSocketAddress remoteAddress;
+    private volatile InetSocketAddress localAddress;
 
-	/**
-	 * The current write {@link MessageEvent}
-	 */
-	MessageEvent currentWriteEvent;
-	SendBuffer currentWriteBuffer;
+    protected AbstractNioChannel(Integer id, Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, AbstractNioWorker worker, C ch) {
+        super(id, parent, factory, pipeline, sink);
+        this.worker = worker;
+        channel = ch;
+    }
 
-	/**
-	 * Boolean that indicates that write operation is in progress.
-	 */
-	boolean inWriteNowLoop;
-	boolean writeSuspended;
+    protected AbstractNioChannel(Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, AbstractNioWorker worker, C ch) {
+        super(parent, factory, pipeline, sink);
+        this.worker = worker;
+        channel = ch;
+    }
 
-	private volatile InetSocketAddress localAddress;
-	volatile InetSocketAddress remoteAddress;
+    /**
+     * Return the {@link AbstractNioWorker} that handle the IO of the
+     * {@link AbstractNioChannel}
+     *
+     * @return worker
+     */
+    public AbstractNioWorker getWorker() {
+        return worker;
+    }
 
-	final C channel;
+    public InetSocketAddress getLocalAddress() {
+        InetSocketAddress localAddress = this.localAddress;
+        if (localAddress == null) {
+            try {
+                localAddress = getLocalSocketAddress();
+                if (localAddress.getAddress().isAnyLocalAddress()) {
+                    // Don't cache on a wildcard address so the correct one
+                    // will be cached once the channel is connected/bound
+                    return localAddress;
+                }
+                this.localAddress = localAddress;
+            } catch (Throwable t) {
+                // Sometimes fails on a closed socket in Windows.
+                return null;
+            }
+        }
+        return localAddress;
+    }
 
-	protected AbstractNioChannel(Integer id, Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, AbstractNioWorker worker, C ch) {
-		super(id, parent, factory, pipeline, sink);
-		this.worker = worker;
-		channel = ch;
-	}
+    public InetSocketAddress getRemoteAddress() {
+        InetSocketAddress remoteAddress = this.remoteAddress;
+        if (remoteAddress == null) {
+            try {
+                this.remoteAddress = remoteAddress = getRemoteSocketAddress();
+            } catch (Throwable t) {
+                // Sometimes fails on a closed socket in Windows.
+                return null;
+            }
+        }
+        return remoteAddress;
+    }
 
-	protected AbstractNioChannel(Channel parent, ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, AbstractNioWorker worker, C ch) {
-		super(parent, factory, pipeline, sink);
-		this.worker = worker;
-		channel = ch;
-	}
+    public abstract NioChannelConfig getConfig();
 
-	/**
-	 * Return the {@link AbstractNioWorker} that handle the IO of the
-	 * {@link AbstractNioChannel}
-	 *
-	 * @return worker
-	 */
-	public AbstractNioWorker getWorker() {
-		return worker;
-	}
+    @Override
+    protected int getInternalInterestOps() {
+        return super.getInternalInterestOps();
+    }
 
-	public InetSocketAddress getLocalAddress() {
-		InetSocketAddress localAddress = this.localAddress;
-		if (localAddress == null) {
-			try {
-				localAddress = getLocalSocketAddress();
-				if (localAddress.getAddress().isAnyLocalAddress()) {
-					// Don't cache on a wildcard address so the correct one
-					// will be cached once the channel is connected/bound
-					return localAddress;
-				}
-				this.localAddress = localAddress;
-			} catch (Throwable t) {
-				// Sometimes fails on a closed socket in Windows.
-				return null;
-			}
-		}
-		return localAddress;
-	}
+    @Override
+    protected void setInternalInterestOps(int interestOps) {
+        super.setInternalInterestOps(interestOps);
+    }
 
-	public InetSocketAddress getRemoteAddress() {
-		InetSocketAddress remoteAddress = this.remoteAddress;
-		if (remoteAddress == null) {
-			try {
-				this.remoteAddress = remoteAddress = getRemoteSocketAddress();
-			} catch (Throwable t) {
-				// Sometimes fails on a closed socket in Windows.
-				return null;
-			}
-		}
-		return remoteAddress;
-	}
+    @Override
+    protected boolean setClosed() {
+        return super.setClosed();
+    }
 
-	public abstract NioChannelConfig getConfig();
+    abstract InetSocketAddress getLocalSocketAddress() throws Exception;
 
-	@Override
-	protected int getInternalInterestOps() {
-		return super.getInternalInterestOps();
-	}
+    abstract InetSocketAddress getRemoteSocketAddress() throws Exception;
 
-	@Override
-	protected void setInternalInterestOps(int interestOps) {
-		super.setInternalInterestOps(interestOps);
-	}
+    final class WriteRequestQueue {
+        private final ThreadLocalBoolean notifying = new ThreadLocalBoolean();
 
-	@Override
-	protected boolean setClosed() {
-		return super.setClosed();
-	}
+        private final Queue<MessageEvent> queue;
 
-	abstract InetSocketAddress getLocalSocketAddress() throws Exception;
+        public WriteRequestQueue() {
+            queue = new ConcurrentLinkedQueue<MessageEvent>();
+        }
 
-	abstract InetSocketAddress getRemoteSocketAddress() throws Exception;
+        public boolean isEmpty() {
+            return queue.isEmpty();
+        }
 
-	final class WriteRequestQueue {
-		private final ThreadLocalBoolean notifying = new ThreadLocalBoolean();
+        public boolean offer(MessageEvent e) {
+            boolean success = queue.offer(e);
+            assert success;
 
-		private final Queue<MessageEvent> queue;
+            int messageSize = getMessageSize(e);
+            int newWriteBufferSize = writeBufferSize.addAndGet(messageSize);
+            final int highWaterMark = getConfig().getWriteBufferHighWaterMark();
 
-		public WriteRequestQueue() {
-			queue = new ConcurrentLinkedQueue<MessageEvent>();
-		}
+            if (newWriteBufferSize >= highWaterMark) {
+                if (newWriteBufferSize - messageSize < highWaterMark) {
+                    highWaterMarkCounter.incrementAndGet();
+                    if (setUnwritable()) {
+                        if (isIoThread(AbstractNioChannel.this)) {
+                            if (!notifying.get()) {
+                                notifying.set(Boolean.TRUE);
+                                fireChannelInterestChanged(AbstractNioChannel.this);
+                                notifying.set(Boolean.FALSE);
+                            }
+                        } else {
+                            // Adjusting writability requires careful
+                            // synchronization.
+                            //
+                            // Consider for instance:
+                            //
+                            // T1 repeated offer: go above high water mark
+                            // context switch *before* calling setUnwritable
+                            // T2 repeated poll: go under low water mark
+                            // context switch *after* calling setWritable
+                            // T1 setUnwritable
+                            //
+                            // At this point the channel is incorrectly marked
+                            // unwritable and would
+                            // remain so until the high water mark were exceeded
+                            // again, which may
+                            // never happen if the application did control flow
+                            // based on writability.
+                            //
+                            // The simplest solution would be to use a mutex to
+                            // protect both the
+                            // buffer size and the writability bit, however that
+                            // would impose a
+                            // serious performance penalty.
+                            //
+                            // A better approach would be to always call
+                            // setUnwritable in the io
+                            // thread, which does not impact performance as the
+                            // interestChanged
+                            // event has to be fired from there anyway.
+                            //
+                            // However this could break code which expects
+                            // isWritable to immediately
+                            // be updated after a write() from a non-io thread.
+                            //
+                            // Instead, we re-check the buffer size before
+                            // firing the interest
+                            // changed event and revert the change to the
+                            // writability bit if needed.
+                            worker.executeInIoThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (writeBufferSize.get() >= highWaterMark || setWritable()) {
+                                        fireChannelInterestChanged(AbstractNioChannel.this);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+            return true;
+        }
 
-		public boolean isEmpty() {
-			return queue.isEmpty();
-		}
+        public MessageEvent poll() {
+            MessageEvent e = queue.poll();
+            if (e != null) {
+                int messageSize = getMessageSize(e);
+                int newWriteBufferSize = writeBufferSize.addAndGet(-messageSize);
+                int lowWaterMark = getConfig().getWriteBufferLowWaterMark();
 
-		public boolean offer(MessageEvent e) {
-			boolean success = queue.offer(e);
-			assert success;
+                if (newWriteBufferSize == 0 || newWriteBufferSize < lowWaterMark) {
+                    if (newWriteBufferSize + messageSize >= lowWaterMark) {
+                        highWaterMarkCounter.decrementAndGet();
+                        if (isConnected()) {
+                            // write events are only ever processed from the
+                            // channel io thread
+                            // except when cleaning up the buffer, which only
+                            // happens on close()
+                            // changing that would require additional
+                            // synchronization around
+                            // writeBufferSize and writability changes.
+                            assert isIoThread(AbstractNioChannel.this);
+                            if (setWritable()) {
+                                notifying.set(Boolean.TRUE);
+                                fireChannelInterestChanged(AbstractNioChannel.this);
+                                notifying.set(Boolean.FALSE);
+                            }
+                        }
+                    }
+                }
+            }
+            return e;
+        }
 
-			int messageSize = getMessageSize(e);
-			int newWriteBufferSize = writeBufferSize.addAndGet(messageSize);
-			final int highWaterMark = getConfig().getWriteBufferHighWaterMark();
+        private int getMessageSize(MessageEvent e) {
+            Object m = e.getMessage();
+            if (m instanceof ChannelBuffer) {
+                return ((ChannelBuffer) m).readableBytes();
+            }
+            return 0;
+        }
+    }
 
-			if (newWriteBufferSize >= highWaterMark) {
-				if (newWriteBufferSize - messageSize < highWaterMark) {
-					highWaterMarkCounter.incrementAndGet();
-					if (setUnwritable()) {
-						if (isIoThread(AbstractNioChannel.this)) {
-							if (!notifying.get()) {
-								notifying.set(Boolean.TRUE);
-								fireChannelInterestChanged(AbstractNioChannel.this);
-								notifying.set(Boolean.FALSE);
-							}
-						} else {
-							// Adjusting writability requires careful
-							// synchronization.
-							//
-							// Consider for instance:
-							//
-							// T1 repeated offer: go above high water mark
-							// context switch *before* calling setUnwritable
-							// T2 repeated poll: go under low water mark
-							// context switch *after* calling setWritable
-							// T1 setUnwritable
-							//
-							// At this point the channel is incorrectly marked
-							// unwritable and would
-							// remain so until the high water mark were exceeded
-							// again, which may
-							// never happen if the application did control flow
-							// based on writability.
-							//
-							// The simplest solution would be to use a mutex to
-							// protect both the
-							// buffer size and the writability bit, however that
-							// would impose a
-							// serious performance penalty.
-							//
-							// A better approach would be to always call
-							// setUnwritable in the io
-							// thread, which does not impact performance as the
-							// interestChanged
-							// event has to be fired from there anyway.
-							//
-							// However this could break code which expects
-							// isWritable to immediately
-							// be updated after a write() from a non-io thread.
-							//
-							// Instead, we re-check the buffer size before
-							// firing the interest
-							// changed event and revert the change to the
-							// writability bit if needed.
-							worker.executeInIoThread(new Runnable() {
-								@Override
-								public void run() {
-									if (writeBufferSize.get() >= highWaterMark || setWritable()) {
-										fireChannelInterestChanged(AbstractNioChannel.this);
-									}
-								}
-							});
-						}
-					}
-				}
-			}
-			return true;
-		}
+    private final class WriteTask implements Runnable {
 
-		public MessageEvent poll() {
-			MessageEvent e = queue.poll();
-			if (e != null) {
-				int messageSize = getMessageSize(e);
-				int newWriteBufferSize = writeBufferSize.addAndGet(-messageSize);
-				int lowWaterMark = getConfig().getWriteBufferLowWaterMark();
+        WriteTask() {
+        }
 
-				if (newWriteBufferSize == 0 || newWriteBufferSize < lowWaterMark) {
-					if (newWriteBufferSize + messageSize >= lowWaterMark) {
-						highWaterMarkCounter.decrementAndGet();
-						if (isConnected()) {
-							// write events are only ever processed from the
-							// channel io thread
-							// except when cleaning up the buffer, which only
-							// happens on close()
-							// changing that would require additional
-							// synchronization around
-							// writeBufferSize and writability changes.
-							assert isIoThread(AbstractNioChannel.this);
-							if (setWritable()) {
-								notifying.set(Boolean.TRUE);
-								fireChannelInterestChanged(AbstractNioChannel.this);
-								notifying.set(Boolean.FALSE);
-							}
-						}
-					}
-				}
-			}
-			return e;
-		}
-
-		private int getMessageSize(MessageEvent e) {
-			Object m = e.getMessage();
-			if (m instanceof ChannelBuffer) {
-				return ((ChannelBuffer) m).readableBytes();
-			}
-			return 0;
-		}
-	}
-
-	private final class WriteTask implements Runnable {
-
-		WriteTask() {
-		}
-
-		public void run() {
-			writeTaskInTaskQueue.set(false);
-			worker.writeFromTaskLoop(AbstractNioChannel.this);
-		}
-	}
+        public void run() {
+            writeTaskInTaskQueue.set(false);
+            worker.writeFromTaskLoop(AbstractNioChannel.this);
+        }
+    }
 
 }

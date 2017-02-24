@@ -28,101 +28,99 @@ import com.freeswitch.netty.logging.InternalLoggerFactory;
  */
 public class ThreadRenamingRunnable implements Runnable {
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(ThreadRenamingRunnable.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(ThreadRenamingRunnable.class);
 
-	private static volatile ThreadNameDeterminer threadNameDeterminer = ThreadNameDeterminer.PROPOSED;
-	private final ThreadNameDeterminer determiner;
+    private static volatile ThreadNameDeterminer threadNameDeterminer = ThreadNameDeterminer.PROPOSED;
+    private final ThreadNameDeterminer determiner;
+    private final Runnable runnable;
+    private final String proposedThreadName;
 
-	/**
-	 * Returns the {@link ThreadNameDeterminer} which overrides the proposed new
-	 * thread name.
-	 */
-	public static ThreadNameDeterminer getThreadNameDeterminer() {
-		return threadNameDeterminer;
-	}
+    /**
+     * Creates a new instance which wraps the specified {@code runnable} and
+     * changes the thread name to the specified thread name when the specified
+     * {@code runnable} is running.
+     */
+    public ThreadRenamingRunnable(Runnable runnable, String proposedThreadName, ThreadNameDeterminer determiner) {
+        if (runnable == null) {
+            throw new NullPointerException("runnable");
+        }
+        if (proposedThreadName == null) {
+            throw new NullPointerException("proposedThreadName");
+        }
+        this.runnable = runnable;
+        this.determiner = determiner;
+        this.proposedThreadName = proposedThreadName;
+    }
+    public ThreadRenamingRunnable(Runnable runnable, String proposedThreadName) {
+        this(runnable, proposedThreadName, null);
+    }
 
-	/**
-	 * Sets the {@link ThreadNameDeterminer} which overrides the proposed new
-	 * thread name. Please note that the specified {@link ThreadNameDeterminer}
-	 * affects only new {@link ThreadRenamingRunnable}s; the existing instances
-	 * are not affected at all. Therefore, you should make sure to call this
-	 * method at the earliest possible point (i.e. before any Netty worker
-	 * thread starts) for consistent thread naming. Otherwise, you might see the
-	 * default thread names and the new names appear at the same time in the
-	 * full thread dump.
-	 */
-	public static void setThreadNameDeterminer(ThreadNameDeterminer threadNameDeterminer) {
-		if (threadNameDeterminer == null) {
-			throw new NullPointerException("threadNameDeterminer");
-		}
-		ThreadRenamingRunnable.threadNameDeterminer = threadNameDeterminer;
-	}
+    /**
+     * Returns the {@link ThreadNameDeterminer} which overrides the proposed new
+     * thread name.
+     */
+    public static ThreadNameDeterminer getThreadNameDeterminer() {
+        return threadNameDeterminer;
+    }
 
-	private final Runnable runnable;
-	private final String proposedThreadName;
+    /**
+     * Sets the {@link ThreadNameDeterminer} which overrides the proposed new
+     * thread name. Please note that the specified {@link ThreadNameDeterminer}
+     * affects only new {@link ThreadRenamingRunnable}s; the existing instances
+     * are not affected at all. Therefore, you should make sure to call this
+     * method at the earliest possible point (i.e. before any Netty worker
+     * thread starts) for consistent thread naming. Otherwise, you might see the
+     * default thread names and the new names appear at the same time in the
+     * full thread dump.
+     */
+    public static void setThreadNameDeterminer(ThreadNameDeterminer threadNameDeterminer) {
+        if (threadNameDeterminer == null) {
+            throw new NullPointerException("threadNameDeterminer");
+        }
+        ThreadRenamingRunnable.threadNameDeterminer = threadNameDeterminer;
+    }
 
-	/**
-	 * Creates a new instance which wraps the specified {@code runnable} and
-	 * changes the thread name to the specified thread name when the specified
-	 * {@code runnable} is running.
-	 */
-	public ThreadRenamingRunnable(Runnable runnable, String proposedThreadName, ThreadNameDeterminer determiner) {
-		if (runnable == null) {
-			throw new NullPointerException("runnable");
-		}
-		if (proposedThreadName == null) {
-			throw new NullPointerException("proposedThreadName");
-		}
-		this.runnable = runnable;
-		this.determiner = determiner;
-		this.proposedThreadName = proposedThreadName;
-	}
+    public void run() {
+        final Thread currentThread = Thread.currentThread();
+        final String oldThreadName = currentThread.getName();
+        final String newThreadName = getNewThreadName(oldThreadName);
 
-	public ThreadRenamingRunnable(Runnable runnable, String proposedThreadName) {
-		this(runnable, proposedThreadName, null);
-	}
+        // Change the thread name before starting the actual runnable.
+        boolean renamed = false;
+        if (!oldThreadName.equals(newThreadName)) {
+            try {
+                currentThread.setName(newThreadName);
+                renamed = true;
+            } catch (SecurityException e) {
+                logger.debug("Failed to rename a thread " + "due to security restriction.", e);
+            }
+        }
 
-	public void run() {
-		final Thread currentThread = Thread.currentThread();
-		final String oldThreadName = currentThread.getName();
-		final String newThreadName = getNewThreadName(oldThreadName);
+        // Run the actual runnable and revert the name back when it ends.
+        try {
+            runnable.run();
+        } finally {
+            if (renamed) {
+                // Revert the name back if the current thread was renamed.
+                // We do not check the exception here because we know it works.
+                currentThread.setName(oldThreadName);
+            }
+        }
+    }
 
-		// Change the thread name before starting the actual runnable.
-		boolean renamed = false;
-		if (!oldThreadName.equals(newThreadName)) {
-			try {
-				currentThread.setName(newThreadName);
-				renamed = true;
-			} catch (SecurityException e) {
-				logger.debug("Failed to rename a thread " + "due to security restriction.", e);
-			}
-		}
+    private String getNewThreadName(String currentThreadName) {
+        String newThreadName = null;
 
-		// Run the actual runnable and revert the name back when it ends.
-		try {
-			runnable.run();
-		} finally {
-			if (renamed) {
-				// Revert the name back if the current thread was renamed.
-				// We do not check the exception here because we know it works.
-				currentThread.setName(oldThreadName);
-			}
-		}
-	}
+        try {
+            ThreadNameDeterminer nameDeterminer = determiner;
+            if (nameDeterminer == null) {
+                nameDeterminer = getThreadNameDeterminer();
+            }
+            newThreadName = nameDeterminer.determineThreadName(currentThreadName, proposedThreadName);
+        } catch (Throwable t) {
+            logger.warn("Failed to determine the thread name", t);
+        }
 
-	private String getNewThreadName(String currentThreadName) {
-		String newThreadName = null;
-
-		try {
-			ThreadNameDeterminer nameDeterminer = determiner;
-			if (nameDeterminer == null) {
-				nameDeterminer = getThreadNameDeterminer();
-			}
-			newThreadName = nameDeterminer.determineThreadName(currentThreadName, proposedThreadName);
-		} catch (Throwable t) {
-			logger.warn("Failed to determine the thread name", t);
-		}
-
-		return newThreadName == null ? currentThreadName : newThreadName;
-	}
+        return newThreadName == null ? currentThreadName : newThreadName;
+    }
 }

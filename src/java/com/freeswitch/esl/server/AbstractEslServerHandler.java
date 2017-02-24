@@ -36,36 +36,36 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  * placed in the processing pipeline prior to this handler. This will ensure
  * that each incoming message is processed in its own thread (although still
  * guaranteed to be processed in the order of receipt).
- * 
+ *
  * @author david varnes
  */
-public abstract class AbstractOutboundClientHandler extends AbstractEslClientHandler {
+public abstract class AbstractEslServerHandler extends AbstractEslClientHandler {
 
-	@Override
-	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		// Have received a connection from FreeSWITCH server, send connect
-		// response
-		log.debug("Received new connection from server, sending connect message");
+    @Override
+    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        // Have received a connection from FreeSWITCH server, send connect
+        // response
+        log.debug("Received new connection from server, sending connect message");
 
-		EslMessage response = sendSyncSingleLineCommand(ctx.getChannel(), "connect");
-		// The message decoder for server, treats most of this incoming
-		// message as an 'event' in
-		// message body, so it parse now
-		EslEvent channelDataEvent = new EslEvent(response, true);
-		// Let implementing sub classes choose what to do next
-		handleConnectResponse(ctx, channelDataEvent);
-	}
+        EslMessage response = sendSyncSingleLineCommand(ctx.getChannel(), "connect");
+        // The message decoder for server, treats most of this incoming
+        // message as an 'event' in
+        // message body, so it parse now
+        EslEvent channelDataEvent = new EslEvent(response, true);
+        // Let implementing sub classes choose what to do next
+        handleConnectResponse(ctx, channelDataEvent);
+    }
 
-	protected abstract void handleConnectResponse(ChannelHandlerContext ctx, EslEvent event);
+    protected abstract void handleConnectResponse(ChannelHandlerContext ctx, EslEvent event);
 
-	@Override
-	protected void handleAuthRequest(ChannelHandlerContext ctx) {
-		// This should not happen in server mode
-		log.warn("Auth request received in server mode, ignoring");
-	}
+    @Override
+    protected void handleAuthRequest(ChannelHandlerContext ctx) {
+        // This should not happen in server mode
+        log.warn("Auth request received in server mode, ignoring");
+    }
 
-	@Override
-	protected void handleDisconnectionNotice() {
-		log.debug("Received disconnection notice");
-	}
+    @Override
+    protected void handleDisconnectionNotice() {
+        log.debug("Received disconnection notice");
+    }
 }

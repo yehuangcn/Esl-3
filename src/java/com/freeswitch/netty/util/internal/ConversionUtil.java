@@ -25,83 +25,82 @@ import java.util.regex.Pattern;
  */
 public final class ConversionUtil {
 
-	/**
-	 * Converts the specified object into an integer.
-	 */
-	public static int toInt(Object value) {
-		if (value instanceof Number) {
-			return ((Number) value).intValue();
-		} else {
-			return Integer.parseInt(String.valueOf(value));
-		}
-	}
+    private static final Pattern ARRAY_DELIM = Pattern.compile("[, \\t\\n\\r\\f\\e\\a]");
+    private static final String[] INTEGERS = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",};
 
-	/**
-	 * Converts the specified object into a boolean.
-	 */
-	public static boolean toBoolean(Object value) {
-		if (value instanceof Boolean) {
-			return ((Boolean) value).booleanValue();
-		}
-		if (value instanceof Number) {
-			return ((Number) value).intValue() != 0;
-		} else {
-			String s = String.valueOf(value);
-			if (s.length() == 0) {
-				return false;
-			}
+    private ConversionUtil() {
+        // Unused
+    }
 
-			try {
-				return Integer.parseInt(s) != 0;
-			} catch (NumberFormatException e) {
-				// Proceed
-			}
+    /**
+     * Converts the specified object into an integer.
+     */
+    public static int toInt(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        } else {
+            return Integer.parseInt(String.valueOf(value));
+        }
+    }
 
-			switch (Character.toUpperCase(s.charAt(0))) {
-			case 'T':
-			case 'Y':
-				return true;
-			}
-			return false;
-		}
-	}
+    /**
+     * Converts the specified object into a boolean.
+     */
+    public static boolean toBoolean(Object value) {
+        if (value instanceof Boolean) {
+            return ((Boolean) value).booleanValue();
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue() != 0;
+        } else {
+            String s = String.valueOf(value);
+            if (s.length() == 0) {
+                return false;
+            }
 
-	private static final Pattern ARRAY_DELIM = Pattern.compile("[, \\t\\n\\r\\f\\e\\a]");
+            try {
+                return Integer.parseInt(s) != 0;
+            } catch (NumberFormatException e) {
+                // Proceed
+            }
 
-	/**
-	 * Converts the specified object into an array of strings.
-	 */
-	public static String[] toStringArray(Object value) {
-		if (value instanceof String[]) {
-			return (String[]) value;
-		}
+            switch (Character.toUpperCase(s.charAt(0))) {
+                case 'T':
+                case 'Y':
+                    return true;
+            }
+            return false;
+        }
+    }
 
-		if (value instanceof Iterable<?>) {
-			List<String> answer = new ArrayList<String>();
-			for (Object v : (Iterable<?>) value) {
-				if (v == null) {
-					answer.add(null);
-				} else {
-					answer.add(String.valueOf(v));
-				}
-			}
-			return answer.toArray(new String[answer.size()]);
-		}
+    /**
+     * Converts the specified object into an array of strings.
+     */
+    public static String[] toStringArray(Object value) {
+        if (value instanceof String[]) {
+            return (String[]) value;
+        }
 
-		return ARRAY_DELIM.split(String.valueOf(value));
-	}
+        if (value instanceof Iterable<?>) {
+            List<String> answer = new ArrayList<String>();
+            for (Object v : (Iterable<?>) value) {
+                if (v == null) {
+                    answer.add(null);
+                } else {
+                    answer.add(String.valueOf(v));
+                }
+            }
+            return answer.toArray(new String[answer.size()]);
+        }
 
-	private static final String[] INTEGERS = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", };
+        return ARRAY_DELIM.split(String.valueOf(value));
+    }
 
-	public static String toString(int value) {
-		if (value >= 0 && value < INTEGERS.length) {
-			return INTEGERS[value];
-		} else {
-			return Integer.toString(value);
-		}
-	}
-
-	private ConversionUtil() {
-		// Unused
-	}
+    public static String toString(int value) {
+        if (value >= 0 && value < INTEGERS.length) {
+            return INTEGERS[value];
+        } else {
+            return Integer.toString(value);
+        }
+    }
 }

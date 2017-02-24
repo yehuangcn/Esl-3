@@ -15,24 +15,20 @@
  */
 package com.freeswitch.netty.channel.socket;
 
+import com.freeswitch.netty.channel.*;
+
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.StandardSocketOptions;
 
-import com.freeswitch.netty.channel.ChannelConfig;
-import com.freeswitch.netty.channel.FixedReceiveBufferSizePredictor;
-import com.freeswitch.netty.channel.FixedReceiveBufferSizePredictorFactory;
-import com.freeswitch.netty.channel.ReceiveBufferSizePredictor;
-import com.freeswitch.netty.channel.ReceiveBufferSizePredictorFactory;
-
 /**
  * A {@link ChannelConfig} for a {@link DatagramChannel}.
- *
+ * <p>
  * <h3>Available options</h3>
- *
+ * <p>
  * In addition to the options provided by {@link ChannelConfig},
  * {@link DatagramChannelConfig} allows the following options in the option map:
- *
+ * <p>
  * <table border="1" cellspacing="0" cellpadding="6">
  * <tr>
  * <th>Name</th>
@@ -86,133 +82,132 @@ import com.freeswitch.netty.channel.ReceiveBufferSizePredictorFactory;
  */
 public interface DatagramChannelConfig extends ChannelConfig {
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_SNDBUF} option.
-	 */
-	int getSendBufferSize();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_SNDBUF} option.
+     */
+    int getSendBufferSize();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_SNDBUF} option.
-	 */
-	void setSendBufferSize(int sendBufferSize);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_SNDBUF} option.
+     */
+    void setSendBufferSize(int sendBufferSize);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_RCVBUF} option.
-	 */
-	int getReceiveBufferSize();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_RCVBUF} option.
+     */
+    int getReceiveBufferSize();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_RCVBUF} option.
-	 */
-	void setReceiveBufferSize(int receiveBufferSize);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_RCVBUF} option.
+     */
+    void setReceiveBufferSize(int receiveBufferSize);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#IP_TOS} option.
-	 */
-	int getTrafficClass();
+    /**
+     * Gets the {@link StandardSocketOptions#IP_TOS} option.
+     */
+    int getTrafficClass();
 
-	/**
-	 * Gets the {@link StandardSocketOptions#IP_TOS} option.
-	 */
-	void setTrafficClass(int trafficClass);
+    /**
+     * Gets the {@link StandardSocketOptions#IP_TOS} option.
+     */
+    void setTrafficClass(int trafficClass);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_REUSEADDR} option.
-	 */
-	boolean isReuseAddress();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_REUSEADDR} option.
+     */
+    boolean isReuseAddress();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_REUSEADDR} option.
-	 */
-	void setReuseAddress(boolean reuseAddress);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_REUSEADDR} option.
+     */
+    void setReuseAddress(boolean reuseAddress);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_BROADCAST} option.
-	 */
-	boolean isBroadcast();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_BROADCAST} option.
+     */
+    boolean isBroadcast();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_BROADCAST} option.
-	 */
-	void setBroadcast(boolean broadcast);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_BROADCAST} option.
+     */
+    void setBroadcast(boolean broadcast);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#IP_MULTICAST_LOOP} option.
-	 */
-	boolean isLoopbackModeDisabled();
+    /**
+     * Gets the {@link StandardSocketOptions#IP_MULTICAST_LOOP} option.
+     */
+    boolean isLoopbackModeDisabled();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#IP_MULTICAST_LOOP} option.
-	 *
-	 * @param loopbackModeDisabled
-	 *            {@code true} if and only if the loopback mode has been
-	 *            disabled
-	 */
-	void setLoopbackModeDisabled(boolean loopbackModeDisabled);
+    /**
+     * Sets the {@link StandardSocketOptions#IP_MULTICAST_LOOP} option.
+     *
+     * @param loopbackModeDisabled {@code true} if and only if the loopback mode has been
+     *                             disabled
+     */
+    void setLoopbackModeDisabled(boolean loopbackModeDisabled);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#IP_MULTICAST_TTL} option.
-	 */
-	int getTimeToLive();
+    /**
+     * Gets the {@link StandardSocketOptions#IP_MULTICAST_TTL} option.
+     */
+    int getTimeToLive();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#IP_MULTICAST_TTL} option.
-	 */
-	void setTimeToLive(int ttl);
+    /**
+     * Sets the {@link StandardSocketOptions#IP_MULTICAST_TTL} option.
+     */
+    void setTimeToLive(int ttl);
 
-	/**
-	 * Gets the address of the network interface used for multicast packets.
-	 */
-	InetAddress getInterface();
+    /**
+     * Gets the address of the network interface used for multicast packets.
+     */
+    InetAddress getInterface();
 
-	/**
-	 * Sets the address of the network interface used for multicast packets.
-	 */
-	void setInterface(InetAddress interfaceAddress);
+    /**
+     * Sets the address of the network interface used for multicast packets.
+     */
+    void setInterface(InetAddress interfaceAddress);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#IP_MULTICAST_IF} option.
-	 */
-	NetworkInterface getNetworkInterface();
+    /**
+     * Gets the {@link StandardSocketOptions#IP_MULTICAST_IF} option.
+     */
+    NetworkInterface getNetworkInterface();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#IP_MULTICAST_IF} option.
-	 */
-	void setNetworkInterface(NetworkInterface networkInterface);
+    /**
+     * Sets the {@link StandardSocketOptions#IP_MULTICAST_IF} option.
+     */
+    void setNetworkInterface(NetworkInterface networkInterface);
 
-	/**
-	 * Returns the {@link ReceiveBufferSizePredictor} which predicts the number
-	 * of readable bytes in the socket receive buffer. The default predictor is
-	 * <tt>{@link FixedReceiveBufferSizePredictor}(768)</tt>.
-	 */
-	ReceiveBufferSizePredictor getReceiveBufferSizePredictor();
+    /**
+     * Returns the {@link ReceiveBufferSizePredictor} which predicts the number
+     * of readable bytes in the socket receive buffer. The default predictor is
+     * <tt>{@link FixedReceiveBufferSizePredictor}(768)</tt>.
+     */
+    ReceiveBufferSizePredictor getReceiveBufferSizePredictor();
 
-	/**
-	 * Sets the {@link ReceiveBufferSizePredictor} which predicts the number of
-	 * readable bytes in the socket receive buffer. The default predictor is
-	 * <tt>{@link FixedReceiveBufferSizePredictor}(768)</tt>.
-	 */
-	void setReceiveBufferSizePredictor(ReceiveBufferSizePredictor predictor);
+    /**
+     * Sets the {@link ReceiveBufferSizePredictor} which predicts the number of
+     * readable bytes in the socket receive buffer. The default predictor is
+     * <tt>{@link FixedReceiveBufferSizePredictor}(768)</tt>.
+     */
+    void setReceiveBufferSizePredictor(ReceiveBufferSizePredictor predictor);
 
-	/**
-	 * Returns the {@link ReceiveBufferSizePredictorFactory} which creates a new
-	 * {@link ReceiveBufferSizePredictor} when a new channel is created and no
-	 * {@link ReceiveBufferSizePredictor} was set. If no predictor was set for
-	 * the channel,
-	 * {@link #setReceiveBufferSizePredictor(ReceiveBufferSizePredictor)} will
-	 * be called with the new predictor. The default factory is
-	 * <tt>{@link FixedReceiveBufferSizePredictorFactory}(768)</tt>.
-	 */
-	ReceiveBufferSizePredictorFactory getReceiveBufferSizePredictorFactory();
+    /**
+     * Returns the {@link ReceiveBufferSizePredictorFactory} which creates a new
+     * {@link ReceiveBufferSizePredictor} when a new channel is created and no
+     * {@link ReceiveBufferSizePredictor} was set. If no predictor was set for
+     * the channel,
+     * {@link #setReceiveBufferSizePredictor(ReceiveBufferSizePredictor)} will
+     * be called with the new predictor. The default factory is
+     * <tt>{@link FixedReceiveBufferSizePredictorFactory}(768)</tt>.
+     */
+    ReceiveBufferSizePredictorFactory getReceiveBufferSizePredictorFactory();
 
-	/**
-	 * Sets the {@link ReceiveBufferSizePredictor} which creates a new
-	 * {@link ReceiveBufferSizePredictor} when a new channel is created and no
-	 * {@link ReceiveBufferSizePredictor} was set. If no predictor was set for
-	 * the channel,
-	 * {@link #setReceiveBufferSizePredictor(ReceiveBufferSizePredictor)} will
-	 * be called with the new predictor. The default factory is
-	 * <tt>{@link FixedReceiveBufferSizePredictorFactory}(768)</tt>.
-	 */
-	void setReceiveBufferSizePredictorFactory(ReceiveBufferSizePredictorFactory predictorFactory);
+    /**
+     * Sets the {@link ReceiveBufferSizePredictor} which creates a new
+     * {@link ReceiveBufferSizePredictor} when a new channel is created and no
+     * {@link ReceiveBufferSizePredictor} was set. If no predictor was set for
+     * the channel,
+     * {@link #setReceiveBufferSizePredictor(ReceiveBufferSizePredictor)} will
+     * be called with the new predictor. The default factory is
+     * <tt>{@link FixedReceiveBufferSizePredictorFactory}(768)</tt>.
+     */
+    void setReceiveBufferSizePredictorFactory(ReceiveBufferSizePredictorFactory predictorFactory);
 }

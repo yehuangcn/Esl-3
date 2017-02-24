@@ -15,17 +15,13 @@
  */
 package com.freeswitch.netty.handler.execution;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelEvent;
 import com.freeswitch.netty.channel.ChannelFuture;
 import com.freeswitch.netty.channel.ChannelFutureListener;
 import com.freeswitch.netty.util.ObjectSizeEstimator;
+
+import java.util.concurrent.*;
 
 /**
  * {@link Executor} which should be used for downstream {@link ChannelEvent}'s.
@@ -39,128 +35,120 @@ import com.freeswitch.netty.util.ObjectSizeEstimator;
  */
 public final class OrderedDownstreamThreadPoolExecutor extends OrderedMemoryAwareThreadPoolExecutor {
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param corePoolSize
-	 *            the maximum number of active threads
-	 */
-	public OrderedDownstreamThreadPoolExecutor(int corePoolSize) {
-		super(corePoolSize, 0L, 0L);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param corePoolSize the maximum number of active threads
+     */
+    public OrderedDownstreamThreadPoolExecutor(int corePoolSize) {
+        super(corePoolSize, 0L, 0L);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param corePoolSize
-	 *            the maximum number of active threads
-	 * @param keepAliveTime
-	 *            the amount of time for an inactive thread to shut itself down
-	 * @param unit
-	 *            the {@link TimeUnit} of {@code keepAliveTime}
-	 */
-	public OrderedDownstreamThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit) {
-		super(corePoolSize, 0L, 0L, keepAliveTime, unit);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param corePoolSize  the maximum number of active threads
+     * @param keepAliveTime the amount of time for an inactive thread to shut itself down
+     * @param unit          the {@link TimeUnit} of {@code keepAliveTime}
+     */
+    public OrderedDownstreamThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit) {
+        super(corePoolSize, 0L, 0L, keepAliveTime, unit);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param corePoolSize
-	 *            the maximum number of active threads
-	 * @param keepAliveTime
-	 *            the amount of time for an inactive thread to shut itself down
-	 * @param unit
-	 *            the {@link TimeUnit} of {@code keepAliveTime}
-	 * @param threadFactory
-	 *            the {@link ThreadFactory} of this pool
-	 */
-	public OrderedDownstreamThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, ThreadFactory threadFactory) {
-		super(corePoolSize, 0L, 0L, keepAliveTime, unit, threadFactory);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param corePoolSize  the maximum number of active threads
+     * @param keepAliveTime the amount of time for an inactive thread to shut itself down
+     * @param unit          the {@link TimeUnit} of {@code keepAliveTime}
+     * @param threadFactory the {@link ThreadFactory} of this pool
+     */
+    public OrderedDownstreamThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, ThreadFactory threadFactory) {
+        super(corePoolSize, 0L, 0L, keepAliveTime, unit, threadFactory);
+    }
 
-	/**
-	 * Return {@code null}
-	 */
-	@Override
-	public ObjectSizeEstimator getObjectSizeEstimator() {
-		return null;
-	}
+    /**
+     * Return {@code null}
+     */
+    @Override
+    public ObjectSizeEstimator getObjectSizeEstimator() {
+        return null;
+    }
 
-	/**
-	 * Throws {@link UnsupportedOperationException} as there is not support for
-	 * limit the memory size in this implementation
-	 */
-	@Override
-	public void setObjectSizeEstimator(ObjectSizeEstimator objectSizeEstimator) {
-		throw new UnsupportedOperationException("Not supported by this implementation");
-	}
+    /**
+     * Throws {@link UnsupportedOperationException} as there is not support for
+     * limit the memory size in this implementation
+     */
+    @Override
+    public void setObjectSizeEstimator(ObjectSizeEstimator objectSizeEstimator) {
+        throw new UnsupportedOperationException("Not supported by this implementation");
+    }
 
-	/**
-	 * Returns {@code 0L}
-	 */
-	@Override
-	public long getMaxChannelMemorySize() {
-		return 0L;
-	}
+    /**
+     * Returns {@code 0L}
+     */
+    @Override
+    public long getMaxChannelMemorySize() {
+        return 0L;
+    }
 
-	/**
-	 * Throws {@link UnsupportedOperationException} as there is not support for
-	 * limit the memory size in this implementation
-	 */
-	@Override
-	public void setMaxChannelMemorySize(long maxChannelMemorySize) {
-		throw new UnsupportedOperationException("Not supported by this implementation");
-	}
+    /**
+     * Throws {@link UnsupportedOperationException} as there is not support for
+     * limit the memory size in this implementation
+     */
+    @Override
+    public void setMaxChannelMemorySize(long maxChannelMemorySize) {
+        throw new UnsupportedOperationException("Not supported by this implementation");
+    }
 
-	/**
-	 * Returns {@code 0L}
-	 */
-	@Override
-	public long getMaxTotalMemorySize() {
-		return 0L;
-	}
+    /**
+     * Returns {@code 0L}
+     */
+    @Override
+    public long getMaxTotalMemorySize() {
+        return 0L;
+    }
 
-	/**
-	 * Return {@code false} as we not need to cound the memory in this
-	 * implementation
-	 */
-	@Override
-	protected boolean shouldCount(Runnable task) {
-		return false;
-	}
+    /**
+     * Return {@code false} as we not need to cound the memory in this
+     * implementation
+     */
+    @Override
+    protected boolean shouldCount(Runnable task) {
+        return false;
+    }
 
-	@Override
-	public void execute(Runnable command) {
+    @Override
+    public void execute(Runnable command) {
 
-		// check if the Runnable was of an unsupported type
-		if (command instanceof ChannelUpstreamEventRunnable) {
-			throw new RejectedExecutionException("command must be enclosed with an downstream event.");
-		}
-		doExecute(command);
-	}
+        // check if the Runnable was of an unsupported type
+        if (command instanceof ChannelUpstreamEventRunnable) {
+            throw new RejectedExecutionException("command must be enclosed with an downstream event.");
+        }
+        doExecute(command);
+    }
 
-	@Override
-	protected Executor getChildExecutor(ChannelEvent e) {
-		final Object key = getChildExecutorKey(e);
-		Executor executor = childExecutors.get(key);
-		if (executor == null) {
-			executor = new ChildExecutor();
-			Executor oldExecutor = childExecutors.putIfAbsent(key, executor);
-			if (oldExecutor != null) {
-				executor = oldExecutor;
-			} else {
-				// register a listener so that the ChildExecutor will get
-				// removed once the channel was closed
-				e.getChannel().getCloseFuture().addListener(new ChannelFutureListener() {
+    @Override
+    protected Executor getChildExecutor(ChannelEvent e) {
+        final Object key = getChildExecutorKey(e);
+        Executor executor = childExecutors.get(key);
+        if (executor == null) {
+            executor = new ChildExecutor();
+            Executor oldExecutor = childExecutors.putIfAbsent(key, executor);
+            if (oldExecutor != null) {
+                executor = oldExecutor;
+            } else {
+                // register a listener so that the ChildExecutor will get
+                // removed once the channel was closed
+                e.getChannel().getCloseFuture().addListener(new ChannelFutureListener() {
 
-					public void operationComplete(ChannelFuture future) throws Exception {
-						removeChildExecutor(key);
-					}
-				});
-			}
-		}
+                    public void operationComplete(ChannelFuture future) throws Exception {
+                        removeChildExecutor(key);
+                    }
+                });
+            }
+        }
 
-		return executor;
-	}
+        return executor;
+    }
 }

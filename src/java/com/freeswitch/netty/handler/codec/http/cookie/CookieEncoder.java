@@ -15,37 +15,35 @@
  */
 package com.freeswitch.netty.handler.codec.http.cookie;
 
-import static com.freeswitch.netty.handler.codec.http.cookie.CookieUtil.firstInvalidCookieNameOctet;
-import static com.freeswitch.netty.handler.codec.http.cookie.CookieUtil.firstInvalidCookieValueOctet;
-import static com.freeswitch.netty.handler.codec.http.cookie.CookieUtil.unwrapValue;
+import static com.freeswitch.netty.handler.codec.http.cookie.CookieUtil.*;
 
 /**
  * Parent of Client and Server side cookie encoders
  */
 public abstract class CookieEncoder {
 
-	private final boolean strict;
+    private final boolean strict;
 
-	protected CookieEncoder(boolean strict) {
-		this.strict = strict;
-	}
+    protected CookieEncoder(boolean strict) {
+        this.strict = strict;
+    }
 
-	protected void validateCookie(String name, String value) {
-		if (strict) {
-			int pos;
+    protected void validateCookie(String name, String value) {
+        if (strict) {
+            int pos;
 
-			if ((pos = firstInvalidCookieNameOctet(name)) >= 0) {
-				throw new IllegalArgumentException("Cookie name contains an invalid char: " + name.charAt(pos));
-			}
+            if ((pos = firstInvalidCookieNameOctet(name)) >= 0) {
+                throw new IllegalArgumentException("Cookie name contains an invalid char: " + name.charAt(pos));
+            }
 
-			CharSequence unwrappedValue = unwrapValue(value);
-			if (unwrappedValue == null) {
-				throw new IllegalArgumentException("Cookie value wrapping quotes are not balanced: " + value);
-			}
+            CharSequence unwrappedValue = unwrapValue(value);
+            if (unwrappedValue == null) {
+                throw new IllegalArgumentException("Cookie value wrapping quotes are not balanced: " + value);
+            }
 
-			if ((pos = firstInvalidCookieValueOctet(unwrappedValue)) >= 0) {
-				throw new IllegalArgumentException("Cookie value contains an invalid char: " + value.charAt(pos));
-			}
-		}
-	}
+            if ((pos = firstInvalidCookieValueOctet(unwrappedValue)) >= 0) {
+                throw new IllegalArgumentException("Cookie value contains an invalid char: " + value.charAt(pos));
+            }
+        }
+    }
 }

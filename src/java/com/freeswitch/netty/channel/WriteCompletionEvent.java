@@ -23,11 +23,11 @@ package com.freeswitch.netty.channel;
  * they have.
  */
 public interface WriteCompletionEvent extends ChannelEvent {
-	/**
-	 * Returns the amount of data written.
-	 *
-	 * @return the number of written bytes or messages, depending on the type of
-	 *         the transport
-	 */
-	long getWrittenAmount();
+    /**
+     * Returns the amount of data written.
+     *
+     * @return the number of written bytes or messages, depending on the type of
+     * the transport
+     */
+    long getWrittenAmount();
 }

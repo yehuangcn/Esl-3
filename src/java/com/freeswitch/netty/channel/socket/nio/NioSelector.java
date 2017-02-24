@@ -15,20 +15,20 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import java.nio.channels.Selector;
-
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelFuture;
 
+import java.nio.channels.Selector;
+
 public interface NioSelector extends Runnable {
 
-	void register(Channel channel, ChannelFuture future);
+    void register(Channel channel, ChannelFuture future);
 
-	/**
-	 * Replaces the current {@link Selector} with a new {@link Selector} to work
-	 * around the infamous epoll 100% CPU bug.
-	 */
-	void rebuildSelector();
+    /**
+     * Replaces the current {@link Selector} with a new {@link Selector} to work
+     * around the infamous epoll 100% CPU bug.
+     */
+    void rebuildSelector();
 
-	void shutdown();
+    void shutdown();
 }

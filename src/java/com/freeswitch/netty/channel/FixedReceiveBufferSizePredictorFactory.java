@@ -21,18 +21,18 @@ package com.freeswitch.netty.channel;
  */
 public class FixedReceiveBufferSizePredictorFactory implements ReceiveBufferSizePredictorFactory {
 
-	private final ReceiveBufferSizePredictor predictor;
+    private final ReceiveBufferSizePredictor predictor;
 
-	/**
-	 * Creates a new factory that returns a
-	 * {@link FixedReceiveBufferSizePredictor} which always returns the same
-	 * prediction of the specified buffer size.
-	 */
-	public FixedReceiveBufferSizePredictorFactory(int bufferSize) {
-		predictor = new FixedReceiveBufferSizePredictor(bufferSize);
-	}
+    /**
+     * Creates a new factory that returns a
+     * {@link FixedReceiveBufferSizePredictor} which always returns the same
+     * prediction of the specified buffer size.
+     */
+    public FixedReceiveBufferSizePredictorFactory(int bufferSize) {
+        predictor = new FixedReceiveBufferSizePredictor(bufferSize);
+    }
 
-	public ReceiveBufferSizePredictor getPredictor() throws Exception {
-		return predictor;
-	}
+    public ReceiveBufferSizePredictor getPredictor() throws Exception {
+        return predictor;
+    }
 }

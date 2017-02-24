@@ -15,18 +15,18 @@
  */
 package com.freeswitch.netty.handler.codec.string;
 
-import java.nio.charset.Charset;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
 import com.freeswitch.netty.channel.Channel;
+import com.freeswitch.netty.channel.ChannelHandler.Sharable;
 import com.freeswitch.netty.channel.ChannelHandlerContext;
 import com.freeswitch.netty.channel.ChannelPipeline;
 import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.channel.ChannelHandler.Sharable;
 import com.freeswitch.netty.handler.codec.frame.DelimiterBasedFrameDecoder;
 import com.freeswitch.netty.handler.codec.frame.Delimiters;
 import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
 import com.freeswitch.netty.handler.codec.oneone.OneToOneDecoder;
+
+import java.nio.charset.Charset;
 
 /**
  * Decodes a received {@link ChannelBuffer} into a {@link String}. Please note
@@ -34,7 +34,7 @@ import com.freeswitch.netty.handler.codec.oneone.OneToOneDecoder;
  * {@link DelimiterBasedFrameDecoder} if you are using a stream-based transport
  * such as TCP/IP. A typical setup for a text-based line protocol in a TCP/IP
  * socket would be:
- * 
+ * <p>
  * <pre>
  * {@link ChannelPipeline} pipeline = ...;
  *
@@ -45,10 +45,10 @@ import com.freeswitch.netty.handler.codec.oneone.OneToOneDecoder;
  * // Encoder
  * pipeline.addLast("stringEncoder", new {@link StringEncoder}(CharsetUtil.UTF_8));
  * </pre>
- * 
+ * <p>
  * and then you can use a {@link String} instead of a {@link ChannelBuffer} as a
  * message:
- * 
+ * <p>
  * <pre>
  * void messageReceived({@link ChannelHandlerContext} ctx, {@link MessageEvent} e) {
  *     String msg = (String) e.getMessage();
@@ -61,31 +61,31 @@ import com.freeswitch.netty.handler.codec.oneone.OneToOneDecoder;
 @Sharable
 public class StringDecoder extends OneToOneDecoder {
 
-	// TODO Use CharsetDecoder instead.
-	private final Charset charset;
+    // TODO Use CharsetDecoder instead.
+    private final Charset charset;
 
-	/**
-	 * Creates a new instance with the current system character set.
-	 */
-	public StringDecoder() {
-		this(Charset.defaultCharset());
-	}
+    /**
+     * Creates a new instance with the current system character set.
+     */
+    public StringDecoder() {
+        this(Charset.defaultCharset());
+    }
 
-	/**
-	 * Creates a new instance with the specified character set.
-	 */
-	public StringDecoder(Charset charset) {
-		if (charset == null) {
-			throw new NullPointerException("charset");
-		}
-		this.charset = charset;
-	}
+    /**
+     * Creates a new instance with the specified character set.
+     */
+    public StringDecoder(Charset charset) {
+        if (charset == null) {
+            throw new NullPointerException("charset");
+        }
+        this.charset = charset;
+    }
 
-	@Override
-	protected Object decode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
-		if (!(msg instanceof ChannelBuffer)) {
-			return msg;
-		}
-		return ((ChannelBuffer) msg).toString(charset);
-	}
+    @Override
+    protected Object decode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
+        if (!(msg instanceof ChannelBuffer)) {
+            return msg;
+        }
+        return ((ChannelBuffer) msg).toString(charset);
+    }
 }

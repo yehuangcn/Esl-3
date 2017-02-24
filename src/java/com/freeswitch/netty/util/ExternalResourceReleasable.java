@@ -18,15 +18,15 @@ package com.freeswitch.netty.util;
 /**
  * A common interface for a class which depends on external resources that need
  * explicit release or shutdown.
- * 
+ *
  * @apiviz.landmark
  */
 public interface ExternalResourceReleasable {
 
-	/**
-	 * Releases the external resources that this object depends on. You should
-	 * not call this method if the external resources (e.g. thread pool) are in
-	 * use by other objects.
-	 */
-	void releaseExternalResources();
+    /**
+     * Releases the external resources that this object depends on. You should
+     * not call this method if the external resources (e.g. thread pool) are in
+     * use by other objects.
+     */
+    void releaseExternalResources();
 }

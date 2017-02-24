@@ -18,9 +18,9 @@ package com.freeswitch.netty.channel;
 /**
  * A {@link ChannelHandler} that is notified when it is added to or removed from
  * a {@link ChannelPipeline}.
- *
+ * <p>
  * <h3>Invalid access to the {@link ChannelHandlerContext}</h3>
- *
+ * <p>
  * Calling {@link ChannelHandlerContext#sendUpstream(ChannelEvent)} or
  * {@link ChannelHandlerContext#sendDownstream(ChannelEvent)} in
  * {@link #beforeAdd(ChannelHandlerContext)} or
@@ -30,11 +30,11 @@ package com.freeswitch.netty.channel;
  * respectively.
  */
 public interface LifeCycleAwareChannelHandler extends ChannelHandler {
-	void beforeAdd(ChannelHandlerContext ctx) throws Exception;
+    void beforeAdd(ChannelHandlerContext ctx) throws Exception;
 
-	void afterAdd(ChannelHandlerContext ctx) throws Exception;
+    void afterAdd(ChannelHandlerContext ctx) throws Exception;
 
-	void beforeRemove(ChannelHandlerContext ctx) throws Exception;
+    void beforeRemove(ChannelHandlerContext ctx) throws Exception;
 
-	void afterRemove(ChannelHandlerContext ctx) throws Exception;
+    void afterRemove(ChannelHandlerContext ctx) throws Exception;
 }

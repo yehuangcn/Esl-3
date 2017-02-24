@@ -15,11 +15,9 @@
  */
 package com.freeswitch.netty.handler.codec.http;
 
-import static com.freeswitch.netty.handler.codec.http.HttpConstants.CR;
-import static com.freeswitch.netty.handler.codec.http.HttpConstants.LF;
-import static com.freeswitch.netty.handler.codec.http.HttpConstants.SP;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
+
+import static com.freeswitch.netty.handler.codec.http.HttpConstants.*;
 
 /**
  * Encodes an {@link HttpResponse} or an {@link HttpChunk} into a
@@ -27,15 +25,15 @@ import com.freeswitch.netty.buffer.ChannelBuffer;
  */
 public class HttpResponseEncoder extends HttpMessageEncoder {
 
-	@Override
-	protected void encodeInitialLine(ChannelBuffer buf, HttpMessage message) throws Exception {
-		HttpResponse response = (HttpResponse) message;
-		encodeAscii(response.getProtocolVersion().toString(), buf);
-		buf.writeByte(SP);
-		encodeAscii(String.valueOf(response.getStatus().getCode()), buf);
-		buf.writeByte(SP);
-		encodeAscii(String.valueOf(response.getStatus().getReasonPhrase()), buf);
-		buf.writeByte(CR);
-		buf.writeByte(LF);
-	}
+    @Override
+    protected void encodeInitialLine(ChannelBuffer buf, HttpMessage message) throws Exception {
+        HttpResponse response = (HttpResponse) message;
+        encodeAscii(response.getProtocolVersion().toString(), buf);
+        buf.writeByte(SP);
+        encodeAscii(String.valueOf(response.getStatus().getCode()), buf);
+        buf.writeByte(SP);
+        encodeAscii(String.valueOf(response.getStatus().getReasonPhrase()), buf);
+        buf.writeByte(CR);
+        buf.writeByte(LF);
+    }
 }

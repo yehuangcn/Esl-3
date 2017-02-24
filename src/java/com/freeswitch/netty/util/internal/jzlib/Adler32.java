@@ -50,71 +50,71 @@ package com.freeswitch.netty.util.internal.jzlib;
 
 final class Adler32 {
 
-	// largest prime smaller than 65536
-	private static final int BASE = 65521;
-	// NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1
-	private static final int NMAX = 5552;
+    // largest prime smaller than 65536
+    private static final int BASE = 65521;
+    // NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1
+    private static final int NMAX = 5552;
 
-	static long adler32(long adler, byte[] buf, int index, int len) {
-		if (buf == null) {
-			return 1L;
-		}
+    private Adler32() {
+        // Utility class
+    }
 
-		long s1 = adler & 0xffff;
-		long s2 = adler >> 16 & 0xffff;
-		int k;
+    static long adler32(long adler, byte[] buf, int index, int len) {
+        if (buf == null) {
+            return 1L;
+        }
 
-		while (len > 0) {
-			k = len < NMAX ? len : NMAX;
-			len -= k;
-			while (k >= 16) {
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				s1 += buf[index++] & 0xff;
-				s2 += s1;
-				k -= 16;
-			}
-			if (k != 0) {
-				do {
-					s1 += buf[index++] & 0xff;
-					s2 += s1;
-				} while (--k != 0);
-			}
-			s1 %= BASE;
-			s2 %= BASE;
-		}
-		return s2 << 16 | s1;
-	}
+        long s1 = adler & 0xffff;
+        long s2 = adler >> 16 & 0xffff;
+        int k;
 
-	private Adler32() {
-		// Utility class
-	}
+        while (len > 0) {
+            k = len < NMAX ? len : NMAX;
+            len -= k;
+            while (k >= 16) {
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                s1 += buf[index++] & 0xff;
+                s2 += s1;
+                k -= 16;
+            }
+            if (k != 0) {
+                do {
+                    s1 += buf[index++] & 0xff;
+                    s2 += s1;
+                } while (--k != 0);
+            }
+            s1 %= BASE;
+            s2 %= BASE;
+        }
+        return s2 << 16 | s1;
+    }
 }

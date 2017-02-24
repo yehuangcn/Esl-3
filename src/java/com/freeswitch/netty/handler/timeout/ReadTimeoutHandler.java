@@ -15,31 +15,19 @@
  */
 package com.freeswitch.netty.handler.timeout;
 
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
+import com.freeswitch.netty.bootstrap.ServerBootstrap;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.channel.ChannelHandler.Sharable;
+import com.freeswitch.netty.util.*;
 
 import java.util.concurrent.TimeUnit;
 
-import com.freeswitch.netty.bootstrap.ServerBootstrap;
-import com.freeswitch.netty.channel.ChannelHandler;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelPipelineFactory;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.Channels;
-import com.freeswitch.netty.channel.LifeCycleAwareChannelHandler;
-import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.channel.SimpleChannelUpstreamHandler;
-import com.freeswitch.netty.channel.ChannelHandler.Sharable;
-import com.freeswitch.netty.util.ExternalResourceReleasable;
-import com.freeswitch.netty.util.HashedWheelTimer;
-import com.freeswitch.netty.util.Timeout;
-import com.freeswitch.netty.util.Timer;
-import com.freeswitch.netty.util.TimerTask;
+import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
 
 /**
  * Raises a {@link ReadTimeoutException} when no data was read within a certain
  * period of time.
- *
+ * <p>
  * <pre>
  * public class MyPipelineFactory implements {@link ChannelPipelineFactory} {
  *
@@ -65,232 +53,226 @@ import com.freeswitch.netty.util.TimerTask;
  * bootstrap.setPipelineFactory(new MyPipelineFactory(timer));
  * ...
  * </pre>
- *
+ * <p>
  * The {@link Timer} which was specified when the {@link ReadTimeoutHandler} is
  * created should be stopped manually by calling
  * {@link #releaseExternalResources()} or {@link Timer#stop()} when your
  * application shuts down.
- * 
- * @see WriteTimeoutHandler
- * @see IdleStateHandler
  *
  * @apiviz.landmark
  * @apiviz.uses org.jboss.netty.util.HashedWheelTimer
  * @apiviz.has org.jboss.netty.handler.timeout.TimeoutException oneway - -
- *             raises
+ * raises
+ * @see WriteTimeoutHandler
+ * @see IdleStateHandler
  */
 @Sharable
 public class ReadTimeoutHandler extends SimpleChannelUpstreamHandler implements LifeCycleAwareChannelHandler, ExternalResourceReleasable {
 
-	static final ReadTimeoutException EXCEPTION = new ReadTimeoutException();
+    static final ReadTimeoutException EXCEPTION = new ReadTimeoutException();
 
-	final Timer timer;
-	final long timeoutMillis;
+    final Timer timer;
+    final long timeoutMillis;
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param timer
-	 *            the {@link Timer} that is used to trigger the scheduled event.
-	 *            The recommended {@link Timer} implementation is
-	 *            {@link HashedWheelTimer}.
-	 * @param timeoutSeconds
-	 *            read timeout in seconds
-	 */
-	public ReadTimeoutHandler(Timer timer, int timeoutSeconds) {
-		this(timer, timeoutSeconds, TimeUnit.SECONDS);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param timer          the {@link Timer} that is used to trigger the scheduled event.
+     *                       The recommended {@link Timer} implementation is
+     *                       {@link HashedWheelTimer}.
+     * @param timeoutSeconds read timeout in seconds
+     */
+    public ReadTimeoutHandler(Timer timer, int timeoutSeconds) {
+        this(timer, timeoutSeconds, TimeUnit.SECONDS);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param timer
-	 *            the {@link Timer} that is used to trigger the scheduled event.
-	 *            The recommended {@link Timer} implementation is
-	 *            {@link HashedWheelTimer}.
-	 * @param timeout
-	 *            read timeout
-	 * @param unit
-	 *            the {@link TimeUnit} of {@code timeout}
-	 */
-	public ReadTimeoutHandler(Timer timer, long timeout, TimeUnit unit) {
-		if (timer == null) {
-			throw new NullPointerException("timer");
-		}
-		if (unit == null) {
-			throw new NullPointerException("unit");
-		}
+    /**
+     * Creates a new instance.
+     *
+     * @param timer   the {@link Timer} that is used to trigger the scheduled event.
+     *                The recommended {@link Timer} implementation is
+     *                {@link HashedWheelTimer}.
+     * @param timeout read timeout
+     * @param unit    the {@link TimeUnit} of {@code timeout}
+     */
+    public ReadTimeoutHandler(Timer timer, long timeout, TimeUnit unit) {
+        if (timer == null) {
+            throw new NullPointerException("timer");
+        }
+        if (unit == null) {
+            throw new NullPointerException("unit");
+        }
 
-		this.timer = timer;
-		if (timeout <= 0) {
-			timeoutMillis = 0;
-		} else {
-			timeoutMillis = Math.max(unit.toMillis(timeout), 1);
-		}
-	}
+        this.timer = timer;
+        if (timeout <= 0) {
+            timeoutMillis = 0;
+        } else {
+            timeoutMillis = Math.max(unit.toMillis(timeout), 1);
+        }
+    }
 
-	/**
-	 * Stops the {@link Timer} which was specified in the constructor of this
-	 * handler. You should not call this method if the {@link Timer} is in use
-	 * by other objects.
-	 */
-	public void releaseExternalResources() {
-		timer.stop();
-	}
+    private static void destroy(ChannelHandlerContext ctx) {
+        State state = state(ctx);
+        synchronized (state) {
+            if (state.state != 1) {
+                return;
+            }
+            state.state = 2;
+        }
 
-	public void beforeAdd(ChannelHandlerContext ctx) throws Exception {
-		if (ctx.getPipeline().isAttached()) {
-			// channelOpen event has been fired already, which means
-			// this.channelOpen() will not be invoked.
-			// We have to initialize here instead.
-			initialize(ctx);
-		} else {
-			// channelOpen event has not been fired yet.
-			// this.channelOpen() will be invoked and initialization will occur
-			// there.
-		}
-	}
+        if (state.timeout != null) {
+            state.timeout.cancel();
+            state.timeout = null;
+        }
+    }
 
-	public void afterAdd(ChannelHandlerContext ctx) throws Exception {
-		// NOOP
-	}
+    private static State state(ChannelHandlerContext ctx) {
+        State state;
+        synchronized (ctx) {
+            // FIXME: It could have been better if there is
+            // setAttachmentIfAbsent().
+            state = (State) ctx.getAttachment();
+            if (state != null) {
+                return state;
+            }
+            state = new State();
+            ctx.setAttachment(state);
+        }
+        return state;
+    }
 
-	public void beforeRemove(ChannelHandlerContext ctx) throws Exception {
-		destroy(ctx);
-	}
+    /**
+     * Stops the {@link Timer} which was specified in the constructor of this
+     * handler. You should not call this method if the {@link Timer} is in use
+     * by other objects.
+     */
+    public void releaseExternalResources() {
+        timer.stop();
+    }
 
-	public void afterRemove(ChannelHandlerContext ctx) throws Exception {
-		// NOOP
-	}
+    public void beforeAdd(ChannelHandlerContext ctx) throws Exception {
+        if (ctx.getPipeline().isAttached()) {
+            // channelOpen event has been fired already, which means
+            // this.channelOpen() will not be invoked.
+            // We have to initialize here instead.
+            initialize(ctx);
+        } else {
+            // channelOpen event has not been fired yet.
+            // this.channelOpen() will be invoked and initialization will occur
+            // there.
+        }
+    }
 
-	@Override
-	public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		// This method will be invoked only if this handler was added
-		// before channelOpen event is fired. If a user adds this handler
-		// after the channelOpen event, initialize() will be called by
-		// beforeAdd().
-		initialize(ctx);
-		ctx.sendUpstream(e);
-	}
+    public void afterAdd(ChannelHandlerContext ctx) throws Exception {
+        // NOOP
+    }
 
-	@Override
-	public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		destroy(ctx);
-		ctx.sendUpstream(e);
-	}
+    public void beforeRemove(ChannelHandlerContext ctx) throws Exception {
+        destroy(ctx);
+    }
 
-	@Override
-	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-		State state = (State) ctx.getAttachment();
-		state.lastReadTime = System.currentTimeMillis();
-		ctx.sendUpstream(e);
-	}
+    public void afterRemove(ChannelHandlerContext ctx) throws Exception {
+        // NOOP
+    }
 
-	private void initialize(ChannelHandlerContext ctx) {
-		State state = state(ctx);
+    @Override
+    public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        // This method will be invoked only if this handler was added
+        // before channelOpen event is fired. If a user adds this handler
+        // after the channelOpen event, initialize() will be called by
+        // beforeAdd().
+        initialize(ctx);
+        ctx.sendUpstream(e);
+    }
 
-		// Avoid the case where destroy() is called before scheduling timeouts.
-		// See: https://github.com/netty/netty/issues/143
-		synchronized (state) {
-			switch (state.state) {
-			case 1:
-			case 2:
-				return;
-			}
-			state.state = 1;
-		}
+    @Override
+    public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        destroy(ctx);
+        ctx.sendUpstream(e);
+    }
 
-		if (timeoutMillis > 0) {
-			state.timeout = timer.newTimeout(new ReadTimeoutTask(ctx), timeoutMillis, TimeUnit.MILLISECONDS);
-		}
-	}
+    @Override
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+        State state = (State) ctx.getAttachment();
+        state.lastReadTime = System.currentTimeMillis();
+        ctx.sendUpstream(e);
+    }
 
-	private static void destroy(ChannelHandlerContext ctx) {
-		State state = state(ctx);
-		synchronized (state) {
-			if (state.state != 1) {
-				return;
-			}
-			state.state = 2;
-		}
+    private void initialize(ChannelHandlerContext ctx) {
+        State state = state(ctx);
 
-		if (state.timeout != null) {
-			state.timeout.cancel();
-			state.timeout = null;
-		}
-	}
+        // Avoid the case where destroy() is called before scheduling timeouts.
+        // See: https://github.com/netty/netty/issues/143
+        synchronized (state) {
+            switch (state.state) {
+                case 1:
+                case 2:
+                    return;
+            }
+            state.state = 1;
+        }
 
-	private static State state(ChannelHandlerContext ctx) {
-		State state;
-		synchronized (ctx) {
-			// FIXME: It could have been better if there is
-			// setAttachmentIfAbsent().
-			state = (State) ctx.getAttachment();
-			if (state != null) {
-				return state;
-			}
-			state = new State();
-			ctx.setAttachment(state);
-		}
-		return state;
-	}
+        if (timeoutMillis > 0) {
+            state.timeout = timer.newTimeout(new ReadTimeoutTask(ctx), timeoutMillis, TimeUnit.MILLISECONDS);
+        }
+    }
 
-	protected void readTimedOut(ChannelHandlerContext ctx) throws Exception {
-		fireExceptionCaught(ctx, EXCEPTION);
-	}
+    protected void readTimedOut(ChannelHandlerContext ctx) throws Exception {
+        fireExceptionCaught(ctx, EXCEPTION);
+    }
 
-	private final class ReadTimeoutTask implements TimerTask {
+    private static final class State {
+        // 0 - none, 1 - initialized, 2 - destroyed
+        int state;
+        volatile Timeout timeout;
+        volatile long lastReadTime = System.currentTimeMillis();
 
-		private final ChannelHandlerContext ctx;
+        State() {
+        }
+    }
 
-		ReadTimeoutTask(ChannelHandlerContext ctx) {
-			this.ctx = ctx;
-		}
+    private final class ReadTimeoutTask implements TimerTask {
 
-		public void run(Timeout timeout) throws Exception {
-			if (timeout.isCancelled()) {
-				return;
-			}
+        private final ChannelHandlerContext ctx;
 
-			if (!ctx.getChannel().isOpen()) {
-				return;
-			}
+        ReadTimeoutTask(ChannelHandlerContext ctx) {
+            this.ctx = ctx;
+        }
 
-			State state = (State) ctx.getAttachment();
-			long currentTime = System.currentTimeMillis();
-			long nextDelay = timeoutMillis - (currentTime - state.lastReadTime);
-			if (nextDelay <= 0) {
-				// Read timed out - set a new timeout and notify the callback.
-				state.timeout = timer.newTimeout(this, timeoutMillis, TimeUnit.MILLISECONDS);
-				fireReadTimedOut(ctx);
-			} else {
-				// Read occurred before the timeout - set a new timeout with
-				// shorter delay.
-				state.timeout = timer.newTimeout(this, nextDelay, TimeUnit.MILLISECONDS);
-			}
-		}
+        public void run(Timeout timeout) throws Exception {
+            if (timeout.isCancelled()) {
+                return;
+            }
 
-		private void fireReadTimedOut(final ChannelHandlerContext ctx) throws Exception {
-			ctx.getPipeline().execute(new Runnable() {
+            if (!ctx.getChannel().isOpen()) {
+                return;
+            }
 
-				public void run() {
-					try {
-						readTimedOut(ctx);
-					} catch (Throwable t) {
-						fireExceptionCaught(ctx, t);
-					}
-				}
-			});
-		}
-	}
+            State state = (State) ctx.getAttachment();
+            long currentTime = System.currentTimeMillis();
+            long nextDelay = timeoutMillis - (currentTime - state.lastReadTime);
+            if (nextDelay <= 0) {
+                // Read timed out - set a new timeout and notify the callback.
+                state.timeout = timer.newTimeout(this, timeoutMillis, TimeUnit.MILLISECONDS);
+                fireReadTimedOut(ctx);
+            } else {
+                // Read occurred before the timeout - set a new timeout with
+                // shorter delay.
+                state.timeout = timer.newTimeout(this, nextDelay, TimeUnit.MILLISECONDS);
+            }
+        }
 
-	private static final class State {
-		// 0 - none, 1 - initialized, 2 - destroyed
-		int state;
-		volatile Timeout timeout;
-		volatile long lastReadTime = System.currentTimeMillis();
+        private void fireReadTimedOut(final ChannelHandlerContext ctx) throws Exception {
+            ctx.getPipeline().execute(new Runnable() {
 
-		State() {
-		}
-	}
+                public void run() {
+                    try {
+                        readTimedOut(ctx);
+                    } catch (Throwable t) {
+                        fireExceptionCaught(ctx, t);
+                    }
+                }
+            });
+        }
+    }
 }

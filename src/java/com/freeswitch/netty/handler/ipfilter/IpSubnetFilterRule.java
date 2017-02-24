@@ -25,52 +25,50 @@ import java.net.UnknownHostException;
  * preferable to not mix IPV4 addresses with IPV6 rules, even if it should work.
  */
 public class IpSubnetFilterRule extends IpSubnet implements IpFilterRule {
-	/** Is this IpV4Subnet an ALLOW or DENY rule */
-	private boolean isAllowRule = true;
+    /**
+     * Is this IpV4Subnet an ALLOW or DENY rule
+     */
+    private boolean isAllowRule = true;
 
-	/**
-	 * Constructor for a ALLOW or DENY ALL
-	 *
-	 * @param allow
-	 *            True for ALLOW, False for DENY
-	 */
-	public IpSubnetFilterRule(boolean allow) {
-		isAllowRule = allow;
-	}
+    /**
+     * Constructor for a ALLOW or DENY ALL
+     *
+     * @param allow True for ALLOW, False for DENY
+     */
+    public IpSubnetFilterRule(boolean allow) {
+        isAllowRule = allow;
+    }
 
-	/**
-	 * @param allow
-	 *            True for ALLOW, False for DENY
-	 */
-	public IpSubnetFilterRule(boolean allow, InetAddress inetAddress, int cidrNetMask) throws UnknownHostException {
-		super(inetAddress, cidrNetMask);
-		isAllowRule = allow;
-	}
+    /**
+     * @param allow True for ALLOW, False for DENY
+     */
+    public IpSubnetFilterRule(boolean allow, InetAddress inetAddress, int cidrNetMask) throws UnknownHostException {
+        super(inetAddress, cidrNetMask);
+        isAllowRule = allow;
+    }
 
-	/**
-	 * @param allow
-	 *            True for ALLOW, False for DENY
-	 */
-	public IpSubnetFilterRule(boolean allow, InetAddress inetAddress, String netMask) throws UnknownHostException {
-		super(inetAddress, netMask);
-		isAllowRule = allow;
-	}
+    /**
+     * @param allow True for ALLOW, False for DENY
+     */
+    public IpSubnetFilterRule(boolean allow, InetAddress inetAddress, String netMask) throws UnknownHostException {
+        super(inetAddress, netMask);
+        isAllowRule = allow;
+    }
 
-	/**
-	 * @param allow
-	 *            True for ALLOW, False for DENY
-	 */
-	public IpSubnetFilterRule(boolean allow, String netAddress) throws UnknownHostException {
-		super(netAddress);
-		isAllowRule = allow;
-	}
+    /**
+     * @param allow True for ALLOW, False for DENY
+     */
+    public IpSubnetFilterRule(boolean allow, String netAddress) throws UnknownHostException {
+        super(netAddress);
+        isAllowRule = allow;
+    }
 
-	public boolean isAllowRule() {
-		return isAllowRule;
-	}
+    public boolean isAllowRule() {
+        return isAllowRule;
+    }
 
-	public boolean isDenyRule() {
-		return !isAllowRule;
-	}
+    public boolean isDenyRule() {
+        return !isAllowRule;
+    }
 
 }

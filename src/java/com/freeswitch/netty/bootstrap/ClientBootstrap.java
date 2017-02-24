@@ -15,27 +15,19 @@
  */
 package com.freeswitch.netty.bootstrap;
 
+import com.freeswitch.netty.channel.*;
+
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelConfig;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelHandler;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelPipelineException;
-import com.freeswitch.netty.channel.ChannelPipelineFactory;
-import com.freeswitch.netty.channel.Channels;
 
 /**
  * A helper class which creates a new client-side {@link Channel} and makes a
  * connection attempt.
- *
+ * <p>
  * <h3>Configuring a channel</h3>
- *
+ * <p>
  * {@link #setOption(String, Object) Options} are used to configure a channel:
- *
+ * <p>
  * <pre>
  * {@link ClientBootstrap} b = ...;
  *
@@ -44,18 +36,18 @@ import com.freeswitch.netty.channel.Channels;
  * b.setOption("tcpNoDelay", true);
  * b.setOption("receiveBufferSize", 1048576);
  * </pre>
- *
+ * <p>
  * For the detailed list of available options, please refer to
  * {@link ChannelConfig} and its sub-types.
- *
+ * <p>
  * <h3>Configuring a channel pipeline</h3>
- *
+ * <p>
  * Every channel has its own {@link ChannelPipeline} and you can configure it in
  * two ways.
- *
+ * <p>
  * The recommended approach is to specify a {@link ChannelPipelineFactory} by
  * calling {@link #setPipelineFactory(ChannelPipelineFactory)}.
- *
+ * <p>
  * <pre>
  * {@link ClientBootstrap} b = ...;
  * b.setPipelineFactory(new MyPipelineFactory());
@@ -71,12 +63,12 @@ import com.freeswitch.netty.channel.Channels;
  *   }
  * }
  * </pre>
- * 
+ * <p>
  * <p>
  * The alternative approach, which works only in a certain situation, is to use
  * the default pipeline and let the bootstrap to shallow-copy the default
  * pipeline for each new channel:
- *
+ * <p>
  * <pre>
  * {@link ClientBootstrap} b = ...;
  * {@link ChannelPipeline} p = b.getPipeline();
@@ -86,15 +78,15 @@ import com.freeswitch.netty.channel.Channels;
  * p.addLast("decoder", new DecodingHandler());
  * p.addLast("logic",   new LogicHandler());
  * </pre>
- *
+ * <p>
  * Please note 'shallow-copy' here means that the added {@link ChannelHandler}s
  * are not cloned but only their references are added to the new pipeline.
  * Therefore, you cannot use this approach if you are going to open more than
  * one {@link Channel}s or run a server that accepts incoming connections to
  * create its child channels.
- *
+ * <p>
  * <h3>Applying different settings for different {@link Channel}s</h3>
- *
+ * <p>
  * {@link ClientBootstrap} is just a helper class. It neither allocates nor
  * manages any resources. What manages the resources is the
  * {@link ChannelFactory} implementation you specified in the constructor of
@@ -107,198 +99,187 @@ import com.freeswitch.netty.channel.Channels;
  */
 public class ClientBootstrap extends Bootstrap {
 
-	/**
-	 * Creates a new instance with no {@link ChannelFactory} set.
-	 * {@link #setFactory(ChannelFactory)} must be called before any I/O
-	 * operation is requested.
-	 */
-	public ClientBootstrap() {
-	}
+    /**
+     * Creates a new instance with no {@link ChannelFactory} set.
+     * {@link #setFactory(ChannelFactory)} must be called before any I/O
+     * operation is requested.
+     */
+    public ClientBootstrap() {
+    }
 
-	/**
-	 * Creates a new instance with the specified initial {@link ChannelFactory}.
-	 */
-	public ClientBootstrap(ChannelFactory channelFactory) {
-		super(channelFactory);
-	}
+    /**
+     * Creates a new instance with the specified initial {@link ChannelFactory}.
+     */
+    public ClientBootstrap(ChannelFactory channelFactory) {
+        super(channelFactory);
+    }
 
-	/**
-	 * Attempts a new connection with the current {@code "remoteAddress"} and
-	 * {@code "localAddress"} option. If the {@code "localAddress"} option is
-	 * not set, the local address of a new channel is determined automatically.
-	 * This method is similar to the following code:
-	 *
-	 * <pre>
-	 * {@link ClientBootstrap} b = ...;
-	 * b.connect(b.getOption("remoteAddress"), b.getOption("localAddress"));
-	 * </pre>
-	 *
-	 * @return a future object which notifies when this connection attempt
-	 *         succeeds or fails
-	 *
-	 * @throws IllegalStateException
-	 *             if {@code "remoteAddress"} option was not set
-	 * @throws ClassCastException
-	 *             if {@code "remoteAddress"} or {@code "localAddress"} option's
-	 *             value is neither a {@link SocketAddress} nor {@code null}
-	 * @throws ChannelPipelineException
-	 *             if this bootstrap's
-	 *             {@link #setPipelineFactory(ChannelPipelineFactory)
-	 *             pipelineFactory} failed to create a new
-	 *             {@link ChannelPipeline}
-	 */
-	public ChannelFuture connect() {
-		SocketAddress remoteAddress = (SocketAddress) getOption("remoteAddress");
-		if (remoteAddress == null) {
-			throw new IllegalStateException("remoteAddress option is not set.");
-		}
-		return connect(remoteAddress);
-	}
+    /**
+     * Attempts a new connection with the current {@code "remoteAddress"} and
+     * {@code "localAddress"} option. If the {@code "localAddress"} option is
+     * not set, the local address of a new channel is determined automatically.
+     * This method is similar to the following code:
+     * <p>
+     * <pre>
+     * {@link ClientBootstrap} b = ...;
+     * b.connect(b.getOption("remoteAddress"), b.getOption("localAddress"));
+     * </pre>
+     *
+     * @return a future object which notifies when this connection attempt
+     * succeeds or fails
+     * @throws IllegalStateException    if {@code "remoteAddress"} option was not set
+     * @throws ClassCastException       if {@code "remoteAddress"} or {@code "localAddress"} option's
+     *                                  value is neither a {@link SocketAddress} nor {@code null}
+     * @throws ChannelPipelineException if this bootstrap's
+     *                                  {@link #setPipelineFactory(ChannelPipelineFactory)
+     *                                  pipelineFactory} failed to create a new
+     *                                  {@link ChannelPipeline}
+     */
+    public ChannelFuture connect() {
+        SocketAddress remoteAddress = (SocketAddress) getOption("remoteAddress");
+        if (remoteAddress == null) {
+            throw new IllegalStateException("remoteAddress option is not set.");
+        }
+        return connect(remoteAddress);
+    }
 
-	/**
-	 * Attempts a new connection with the specified {@code remoteAddress} and
-	 * the current {@code "localAddress"} option. If the {@code "localAddress"}
-	 * option is not set, the local address of a new channel is determined
-	 * automatically. This method is identical with the following code:
-	 *
-	 * <pre>
-	 * {@link ClientBootstrap} b = ...;
-	 * b.connect(remoteAddress, b.getOption("localAddress"));
-	 * </pre>
-	 *
-	 * @return a future object which notifies when this connection attempt
-	 *         succeeds or fails
-	 *
-	 * @throws ClassCastException
-	 *             if {@code "localAddress"} option's value is neither a
-	 *             {@link SocketAddress} nor {@code null}
-	 * @throws ChannelPipelineException
-	 *             if this bootstrap's
-	 *             {@link #setPipelineFactory(ChannelPipelineFactory)
-	 *             pipelineFactory} failed to create a new
-	 *             {@link ChannelPipeline}
-	 */
-	public ChannelFuture connect(SocketAddress remoteAddress) {
-		if (remoteAddress == null) {
-			throw new NullPointerException("remoteAddress");
-		}
-		SocketAddress localAddress = (SocketAddress) getOption("localAddress");
-		return connect(remoteAddress, localAddress);
-	}
+    /**
+     * Attempts a new connection with the specified {@code remoteAddress} and
+     * the current {@code "localAddress"} option. If the {@code "localAddress"}
+     * option is not set, the local address of a new channel is determined
+     * automatically. This method is identical with the following code:
+     * <p>
+     * <pre>
+     * {@link ClientBootstrap} b = ...;
+     * b.connect(remoteAddress, b.getOption("localAddress"));
+     * </pre>
+     *
+     * @return a future object which notifies when this connection attempt
+     * succeeds or fails
+     * @throws ClassCastException       if {@code "localAddress"} option's value is neither a
+     *                                  {@link SocketAddress} nor {@code null}
+     * @throws ChannelPipelineException if this bootstrap's
+     *                                  {@link #setPipelineFactory(ChannelPipelineFactory)
+     *                                  pipelineFactory} failed to create a new
+     *                                  {@link ChannelPipeline}
+     */
+    public ChannelFuture connect(SocketAddress remoteAddress) {
+        if (remoteAddress == null) {
+            throw new NullPointerException("remoteAddress");
+        }
+        SocketAddress localAddress = (SocketAddress) getOption("localAddress");
+        return connect(remoteAddress, localAddress);
+    }
 
-	/**
-	 * Attempts a new connection with the specified {@code remoteAddress} and
-	 * the specified {@code localAddress}. If the specified local address is
-	 * {@code null}, the local address of a new channel is determined
-	 * automatically.
-	 *
-	 * @return a future object which notifies when this connection attempt
-	 *         succeeds or fails
-	 *
-	 * @throws ChannelPipelineException
-	 *             if this bootstrap's
-	 *             {@link #setPipelineFactory(ChannelPipelineFactory)
-	 *             pipelineFactory} failed to create a new
-	 *             {@link ChannelPipeline}
-	 */
-	public ChannelFuture connect(final SocketAddress remoteAddress, final SocketAddress localAddress) {
+    /**
+     * Attempts a new connection with the specified {@code remoteAddress} and
+     * the specified {@code localAddress}. If the specified local address is
+     * {@code null}, the local address of a new channel is determined
+     * automatically.
+     *
+     * @return a future object which notifies when this connection attempt
+     * succeeds or fails
+     * @throws ChannelPipelineException if this bootstrap's
+     *                                  {@link #setPipelineFactory(ChannelPipelineFactory)
+     *                                  pipelineFactory} failed to create a new
+     *                                  {@link ChannelPipeline}
+     */
+    public ChannelFuture connect(final SocketAddress remoteAddress, final SocketAddress localAddress) {
 
-		if (remoteAddress == null) {
-			throw new NullPointerException("remoteAddress");
-		}
+        if (remoteAddress == null) {
+            throw new NullPointerException("remoteAddress");
+        }
 
-		ChannelPipeline pipeline;
-		try {
-			pipeline = getPipelineFactory().getPipeline();
-		} catch (Exception e) {
-			throw new ChannelPipelineException("Failed to initialize a pipeline.", e);
-		}
+        ChannelPipeline pipeline;
+        try {
+            pipeline = getPipelineFactory().getPipeline();
+        } catch (Exception e) {
+            throw new ChannelPipelineException("Failed to initialize a pipeline.", e);
+        }
 
-		// Set the options.
-		Channel ch = getFactory().newChannel(pipeline);
-		boolean success = false;
-		try {
-			ch.getConfig().setOptions(getOptions());
-			success = true;
-		} finally {
-			if (!success) {
-				ch.close();
-			}
-		}
+        // Set the options.
+        Channel ch = getFactory().newChannel(pipeline);
+        boolean success = false;
+        try {
+            ch.getConfig().setOptions(getOptions());
+            success = true;
+        } finally {
+            if (!success) {
+                ch.close();
+            }
+        }
 
-		// Bind.
-		if (localAddress != null) {
-			ch.bind(localAddress);
-		}
+        // Bind.
+        if (localAddress != null) {
+            ch.bind(localAddress);
+        }
 
-		// Connect.
-		return ch.connect(remoteAddress);
-	}
+        // Connect.
+        return ch.connect(remoteAddress);
+    }
 
-	/**
-	 * Attempts to bind a channel with the specified {@code localAddress}. later
-	 * the channel can be connected to a remoteAddress by calling
-	 * {@link Channel#connect(SocketAddress)}.This method is useful where bind
-	 * and connect need to be done in separate steps.
-	 * <p>
-	 * For an instance, a user can set an attachment to the {@link Channel} via
-	 * {@link Channel#setAttachment(Object)} before beginning a connection
-	 * attempt so that the user can access the attachment once the connection is
-	 * established:
-	 *
-	 * <pre>
-	 * ChannelFuture bindFuture = bootstrap.bind(new InetSocketAddress("192.168.0.15", 0));
-	 * Channel channel = bindFuture.getChannel();
-	 * channel.setAttachment(dataObj);
-	 * channel.connect(new InetSocketAddress("192.168.0.30", 8080));
-	 * </pre>
-	 *
-	 * The attachment can be accessed then in the handler like the following:
-	 *
-	 * <pre>
-	 * public class YourHandler extends SimpleChannelUpstreamHandler {
-	 * 	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-	 * 		Object dataObject = ctx.getChannel().getAttachment();
-	 * 	}
-	 * }
-	 *
-	 * </pre>
-	 *
-	 * @return a future object which notifies when this bind attempt succeeds or
-	 *         fails
-	 *
-	 * @throws ChannelPipelineException
-	 *             if this bootstrap's
-	 *             {@link #setPipelineFactory(ChannelPipelineFactory)
-	 *             pipelineFactory} failed to create a new
-	 *             {@link ChannelPipeline}
-	 */
-	public ChannelFuture bind(final SocketAddress localAddress) {
+    /**
+     * Attempts to bind a channel with the specified {@code localAddress}. later
+     * the channel can be connected to a remoteAddress by calling
+     * {@link Channel#connect(SocketAddress)}.This method is useful where bind
+     * and connect need to be done in separate steps.
+     * <p>
+     * For an instance, a user can set an attachment to the {@link Channel} via
+     * {@link Channel#setAttachment(Object)} before beginning a connection
+     * attempt so that the user can access the attachment once the connection is
+     * established:
+     * <p>
+     * <pre>
+     * ChannelFuture bindFuture = bootstrap.bind(new InetSocketAddress("192.168.0.15", 0));
+     * Channel channel = bindFuture.getChannel();
+     * channel.setAttachment(dataObj);
+     * channel.connect(new InetSocketAddress("192.168.0.30", 8080));
+     * </pre>
+     * <p>
+     * The attachment can be accessed then in the handler like the following:
+     * <p>
+     * <pre>
+     * public class YourHandler extends SimpleChannelUpstreamHandler {
+     * 	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+     * 		Object dataObject = ctx.getChannel().getAttachment();
+     *    }
+     * }
+     *
+     * </pre>
+     *
+     * @return a future object which notifies when this bind attempt succeeds or
+     * fails
+     * @throws ChannelPipelineException if this bootstrap's
+     *                                  {@link #setPipelineFactory(ChannelPipelineFactory)
+     *                                  pipelineFactory} failed to create a new
+     *                                  {@link ChannelPipeline}
+     */
+    public ChannelFuture bind(final SocketAddress localAddress) {
 
-		if (localAddress == null) {
-			throw new NullPointerException("localAddress");
-		}
+        if (localAddress == null) {
+            throw new NullPointerException("localAddress");
+        }
 
-		ChannelPipeline pipeline;
-		try {
-			pipeline = getPipelineFactory().getPipeline();
-		} catch (Exception e) {
-			throw new ChannelPipelineException("Failed to initialize a pipeline.", e);
-		}
+        ChannelPipeline pipeline;
+        try {
+            pipeline = getPipelineFactory().getPipeline();
+        } catch (Exception e) {
+            throw new ChannelPipelineException("Failed to initialize a pipeline.", e);
+        }
 
-		// Set the options.
-		Channel ch = getFactory().newChannel(pipeline);
-		boolean success = false;
-		try {
-			ch.getConfig().setOptions(getOptions());
-			success = true;
-		} finally {
-			if (!success) {
-				ch.close();
-			}
-		}
+        // Set the options.
+        Channel ch = getFactory().newChannel(pipeline);
+        boolean success = false;
+        try {
+            ch.getConfig().setOptions(getOptions());
+            success = true;
+        } finally {
+            if (!success) {
+                ch.close();
+            }
+        }
 
-		// Bind.
-		return ch.bind(localAddress);
-	}
+        // Bind.
+        return ch.bind(localAddress);
+    }
 }

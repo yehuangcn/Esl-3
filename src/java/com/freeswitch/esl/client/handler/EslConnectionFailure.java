@@ -17,17 +17,17 @@ package com.freeswitch.esl.client.handler;
 
 /**
  * Checked exception to handle connection failures.
- * 
+ *
  * @author david varnes
  */
 public class EslConnectionFailure extends Exception {
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	public EslConnectionFailure(String message) {
-		super(message);
-	}
+    public EslConnectionFailure(String message) {
+        super(message);
+    }
 
-	public EslConnectionFailure(String message, Throwable cause) {
-		super(message, cause);
-	}
+    public EslConnectionFailure(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

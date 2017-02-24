@@ -24,19 +24,19 @@ import java.io.InputStream;
  */
 final class SwitchableInputStream extends FilterInputStream {
 
-	/**
-	 * Creates a new instance without initializing the reference to the
-	 * underlying stream.
-	 */
-	SwitchableInputStream() {
-		super(null);
-	}
+    /**
+     * Creates a new instance without initializing the reference to the
+     * underlying stream.
+     */
+    SwitchableInputStream() {
+        super(null);
+    }
 
-	/**
-	 * Creates a new instance with the initial reference to the underlying
-	 * stream.
-	 */
-	void switchStream(InputStream in) {
-		this.in = in;
-	}
+    /**
+     * Creates a new instance with the initial reference to the underlying
+     * stream.
+     */
+    void switchStream(InputStream in) {
+        this.in = in;
+    }
 }

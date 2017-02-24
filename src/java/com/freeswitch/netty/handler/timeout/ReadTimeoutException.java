@@ -21,32 +21,32 @@ package com.freeswitch.netty.handler.timeout;
  */
 public class ReadTimeoutException extends TimeoutException {
 
-	private static final long serialVersionUID = -4596059237992273913L;
+    private static final long serialVersionUID = -4596059237992273913L;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public ReadTimeoutException() {
-	}
+    /**
+     * Creates a new instance.
+     */
+    public ReadTimeoutException() {
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public ReadTimeoutException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public ReadTimeoutException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public ReadTimeoutException(String message) {
-		super(message);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public ReadTimeoutException(String message) {
+        super(message);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public ReadTimeoutException(Throwable cause) {
-		super(cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public ReadTimeoutException(Throwable cause) {
+        super(cause);
+    }
 }

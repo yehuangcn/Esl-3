@@ -15,18 +15,13 @@
  */
 package com.freeswitch.netty.handler.codec.http;
 
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.handler.codec.PrematureChannelClosureException;
+
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
-
-import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelDownstreamHandler;
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.ChannelUpstreamHandler;
-import com.freeswitch.netty.handler.codec.PrematureChannelClosureException;
 
 /**
  * A combination of {@link HttpRequestEncoder} and {@link HttpResponseDecoder}
@@ -36,196 +31,195 @@ import com.freeswitch.netty.handler.codec.PrematureChannelClosureException;
  * {@link HttpResponseDecoder} to learn what additional state management needs
  * to be done for <tt>HEAD</tt> and <tt>CONNECT</tt> and why
  * {@link HttpResponseDecoder} can not handle it by itself.
- *
+ * <p>
  * If the {@link Channel} gets closed and there are requests missing for a
  * response a {@link PrematureChannelClosureException} is thrown.
  *
- * @see HttpServerCodec
- *
  * @apiviz.has org.jboss.netty.handler.codec.http.HttpResponseDecoder
  * @apiviz.has org.jboss.netty.handler.codec.http.HttpRequestEncoder
+ * @see HttpServerCodec
  */
 public class HttpClientCodec implements ChannelUpstreamHandler, ChannelDownstreamHandler {
 
-	/** A queue that is used for correlating a request and a response. */
-	final Queue<HttpMethod> queue = new ConcurrentLinkedQueue<HttpMethod>();
+    /**
+     * A queue that is used for correlating a request and a response.
+     */
+    final Queue<HttpMethod> queue = new ConcurrentLinkedQueue<HttpMethod>();
+    private final HttpRequestEncoder encoder = new Encoder();
+    private final HttpResponseDecoder decoder;
+    private final AtomicLong requestResponseCounter = new AtomicLong(0);
+    private final boolean failOnMissingResponse;
+    /**
+     * If true, decoding stops (i.e. pass-through)
+     */
+    volatile boolean done;
 
-	/** If true, decoding stops (i.e. pass-through) */
-	volatile boolean done;
+    /**
+     * Creates a new instance with the default decoder options
+     * ({@code maxInitialLineLength (4096}}, {@code maxHeaderSize (8192)}, and
+     * {@code maxChunkSize (8192)}).
+     */
+    public HttpClientCodec() {
+        this(4096, 8192, 8192, false);
+    }
 
-	private final HttpRequestEncoder encoder = new Encoder();
-	private final HttpResponseDecoder decoder;
-	private final AtomicLong requestResponseCounter = new AtomicLong(0);
+    /**
+     * Creates a new instance with the specified decoder options.
+     */
+    public HttpClientCodec(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize) {
+        this(maxInitialLineLength, maxHeaderSize, maxChunkSize, false);
+    }
 
-	private final boolean failOnMissingResponse;
+    /**
+     * Creates a new instance with the specified decoder options.
+     */
+    public HttpClientCodec(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize, boolean failOnMissingResponse) {
+        decoder = new Decoder(maxInitialLineLength, maxHeaderSize, maxChunkSize);
+        this.failOnMissingResponse = failOnMissingResponse;
+    }
 
-	/**
-	 * Creates a new instance with the default decoder options
-	 * ({@code maxInitialLineLength (4096}}, {@code maxHeaderSize (8192)}, and
-	 * {@code maxChunkSize (8192)}).
-	 *
-	 */
-	public HttpClientCodec() {
-		this(4096, 8192, 8192, false);
-	}
+    public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
+        decoder.handleUpstream(ctx, e);
+    }
 
-	/**
-	 * Creates a new instance with the specified decoder options.
-	 */
-	public HttpClientCodec(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize) {
-		this(maxInitialLineLength, maxHeaderSize, maxChunkSize, false);
-	}
+    public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
+        encoder.handleDownstream(ctx, e);
+    }
 
-	/**
-	 * Creates a new instance with the specified decoder options.
-	 */
-	public HttpClientCodec(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize, boolean failOnMissingResponse) {
-		decoder = new Decoder(maxInitialLineLength, maxHeaderSize, maxChunkSize);
-		this.failOnMissingResponse = failOnMissingResponse;
-	}
+    private final class Encoder extends HttpRequestEncoder {
 
-	public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
-		decoder.handleUpstream(ctx, e);
-	}
+        Encoder() {
+        }
 
-	public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
-		encoder.handleDownstream(ctx, e);
-	}
+        @Override
+        protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
+            if (msg instanceof HttpRequest && !done) {
+                queue.offer(((HttpRequest) msg).getMethod());
+            }
 
-	private final class Encoder extends HttpRequestEncoder {
+            Object obj = super.encode(ctx, channel, msg);
 
-		Encoder() {
-		}
+            if (failOnMissingResponse) {
+                // check if the request is chunked if so do not increment
+                if (msg instanceof HttpRequest && !((HttpRequest) msg).isChunked()) {
+                    requestResponseCounter.incrementAndGet();
+                } else if (msg instanceof HttpChunk && ((HttpChunk) msg).isLast()) {
+                    // increment as its the last chunk
+                    requestResponseCounter.incrementAndGet();
+                }
+            }
+            return obj;
+        }
+    }
 
-		@Override
-		protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
-			if (msg instanceof HttpRequest && !done) {
-				queue.offer(((HttpRequest) msg).getMethod());
-			}
+    private final class Decoder extends HttpResponseDecoder {
 
-			Object obj = super.encode(ctx, channel, msg);
+        Decoder(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize) {
+            super(maxInitialLineLength, maxHeaderSize, maxChunkSize);
+        }
 
-			if (failOnMissingResponse) {
-				// check if the request is chunked if so do not increment
-				if (msg instanceof HttpRequest && !((HttpRequest) msg).isChunked()) {
-					requestResponseCounter.incrementAndGet();
-				} else if (msg instanceof HttpChunk && ((HttpChunk) msg).isLast()) {
-					// increment as its the last chunk
-					requestResponseCounter.incrementAndGet();
-				}
-			}
-			return obj;
-		}
-	}
+        @Override
+        protected Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer, State state) throws Exception {
+            if (done) {
+                int readable = actualReadableBytes();
+                if (readable == 0) {
+                    return null;
+                }
+                return buffer.readBytes(readable);
+            } else {
+                Object msg = super.decode(ctx, channel, buffer, state);
+                if (failOnMissingResponse) {
+                    decrement(msg);
+                }
+                return msg;
+            }
+        }
 
-	private final class Decoder extends HttpResponseDecoder {
+        private void decrement(Object msg) {
+            if (msg == null) {
+                return;
+            }
 
-		Decoder(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize) {
-			super(maxInitialLineLength, maxHeaderSize, maxChunkSize);
-		}
+            // check if its a HttpMessage and its not chunked
+            if (msg instanceof HttpMessage && !((HttpMessage) msg).isChunked()) {
+                requestResponseCounter.decrementAndGet();
+            } else if (msg instanceof HttpChunk && ((HttpChunk) msg).isLast()) {
+                requestResponseCounter.decrementAndGet();
+            } else if (msg instanceof Object[]) {
+                // we just decrement it here as we only use this if the end of
+                // the chunk is reached
+                // It would be more safe to check all the objects in the array
+                // but would also be slower
+                requestResponseCounter.decrementAndGet();
+            }
+        }
 
-		@Override
-		protected Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer, State state) throws Exception {
-			if (done) {
-				int readable = actualReadableBytes();
-				if (readable == 0) {
-					return null;
-				}
-				return buffer.readBytes(readable);
-			} else {
-				Object msg = super.decode(ctx, channel, buffer, state);
-				if (failOnMissingResponse) {
-					decrement(msg);
-				}
-				return msg;
-			}
-		}
+        @Override
+        protected boolean isContentAlwaysEmpty(HttpMessage msg) {
+            final int statusCode = ((HttpResponse) msg).getStatus().getCode();
+            if (statusCode == 100) {
+                // 100-continue response should be excluded from paired
+                // comparison.
+                return true;
+            }
 
-		private void decrement(Object msg) {
-			if (msg == null) {
-				return;
-			}
+            // Get the method of the HTTP request that corresponds to the
+            // current response.
+            HttpMethod method = queue.poll();
 
-			// check if its a HttpMessage and its not chunked
-			if (msg instanceof HttpMessage && !((HttpMessage) msg).isChunked()) {
-				requestResponseCounter.decrementAndGet();
-			} else if (msg instanceof HttpChunk && ((HttpChunk) msg).isLast()) {
-				requestResponseCounter.decrementAndGet();
-			} else if (msg instanceof Object[]) {
-				// we just decrement it here as we only use this if the end of
-				// the chunk is reached
-				// It would be more safe to check all the objects in the array
-				// but would also be slower
-				requestResponseCounter.decrementAndGet();
-			}
-		}
+            char firstChar = method.getName().charAt(0);
+            switch (firstChar) {
+                case 'H':
+                    // According to 4.3, RFC2616:
+                    // All responses to the HEAD request method MUST NOT include a
+                    // message-body, even though the presence of entity-header
+                    // fields
+                    // might lead one to believe they do.
+                    if (HttpMethod.HEAD.equals(method)) {
+                        return true;
 
-		@Override
-		protected boolean isContentAlwaysEmpty(HttpMessage msg) {
-			final int statusCode = ((HttpResponse) msg).getStatus().getCode();
-			if (statusCode == 100) {
-				// 100-continue response should be excluded from paired
-				// comparison.
-				return true;
-			}
+                        // The following code was inserted to work around the
+                        // servers
+                        // that behave incorrectly. It has been commented out
+                        // because it does not work with well behaving servers.
+                        // Please note, even if the 'Transfer-Encoding: chunked'
+                        // header exists in the HEAD response, the response should
+                        // have absolutely no content.
+                        //
+                        //// Interesting edge case:
+                        //// Some poorly implemented servers will send a zero-byte
+                        //// chunk if Transfer-Encoding of the response is
+                        // 'chunked'.
+                        ////
+                        //// return !msg.isChunked();
+                    }
+                    break;
+                case 'C':
+                    // Successful CONNECT request results in a response with empty
+                    // body.
+                    if (statusCode == 200) {
+                        if (HttpMethod.CONNECT.equals(method)) {
+                            // Proxy connection established - Not HTTP anymore.
+                            done = true;
+                            queue.clear();
+                            return true;
+                        }
+                    }
+                    break;
+            }
 
-			// Get the method of the HTTP request that corresponds to the
-			// current response.
-			HttpMethod method = queue.poll();
+            return super.isContentAlwaysEmpty(msg);
+        }
 
-			char firstChar = method.getName().charAt(0);
-			switch (firstChar) {
-			case 'H':
-				// According to 4.3, RFC2616:
-				// All responses to the HEAD request method MUST NOT include a
-				// message-body, even though the presence of entity-header
-				// fields
-				// might lead one to believe they do.
-				if (HttpMethod.HEAD.equals(method)) {
-					return true;
-
-					// The following code was inserted to work around the
-					// servers
-					// that behave incorrectly. It has been commented out
-					// because it does not work with well behaving servers.
-					// Please note, even if the 'Transfer-Encoding: chunked'
-					// header exists in the HEAD response, the response should
-					// have absolutely no content.
-					//
-					//// Interesting edge case:
-					//// Some poorly implemented servers will send a zero-byte
-					//// chunk if Transfer-Encoding of the response is
-					// 'chunked'.
-					////
-					//// return !msg.isChunked();
-				}
-				break;
-			case 'C':
-				// Successful CONNECT request results in a response with empty
-				// body.
-				if (statusCode == 200) {
-					if (HttpMethod.CONNECT.equals(method)) {
-						// Proxy connection established - Not HTTP anymore.
-						done = true;
-						queue.clear();
-						return true;
-					}
-				}
-				break;
-			}
-
-			return super.isContentAlwaysEmpty(msg);
-		}
-
-		@Override
-		public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-			super.channelClosed(ctx, e);
-			if (failOnMissingResponse) {
-				long missingResponses = requestResponseCounter.get();
-				if (missingResponses > 0) {
-					throw new PrematureChannelClosureException("Channel closed but still missing " + missingResponses + " response(s)");
-				}
-			}
-		}
-	}
+        @Override
+        public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+            super.channelClosed(ctx, e);
+            if (failOnMissingResponse) {
+                long missingResponses = requestResponseCounter.get();
+                if (missingResponses > 0) {
+                    throw new PrematureChannelClosureException("Channel closed but still missing " + missingResponses + " response(s)");
+                }
+            }
+        }
+    }
 }

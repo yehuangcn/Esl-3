@@ -23,23 +23,23 @@ import com.freeswitch.netty.buffer.ChannelBuffers;
  */
 public final class Delimiters {
 
-	/**
-	 * Returns a {@code NUL (0x00)} delimiter, which could be used for Flash XML
-	 * socket or any similar protocols.
-	 */
-	public static ChannelBuffer[] nulDelimiter() {
-		return new ChannelBuffer[] { ChannelBuffers.wrappedBuffer(new byte[] { 0 }) };
-	}
+    private Delimiters() {
+        // Unused
+    }
 
-	/**
-	 * Returns {@code CR ('\r')} and {@code LF ('\n')} delimiters, which could
-	 * be used for text-based line protocols.
-	 */
-	public static ChannelBuffer[] lineDelimiter() {
-		return new ChannelBuffer[] { ChannelBuffers.wrappedBuffer(new byte[] { '\r', '\n' }), ChannelBuffers.wrappedBuffer(new byte[] { '\n' }), };
-	}
+    /**
+     * Returns a {@code NUL (0x00)} delimiter, which could be used for Flash XML
+     * socket or any similar protocols.
+     */
+    public static ChannelBuffer[] nulDelimiter() {
+        return new ChannelBuffer[]{ChannelBuffers.wrappedBuffer(new byte[]{0})};
+    }
 
-	private Delimiters() {
-		// Unused
-	}
+    /**
+     * Returns {@code CR ('\r')} and {@code LF ('\n')} delimiters, which could
+     * be used for text-based line protocols.
+     */
+    public static ChannelBuffer[] lineDelimiter() {
+        return new ChannelBuffer[]{ChannelBuffers.wrappedBuffer(new byte[]{'\r', '\n'}), ChannelBuffers.wrappedBuffer(new byte[]{'\n'}),};
+    }
 }

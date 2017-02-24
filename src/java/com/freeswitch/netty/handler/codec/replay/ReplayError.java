@@ -17,6 +17,6 @@ package com.freeswitch.netty.handler.codec.replay;
 
 class ReplayError extends Error {
 
-	private static final long serialVersionUID = 2666698631187527681L;
+    private static final long serialVersionUID = 2666698631187527681L;
 
 }

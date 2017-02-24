@@ -17,18 +17,18 @@ package com.freeswitch.netty.handler.codec.serialization;
 
 class ClassLoaderClassResolver implements ClassResolver {
 
-	private final ClassLoader classLoader;
+    private final ClassLoader classLoader;
 
-	ClassLoaderClassResolver(ClassLoader classLoader) {
-		this.classLoader = classLoader;
-	}
+    ClassLoaderClassResolver(ClassLoader classLoader) {
+        this.classLoader = classLoader;
+    }
 
-	public Class<?> resolve(String className) throws ClassNotFoundException {
-		try {
-			return classLoader.loadClass(className);
-		} catch (ClassNotFoundException e) {
-			return Class.forName(className, false, classLoader);
-		}
-	}
+    public Class<?> resolve(String className) throws ClassNotFoundException {
+        try {
+            return classLoader.loadClass(className);
+        } catch (ClassNotFoundException e) {
+            return Class.forName(className, false, classLoader);
+        }
+    }
 
 }

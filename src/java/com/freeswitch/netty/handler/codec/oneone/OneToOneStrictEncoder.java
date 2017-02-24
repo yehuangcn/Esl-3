@@ -25,15 +25,14 @@ import com.freeswitch.netty.channel.MessageEvent;
  * enforcement to guaranteer no corruption. Basically all "message" based
  * {@link OneToOneEncoder} mostly don't need this, where "stream" based are
  * often in need of it.
- *
  */
 public abstract class OneToOneStrictEncoder extends OneToOneEncoder {
 
-	@Override
-	protected boolean doEncode(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-		// Synchronize on the channel to guaranteer the strict ordering
-		synchronized (ctx.getChannel()) {
-			return super.doEncode(ctx, e);
-		}
-	}
+    @Override
+    protected boolean doEncode(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+        // Synchronize on the channel to guaranteer the strict ordering
+        synchronized (ctx.getChannel()) {
+            return super.doEncode(ctx, e);
+        }
+    }
 }

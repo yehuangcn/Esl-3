@@ -16,40 +16,36 @@
 
 package com.freeswitch.netty.channel.socket.oio;
 
-import com.freeswitch.netty.channel.AbstractChannelSink;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelPipeline;
+import com.freeswitch.netty.channel.*;
 import com.freeswitch.netty.channel.socket.ChannelRunnableWrapper;
 import com.freeswitch.netty.channel.socket.Worker;
 
 public abstract class AbstractOioChannelSink extends AbstractChannelSink {
 
-	@Override
-	public ChannelFuture execute(final ChannelPipeline pipeline, final Runnable task) {
-		Channel ch = pipeline.getChannel();
-		if (ch instanceof AbstractOioChannel) {
-			AbstractOioChannel channel = (AbstractOioChannel) ch;
-			Worker worker = channel.worker;
-			if (worker != null) {
-				ChannelRunnableWrapper wrapper = new ChannelRunnableWrapper(pipeline.getChannel(), task);
-				channel.worker.executeInIoThread(wrapper);
-				return wrapper;
-			}
-		}
+    @Override
+    public ChannelFuture execute(final ChannelPipeline pipeline, final Runnable task) {
+        Channel ch = pipeline.getChannel();
+        if (ch instanceof AbstractOioChannel) {
+            AbstractOioChannel channel = (AbstractOioChannel) ch;
+            Worker worker = channel.worker;
+            if (worker != null) {
+                ChannelRunnableWrapper wrapper = new ChannelRunnableWrapper(pipeline.getChannel(), task);
+                channel.worker.executeInIoThread(wrapper);
+                return wrapper;
+            }
+        }
 
-		return super.execute(pipeline, task);
-	}
+        return super.execute(pipeline, task);
+    }
 
-	@Override
-	protected boolean isFireExceptionCaughtLater(ChannelEvent event, Throwable actualCause) {
-		Channel channel = event.getChannel();
-		boolean fireLater = false;
-		if (channel instanceof AbstractOioChannel) {
-			fireLater = !AbstractOioWorker.isIoThread((AbstractOioChannel) channel);
-		}
-		return fireLater;
-	}
+    @Override
+    protected boolean isFireExceptionCaughtLater(ChannelEvent event, Throwable actualCause) {
+        Channel channel = event.getChannel();
+        boolean fireLater = false;
+        if (channel instanceof AbstractOioChannel) {
+            fireLater = !AbstractOioWorker.isIoThread((AbstractOioChannel) channel);
+        }
+        return fireLater;
+    }
 
 }

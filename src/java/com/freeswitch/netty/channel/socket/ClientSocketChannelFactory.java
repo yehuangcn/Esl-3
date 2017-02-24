@@ -24,5 +24,5 @@ import com.freeswitch.netty.channel.ChannelPipeline;
  * @apiviz.has org.jboss.netty.channel.socket.SocketChannel oneway - - creates
  */
 public interface ClientSocketChannelFactory extends ChannelFactory {
-	SocketChannel newChannel(ChannelPipeline pipeline);
+    SocketChannel newChannel(ChannelPipeline pipeline);
 }

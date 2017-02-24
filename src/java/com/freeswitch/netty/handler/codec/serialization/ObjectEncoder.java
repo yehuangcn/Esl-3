@@ -15,17 +15,17 @@
  */
 package com.freeswitch.netty.handler.codec.serialization;
 
-import static com.freeswitch.netty.buffer.ChannelBuffers.dynamicBuffer;
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.buffer.ChannelBufferOutputStream;
+import com.freeswitch.netty.channel.Channel;
+import com.freeswitch.netty.channel.ChannelHandler.Sharable;
+import com.freeswitch.netty.channel.ChannelHandlerContext;
+import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.buffer.ChannelBufferOutputStream;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelHandler.Sharable;
-import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
+import static com.freeswitch.netty.buffer.ChannelBuffers.dynamicBuffer;
 
 /**
  * An encoder which serializes a Java object into a {@link ChannelBuffer}.
@@ -37,50 +37,49 @@ import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
  *
  * @apiviz.landmark
  * @apiviz.has org.jboss.netty.handler.codec.serialization.ObjectEncoderOutputStream
- *             - - - compatible with
+ * - - - compatible with
  */
 @Sharable
 public class ObjectEncoder extends OneToOneEncoder {
-	private static final byte[] LENGTH_PLACEHOLDER = new byte[4];
+    private static final byte[] LENGTH_PLACEHOLDER = new byte[4];
 
-	private final int estimatedLength;
+    private final int estimatedLength;
 
-	/**
-	 * Creates a new encoder with the estimated length of 512 bytes.
-	 */
-	public ObjectEncoder() {
-		this(512);
-	}
+    /**
+     * Creates a new encoder with the estimated length of 512 bytes.
+     */
+    public ObjectEncoder() {
+        this(512);
+    }
 
-	/**
-	 * Creates a new encoder.
-	 *
-	 * @param estimatedLength
-	 *            the estimated byte length of the serialized form of an object.
-	 *            If the length of the serialized form exceeds this value, the
-	 *            internal buffer will be expanded automatically at the cost of
-	 *            memory bandwidth. If this value is too big, it will also waste
-	 *            memory bandwidth. To avoid unnecessary memory copy or
-	 *            allocation cost, please specify the properly estimated value.
-	 */
-	public ObjectEncoder(int estimatedLength) {
-		if (estimatedLength < 0) {
-			throw new IllegalArgumentException("estimatedLength: " + estimatedLength);
-		}
-		this.estimatedLength = estimatedLength;
-	}
+    /**
+     * Creates a new encoder.
+     *
+     * @param estimatedLength the estimated byte length of the serialized form of an object.
+     *                        If the length of the serialized form exceeds this value, the
+     *                        internal buffer will be expanded automatically at the cost of
+     *                        memory bandwidth. If this value is too big, it will also waste
+     *                        memory bandwidth. To avoid unnecessary memory copy or
+     *                        allocation cost, please specify the properly estimated value.
+     */
+    public ObjectEncoder(int estimatedLength) {
+        if (estimatedLength < 0) {
+            throw new IllegalArgumentException("estimatedLength: " + estimatedLength);
+        }
+        this.estimatedLength = estimatedLength;
+    }
 
-	@Override
-	protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
-		ChannelBufferOutputStream bout = new ChannelBufferOutputStream(dynamicBuffer(estimatedLength, ctx.getChannel().getConfig().getBufferFactory()));
-		bout.write(LENGTH_PLACEHOLDER);
-		ObjectOutputStream oout = new CompactObjectOutputStream(bout);
-		oout.writeObject(msg);
-		oout.flush();
-		oout.close();
+    @Override
+    protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
+        ChannelBufferOutputStream bout = new ChannelBufferOutputStream(dynamicBuffer(estimatedLength, ctx.getChannel().getConfig().getBufferFactory()));
+        bout.write(LENGTH_PLACEHOLDER);
+        ObjectOutputStream oout = new CompactObjectOutputStream(bout);
+        oout.writeObject(msg);
+        oout.flush();
+        oout.close();
 
-		ChannelBuffer encoded = bout.buffer();
-		encoded.setInt(0, encoded.writerIndex() - 4);
-		return encoded;
-	}
+        ChannelBuffer encoded = bout.buffer();
+        encoded.setInt(0, encoded.writerIndex() - 4);
+        return encoded;
+    }
 }

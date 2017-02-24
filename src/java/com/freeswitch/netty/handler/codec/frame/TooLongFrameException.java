@@ -23,32 +23,32 @@ package com.freeswitch.netty.handler.codec.frame;
  */
 public class TooLongFrameException extends Exception {
 
-	private static final long serialVersionUID = -1995801950698951640L;
+    private static final long serialVersionUID = -1995801950698951640L;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public TooLongFrameException() {
-	}
+    /**
+     * Creates a new instance.
+     */
+    public TooLongFrameException() {
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public TooLongFrameException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public TooLongFrameException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public TooLongFrameException(String message) {
-		super(message);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public TooLongFrameException(String message) {
+        super(message);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public TooLongFrameException(Throwable cause) {
-		super(cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public TooLongFrameException(Throwable cause) {
+        super(cause);
+    }
 }

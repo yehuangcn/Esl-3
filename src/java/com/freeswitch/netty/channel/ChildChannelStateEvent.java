@@ -23,16 +23,16 @@ package com.freeswitch.netty.channel;
  */
 public interface ChildChannelStateEvent extends ChannelEvent {
 
-	/**
-	 * Returns the <strong>parent</strong> {@link Channel} which is associated
-	 * with this event. Please note that you should use
-	 * {@link #getChildChannel()} to get the {@link Channel} created or accepted
-	 * by the parent {@link Channel}.
-	 */
-	Channel getChannel();
+    /**
+     * Returns the <strong>parent</strong> {@link Channel} which is associated
+     * with this event. Please note that you should use
+     * {@link #getChildChannel()} to get the {@link Channel} created or accepted
+     * by the parent {@link Channel}.
+     */
+    Channel getChannel();
 
-	/**
-	 * Returns the child {@link Channel} whose state has been changed.
-	 */
-	Channel getChildChannel();
+    /**
+     * Returns the child {@link Channel} whose state has been changed.
+     */
+    Channel getChildChannel();
 }

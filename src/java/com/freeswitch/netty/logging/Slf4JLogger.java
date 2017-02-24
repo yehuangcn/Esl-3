@@ -22,62 +22,62 @@ import org.slf4j.Logger;
  */
 class Slf4JLogger extends AbstractInternalLogger {
 
-	private final Logger logger;
+    private final Logger logger;
 
-	Slf4JLogger(Logger logger) {
-		this.logger = logger;
-	}
+    Slf4JLogger(Logger logger) {
+        this.logger = logger;
+    }
 
-	public void debug(String msg) {
-		logger.debug(msg);
-	}
+    public void debug(String msg) {
+        logger.debug(msg);
+    }
 
-	public void debug(String msg, Throwable cause) {
-		logger.debug(msg, cause);
-	}
+    public void debug(String msg, Throwable cause) {
+        logger.debug(msg, cause);
+    }
 
-	public void error(String msg) {
-		logger.error(msg);
-	}
+    public void error(String msg) {
+        logger.error(msg);
+    }
 
-	public void error(String msg, Throwable cause) {
-		logger.error(msg, cause);
-	}
+    public void error(String msg, Throwable cause) {
+        logger.error(msg, cause);
+    }
 
-	public void info(String msg) {
-		logger.info(msg);
-	}
+    public void info(String msg) {
+        logger.info(msg);
+    }
 
-	public void info(String msg, Throwable cause) {
-		logger.info(msg, cause);
-	}
+    public void info(String msg, Throwable cause) {
+        logger.info(msg, cause);
+    }
 
-	public boolean isDebugEnabled() {
-		return logger.isDebugEnabled();
-	}
+    public boolean isDebugEnabled() {
+        return logger.isDebugEnabled();
+    }
 
-	public boolean isErrorEnabled() {
-		return logger.isErrorEnabled();
-	}
+    public boolean isErrorEnabled() {
+        return logger.isErrorEnabled();
+    }
 
-	public boolean isInfoEnabled() {
-		return logger.isInfoEnabled();
-	}
+    public boolean isInfoEnabled() {
+        return logger.isInfoEnabled();
+    }
 
-	public boolean isWarnEnabled() {
-		return logger.isWarnEnabled();
-	}
+    public boolean isWarnEnabled() {
+        return logger.isWarnEnabled();
+    }
 
-	public void warn(String msg) {
-		logger.warn(msg);
-	}
+    public void warn(String msg) {
+        logger.warn(msg);
+    }
 
-	public void warn(String msg, Throwable cause) {
-		logger.warn(msg, cause);
-	}
+    public void warn(String msg, Throwable cause) {
+        logger.warn(msg, cause);
+    }
 
-	@Override
-	public String toString() {
-		return String.valueOf(logger.getName());
-	}
+    @Override
+    public String toString() {
+        return String.valueOf(logger.getName());
+    }
 }

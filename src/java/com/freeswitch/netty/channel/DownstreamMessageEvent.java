@@ -15,66 +15,66 @@
  */
 package com.freeswitch.netty.channel;
 
-import java.net.SocketAddress;
-
 import com.freeswitch.netty.util.internal.StringUtil;
+
+import java.net.SocketAddress;
 
 /**
  * The default downstream {@link MessageEvent} implementation.
  */
 public class DownstreamMessageEvent implements MessageEvent {
 
-	private final Channel channel;
-	private final ChannelFuture future;
-	private final Object message;
-	private final SocketAddress remoteAddress;
+    private final Channel channel;
+    private final ChannelFuture future;
+    private final Object message;
+    private final SocketAddress remoteAddress;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public DownstreamMessageEvent(Channel channel, ChannelFuture future, Object message, SocketAddress remoteAddress) {
+    /**
+     * Creates a new instance.
+     */
+    public DownstreamMessageEvent(Channel channel, ChannelFuture future, Object message, SocketAddress remoteAddress) {
 
-		if (channel == null) {
-			throw new NullPointerException("channel");
-		}
-		if (future == null) {
-			throw new NullPointerException("future");
-		}
-		if (message == null) {
-			throw new NullPointerException("message");
-		}
-		this.channel = channel;
-		this.future = future;
-		this.message = message;
-		if (remoteAddress != null) {
-			this.remoteAddress = remoteAddress;
-		} else {
-			this.remoteAddress = channel.getRemoteAddress();
-		}
-	}
+        if (channel == null) {
+            throw new NullPointerException("channel");
+        }
+        if (future == null) {
+            throw new NullPointerException("future");
+        }
+        if (message == null) {
+            throw new NullPointerException("message");
+        }
+        this.channel = channel;
+        this.future = future;
+        this.message = message;
+        if (remoteAddress != null) {
+            this.remoteAddress = remoteAddress;
+        } else {
+            this.remoteAddress = channel.getRemoteAddress();
+        }
+    }
 
-	public Channel getChannel() {
-		return channel;
-	}
+    public Channel getChannel() {
+        return channel;
+    }
 
-	public ChannelFuture getFuture() {
-		return future;
-	}
+    public ChannelFuture getFuture() {
+        return future;
+    }
 
-	public Object getMessage() {
-		return message;
-	}
+    public Object getMessage() {
+        return message;
+    }
 
-	public SocketAddress getRemoteAddress() {
-		return remoteAddress;
-	}
+    public SocketAddress getRemoteAddress() {
+        return remoteAddress;
+    }
 
-	@Override
-	public String toString() {
-		if (getRemoteAddress() == getChannel().getRemoteAddress()) {
-			return getChannel().toString() + " WRITE: " + StringUtil.stripControlCharacters(getMessage());
-		} else {
-			return getChannel().toString() + " WRITE: " + StringUtil.stripControlCharacters(getMessage()) + " to " + getRemoteAddress();
-		}
-	}
+    @Override
+    public String toString() {
+        if (getRemoteAddress() == getChannel().getRemoteAddress()) {
+            return getChannel().toString() + " WRITE: " + StringUtil.stripControlCharacters(getMessage());
+        } else {
+            return getChannel().toString() + " WRITE: " + StringUtil.stripControlCharacters(getMessage()) + " to " + getRemoteAddress();
+        }
+    }
 }

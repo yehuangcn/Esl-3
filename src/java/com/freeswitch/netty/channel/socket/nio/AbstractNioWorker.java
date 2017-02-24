@@ -15,34 +15,6 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelClosed;
-import static com.freeswitch.netty.channel.Channels.fireChannelClosedLater;
-import static com.freeswitch.netty.channel.Channels.fireChannelDisconnected;
-import static com.freeswitch.netty.channel.Channels.fireChannelDisconnectedLater;
-import static com.freeswitch.netty.channel.Channels.fireChannelInterestChanged;
-import static com.freeswitch.netty.channel.Channels.fireChannelInterestChangedLater;
-import static com.freeswitch.netty.channel.Channels.fireChannelUnbound;
-import static com.freeswitch.netty.channel.Channels.fireChannelUnboundLater;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaughtLater;
-import static com.freeswitch.netty.channel.Channels.fireWriteComplete;
-import static com.freeswitch.netty.channel.Channels.fireWriteCompleteLater;
-import static com.freeswitch.netty.channel.Channels.succeededFuture;
-
-import java.io.IOException;
-import java.nio.channels.AsynchronousCloseException;
-import java.nio.channels.CancelledKeyException;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.NotYetConnectedException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.WritableByteChannel;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Executor;
-
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelFuture;
 import com.freeswitch.netty.channel.MessageEvent;
@@ -52,497 +24,504 @@ import com.freeswitch.netty.channel.socket.nio.SocketSendBufferPool.SendBuffer;
 import com.freeswitch.netty.util.ThreadNameDeterminer;
 import com.freeswitch.netty.util.ThreadRenamingRunnable;
 
+import java.io.IOException;
+import java.nio.channels.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Executor;
+
+import static com.freeswitch.netty.channel.Channels.*;
+
 abstract class AbstractNioWorker extends AbstractNioSelector implements Worker {
 
-	protected final SocketSendBufferPool sendBufferPool = new SocketSendBufferPool();
+    protected final SocketSendBufferPool sendBufferPool = new SocketSendBufferPool();
 
-	AbstractNioWorker(Executor executor) {
-		super(executor);
-	}
+    AbstractNioWorker(Executor executor) {
+        super(executor);
+    }
 
-	AbstractNioWorker(Executor executor, ThreadNameDeterminer determiner) {
-		super(executor, determiner);
-	}
+    AbstractNioWorker(Executor executor, ThreadNameDeterminer determiner) {
+        super(executor, determiner);
+    }
 
-	public void executeInIoThread(Runnable task) {
-		executeInIoThread(task, false);
-	}
+    static boolean isIoThread(AbstractNioChannel<?> channel) {
+        return Thread.currentThread() == channel.worker.thread;
+    }
 
-	/**
-	 * Execute the {@link Runnable} in a IO-Thread
-	 *
-	 * @param task
-	 *            the {@link Runnable} to execute
-	 * @param alwaysAsync
-	 *            {@code true} if the {@link Runnable} should be executed in an
-	 *            async fashion even if the current Thread == IO Thread
-	 */
-	public void executeInIoThread(Runnable task, boolean alwaysAsync) {
-		if (!alwaysAsync && isIoThread()) {
-			task.run();
-		} else {
-			registerTask(task);
-		}
-	}
+    protected static void cleanUpWriteBuffer(AbstractNioChannel<?> channel) {
+        Exception cause = null;
+        boolean fireExceptionCaught = false;
 
-	@Override
-	protected void close(SelectionKey k) {
-		AbstractNioChannel<?> ch = (AbstractNioChannel<?>) k.attachment();
-		close(ch, succeededFuture(ch));
-	}
+        // Clean up the stale messages in the write buffer.
+        synchronized (channel.writeLock) {
+            MessageEvent evt = channel.currentWriteEvent;
+            if (evt != null) {
+                // Create the exception only once to avoid the excessive
+                // overhead
+                // caused by fillStackTrace.
+                if (channel.isOpen()) {
+                    cause = new NotYetConnectedException();
+                } else {
+                    cause = new ClosedChannelException();
+                }
 
-	@Override
-	protected ThreadRenamingRunnable newThreadRenamingRunnable(int id, ThreadNameDeterminer determiner) {
-		return new ThreadRenamingRunnable(this, "New I/O worker #" + id, determiner);
-	}
+                ChannelFuture future = evt.getFuture();
+                if (channel.currentWriteBuffer != null) {
+                    channel.currentWriteBuffer.release();
+                    channel.currentWriteBuffer = null;
+                }
+                channel.currentWriteEvent = null;
+                // Mark the event object for garbage collection.
+                // noinspection UnusedAssignment
+                evt = null;
+                future.setFailure(cause);
+                fireExceptionCaught = true;
+            }
 
-	@Override
-	public void run() {
-		super.run();
-		sendBufferPool.releaseExternalResources();
-	}
+            WriteRequestQueue writeBuffer = channel.writeBufferQueue;
+            for (; ; ) {
+                evt = writeBuffer.poll();
+                if (evt == null) {
+                    break;
+                }
+                // Create the exception only once to avoid the excessive
+                // overhead
+                // caused by fillStackTrace.
+                if (cause == null) {
+                    if (channel.isOpen()) {
+                        cause = new NotYetConnectedException();
+                    } else {
+                        cause = new ClosedChannelException();
+                    }
+                    fireExceptionCaught = true;
+                }
+                evt.getFuture().setFailure(cause);
+            }
+        }
 
-	@Override
-	protected void process(Selector selector) throws IOException {
-		Set<SelectionKey> selectedKeys = selector.selectedKeys();
-		// check if the set is empty and if so just return to not create garbage
-		// by
-		// creating a new Iterator every time even if there is nothing to
-		// process.
-		// See https://github.com/netty/netty/issues/597
-		if (selectedKeys.isEmpty()) {
-			return;
-		}
-		for (Iterator<SelectionKey> i = selectedKeys.iterator(); i.hasNext();) {
-			SelectionKey k = i.next();
-			i.remove();
-			try {
-				int readyOps = k.readyOps();
-				if ((readyOps & SelectionKey.OP_READ) != 0 || readyOps == 0) {
-					if (!read(k)) {
-						// Connection already closed - no need to handle write.
-						continue;
-					}
-				}
-				if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-					writeFromSelectorLoop(k);
-				}
-			} catch (CancelledKeyException e) {
-				close(k);
-			}
+        if (fireExceptionCaught) {
+            if (isIoThread(channel)) {
+                fireExceptionCaught(channel, cause);
+            } else {
+                fireExceptionCaughtLater(channel, cause);
+            }
+        }
+    }
 
-			if (cleanUpCancelledKeys()) {
-				break; // break the loop to avoid
-						// ConcurrentModificationException
-			}
-		}
-	}
+    public void executeInIoThread(Runnable task) {
+        executeInIoThread(task, false);
+    }
 
-	void writeFromUserCode(final AbstractNioChannel<?> channel) {
-		if (!channel.isConnected()) {
-			cleanUpWriteBuffer(channel);
-			return;
-		}
+    /**
+     * Execute the {@link Runnable} in a IO-Thread
+     *
+     * @param task        the {@link Runnable} to execute
+     * @param alwaysAsync {@code true} if the {@link Runnable} should be executed in an
+     *                    async fashion even if the current Thread == IO Thread
+     */
+    public void executeInIoThread(Runnable task, boolean alwaysAsync) {
+        if (!alwaysAsync && isIoThread()) {
+            task.run();
+        } else {
+            registerTask(task);
+        }
+    }
 
-		if (scheduleWriteIfNecessary(channel)) {
-			return;
-		}
+    @Override
+    protected void close(SelectionKey k) {
+        AbstractNioChannel<?> ch = (AbstractNioChannel<?>) k.attachment();
+        close(ch, succeededFuture(ch));
+    }
 
-		// From here, we are sure Thread.currentThread() == workerThread.
+    @Override
+    protected ThreadRenamingRunnable newThreadRenamingRunnable(int id, ThreadNameDeterminer determiner) {
+        return new ThreadRenamingRunnable(this, "New I/O worker #" + id, determiner);
+    }
 
-		if (channel.writeSuspended) {
-			return;
-		}
+    @Override
+    public void run() {
+        super.run();
+        sendBufferPool.releaseExternalResources();
+    }
 
-		if (channel.inWriteNowLoop) {
-			return;
-		}
+    @Override
+    protected void process(Selector selector) throws IOException {
+        Set<SelectionKey> selectedKeys = selector.selectedKeys();
+        // check if the set is empty and if so just return to not create garbage
+        // by
+        // creating a new Iterator every time even if there is nothing to
+        // process.
+        // See https://github.com/netty/netty/issues/597
+        if (selectedKeys.isEmpty()) {
+            return;
+        }
+        for (Iterator<SelectionKey> i = selectedKeys.iterator(); i.hasNext(); ) {
+            SelectionKey k = i.next();
+            i.remove();
+            try {
+                int readyOps = k.readyOps();
+                if ((readyOps & SelectionKey.OP_READ) != 0 || readyOps == 0) {
+                    if (!read(k)) {
+                        // Connection already closed - no need to handle write.
+                        continue;
+                    }
+                }
+                if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                    writeFromSelectorLoop(k);
+                }
+            } catch (CancelledKeyException e) {
+                close(k);
+            }
 
-		write0(channel);
-	}
+            if (cleanUpCancelledKeys()) {
+                break; // break the loop to avoid
+                // ConcurrentModificationException
+            }
+        }
+    }
 
-	void writeFromTaskLoop(AbstractNioChannel<?> ch) {
-		if (!ch.writeSuspended) {
-			write0(ch);
-		}
-	}
+    void writeFromUserCode(final AbstractNioChannel<?> channel) {
+        if (!channel.isConnected()) {
+            cleanUpWriteBuffer(channel);
+            return;
+        }
 
-	void writeFromSelectorLoop(final SelectionKey k) {
-		AbstractNioChannel<?> ch = (AbstractNioChannel<?>) k.attachment();
-		ch.writeSuspended = false;
-		write0(ch);
-	}
+        if (scheduleWriteIfNecessary(channel)) {
+            return;
+        }
 
-	protected abstract boolean scheduleWriteIfNecessary(AbstractNioChannel<?> channel);
+        // From here, we are sure Thread.currentThread() == workerThread.
 
-	protected void write0(AbstractNioChannel<?> channel) {
-		boolean open = true;
-		boolean addOpWrite = false;
-		boolean removeOpWrite = false;
-		boolean iothread = isIoThread(channel);
+        if (channel.writeSuspended) {
+            return;
+        }
 
-		long writtenBytes = 0;
+        if (channel.inWriteNowLoop) {
+            return;
+        }
 
-		final SocketSendBufferPool sendBufferPool = this.sendBufferPool;
-		final WritableByteChannel ch = channel.channel;
-		final WriteRequestQueue writeBuffer = channel.writeBufferQueue;
-		final int writeSpinCount = channel.getConfig().getWriteSpinCount();
-		List<Throwable> causes = null;
+        write0(channel);
+    }
 
-		synchronized (channel.writeLock) {
-			channel.inWriteNowLoop = true;
-			for (;;) {
+    void writeFromTaskLoop(AbstractNioChannel<?> ch) {
+        if (!ch.writeSuspended) {
+            write0(ch);
+        }
+    }
 
-				MessageEvent evt = channel.currentWriteEvent;
-				SendBuffer buf = null;
-				ChannelFuture future = null;
-				try {
-					if (evt == null) {
-						if ((channel.currentWriteEvent = evt = writeBuffer.poll()) == null) {
-							removeOpWrite = true;
-							channel.writeSuspended = false;
-							break;
-						}
-						future = evt.getFuture();
+    void writeFromSelectorLoop(final SelectionKey k) {
+        AbstractNioChannel<?> ch = (AbstractNioChannel<?>) k.attachment();
+        ch.writeSuspended = false;
+        write0(ch);
+    }
 
-						channel.currentWriteBuffer = buf = sendBufferPool.acquire(evt.getMessage());
-					} else {
-						future = evt.getFuture();
-						buf = channel.currentWriteBuffer;
-					}
+    protected abstract boolean scheduleWriteIfNecessary(AbstractNioChannel<?> channel);
 
-					long localWrittenBytes = 0;
-					for (int i = writeSpinCount; i > 0; i--) {
-						localWrittenBytes = buf.transferTo(ch);
-						if (localWrittenBytes != 0) {
-							writtenBytes += localWrittenBytes;
-							break;
-						}
-						if (buf.finished()) {
-							break;
-						}
-					}
+    protected void write0(AbstractNioChannel<?> channel) {
+        boolean open = true;
+        boolean addOpWrite = false;
+        boolean removeOpWrite = false;
+        boolean iothread = isIoThread(channel);
 
-					if (buf.finished()) {
-						// Successful write - proceed to the next message.
-						buf.release();
-						channel.currentWriteEvent = null;
-						channel.currentWriteBuffer = null;
-						// Mark the event object for garbage collection.
-						// noinspection UnusedAssignment
-						evt = null;
-						buf = null;
-						future.setSuccess();
-					} else {
-						// Not written fully - perhaps the kernel buffer is
-						// full.
-						addOpWrite = true;
-						channel.writeSuspended = true;
+        long writtenBytes = 0;
 
-						if (writtenBytes > 0) {
-							// Notify progress listeners if necessary.
-							future.setProgress(localWrittenBytes, buf.writtenBytes(), buf.totalBytes());
-						}
-						break;
-					}
-				} catch (AsynchronousCloseException e) {
-					// Doesn't need a user attention - ignore.
-				} catch (Throwable t) {
-					if (buf != null) {
-						buf.release();
-					}
-					channel.currentWriteEvent = null;
-					channel.currentWriteBuffer = null;
-					// Mark the event object for garbage collection.
-					// noinspection UnusedAssignment
-					buf = null;
-					// noinspection UnusedAssignment
-					evt = null;
-					if (future != null) {
-						future.setFailure(t);
-					}
-					if (iothread) {
-						// An exception was thrown from within a write in the
-						// iothread. We store a reference to it
-						// in a list for now and notify the handlers in the
-						// chain after the writeLock was released
-						// to prevent possible deadlock.
-						// See #1310
-						if (causes == null) {
-							causes = new ArrayList<Throwable>(1);
-						}
-						causes.add(t);
-					} else {
-						fireExceptionCaughtLater(channel, t);
-					}
-					if (t instanceof IOException) {
-						// close must be handled from outside the write lock to
-						// fix a possible deadlock
-						// which can happen when MemoryAwareThreadPoolExecutor
-						// is used and the limit is exceed
-						// and a close is triggered while the lock is hold. This
-						// is because the close(..)
-						// may try to submit a task to handle it via the
-						// ExecutorHandler which then deadlocks.
-						// See #1310
-						open = false;
-					}
-				}
-			}
-			channel.inWriteNowLoop = false;
+        final SocketSendBufferPool sendBufferPool = this.sendBufferPool;
+        final WritableByteChannel ch = channel.channel;
+        final WriteRequestQueue writeBuffer = channel.writeBufferQueue;
+        final int writeSpinCount = channel.getConfig().getWriteSpinCount();
+        List<Throwable> causes = null;
 
-			// Initially, the following block was executed after releasing
-			// the writeLock, but there was a race condition, and it has to be
-			// executed before releasing the writeLock:
-			//
-			// https://issues.jboss.org/browse/NETTY-410
-			//
-			if (open) {
-				if (addOpWrite) {
-					setOpWrite(channel);
-				} else if (removeOpWrite) {
-					clearOpWrite(channel);
-				}
-			}
-		}
-		if (causes != null) {
-			for (Throwable cause : causes) {
-				// notify about cause now as it was triggered in the write loop
-				fireExceptionCaught(channel, cause);
-			}
-		}
-		if (!open) {
-			// close the channel now
-			close(channel, succeededFuture(channel));
-		}
-		if (iothread) {
-			fireWriteComplete(channel, writtenBytes);
-		} else {
-			fireWriteCompleteLater(channel, writtenBytes);
-		}
-	}
+        synchronized (channel.writeLock) {
+            channel.inWriteNowLoop = true;
+            for (; ; ) {
 
-	static boolean isIoThread(AbstractNioChannel<?> channel) {
-		return Thread.currentThread() == channel.worker.thread;
-	}
+                MessageEvent evt = channel.currentWriteEvent;
+                SendBuffer buf = null;
+                ChannelFuture future = null;
+                try {
+                    if (evt == null) {
+                        if ((channel.currentWriteEvent = evt = writeBuffer.poll()) == null) {
+                            removeOpWrite = true;
+                            channel.writeSuspended = false;
+                            break;
+                        }
+                        future = evt.getFuture();
 
-	protected void setOpWrite(AbstractNioChannel<?> channel) {
-		Selector selector = this.selector;
-		SelectionKey key = channel.channel.keyFor(selector);
-		if (key == null) {
-			return;
-		}
-		if (!key.isValid()) {
-			close(key);
-			return;
-		}
+                        channel.currentWriteBuffer = buf = sendBufferPool.acquire(evt.getMessage());
+                    } else {
+                        future = evt.getFuture();
+                        buf = channel.currentWriteBuffer;
+                    }
 
-		int interestOps = channel.getInternalInterestOps();
-		if ((interestOps & SelectionKey.OP_WRITE) == 0) {
-			interestOps |= SelectionKey.OP_WRITE;
-			key.interestOps(interestOps);
-			channel.setInternalInterestOps(interestOps);
-		}
-	}
+                    long localWrittenBytes = 0;
+                    for (int i = writeSpinCount; i > 0; i--) {
+                        localWrittenBytes = buf.transferTo(ch);
+                        if (localWrittenBytes != 0) {
+                            writtenBytes += localWrittenBytes;
+                            break;
+                        }
+                        if (buf.finished()) {
+                            break;
+                        }
+                    }
 
-	protected void clearOpWrite(AbstractNioChannel<?> channel) {
-		Selector selector = this.selector;
-		SelectionKey key = channel.channel.keyFor(selector);
-		if (key == null) {
-			return;
-		}
-		if (!key.isValid()) {
-			close(key);
-			return;
-		}
+                    if (buf.finished()) {
+                        // Successful write - proceed to the next message.
+                        buf.release();
+                        channel.currentWriteEvent = null;
+                        channel.currentWriteBuffer = null;
+                        // Mark the event object for garbage collection.
+                        // noinspection UnusedAssignment
+                        evt = null;
+                        buf = null;
+                        future.setSuccess();
+                    } else {
+                        // Not written fully - perhaps the kernel buffer is
+                        // full.
+                        addOpWrite = true;
+                        channel.writeSuspended = true;
 
-		int interestOps = channel.getInternalInterestOps();
-		if ((interestOps & SelectionKey.OP_WRITE) != 0) {
-			interestOps &= ~SelectionKey.OP_WRITE;
-			key.interestOps(interestOps);
-			channel.setInternalInterestOps(interestOps);
-		}
-	}
+                        if (writtenBytes > 0) {
+                            // Notify progress listeners if necessary.
+                            future.setProgress(localWrittenBytes, buf.writtenBytes(), buf.totalBytes());
+                        }
+                        break;
+                    }
+                } catch (AsynchronousCloseException e) {
+                    // Doesn't need a user attention - ignore.
+                } catch (Throwable t) {
+                    if (buf != null) {
+                        buf.release();
+                    }
+                    channel.currentWriteEvent = null;
+                    channel.currentWriteBuffer = null;
+                    // Mark the event object for garbage collection.
+                    // noinspection UnusedAssignment
+                    buf = null;
+                    // noinspection UnusedAssignment
+                    evt = null;
+                    if (future != null) {
+                        future.setFailure(t);
+                    }
+                    if (iothread) {
+                        // An exception was thrown from within a write in the
+                        // iothread. We store a reference to it
+                        // in a list for now and notify the handlers in the
+                        // chain after the writeLock was released
+                        // to prevent possible deadlock.
+                        // See #1310
+                        if (causes == null) {
+                            causes = new ArrayList<Throwable>(1);
+                        }
+                        causes.add(t);
+                    } else {
+                        fireExceptionCaughtLater(channel, t);
+                    }
+                    if (t instanceof IOException) {
+                        // close must be handled from outside the write lock to
+                        // fix a possible deadlock
+                        // which can happen when MemoryAwareThreadPoolExecutor
+                        // is used and the limit is exceed
+                        // and a close is triggered while the lock is hold. This
+                        // is because the close(..)
+                        // may try to submit a task to handle it via the
+                        // ExecutorHandler which then deadlocks.
+                        // See #1310
+                        open = false;
+                    }
+                }
+            }
+            channel.inWriteNowLoop = false;
 
-	protected void close(AbstractNioChannel<?> channel, ChannelFuture future) {
-		boolean connected = channel.isConnected();
-		boolean bound = channel.isBound();
-		boolean iothread = isIoThread(channel);
+            // Initially, the following block was executed after releasing
+            // the writeLock, but there was a race condition, and it has to be
+            // executed before releasing the writeLock:
+            //
+            // https://issues.jboss.org/browse/NETTY-410
+            //
+            if (open) {
+                if (addOpWrite) {
+                    setOpWrite(channel);
+                } else if (removeOpWrite) {
+                    clearOpWrite(channel);
+                }
+            }
+        }
+        if (causes != null) {
+            for (Throwable cause : causes) {
+                // notify about cause now as it was triggered in the write loop
+                fireExceptionCaught(channel, cause);
+            }
+        }
+        if (!open) {
+            // close the channel now
+            close(channel, succeededFuture(channel));
+        }
+        if (iothread) {
+            fireWriteComplete(channel, writtenBytes);
+        } else {
+            fireWriteCompleteLater(channel, writtenBytes);
+        }
+    }
 
-		try {
-			channel.channel.close();
-			increaseCancelledKeys();
+    protected void setOpWrite(AbstractNioChannel<?> channel) {
+        Selector selector = this.selector;
+        SelectionKey key = channel.channel.keyFor(selector);
+        if (key == null) {
+            return;
+        }
+        if (!key.isValid()) {
+            close(key);
+            return;
+        }
 
-			if (channel.setClosed()) {
-				future.setSuccess();
-				if (connected) {
-					if (iothread) {
-						fireChannelDisconnected(channel);
-					} else {
-						fireChannelDisconnectedLater(channel);
-					}
-				}
-				if (bound) {
-					if (iothread) {
-						fireChannelUnbound(channel);
-					} else {
-						fireChannelUnboundLater(channel);
-					}
-				}
+        int interestOps = channel.getInternalInterestOps();
+        if ((interestOps & SelectionKey.OP_WRITE) == 0) {
+            interestOps |= SelectionKey.OP_WRITE;
+            key.interestOps(interestOps);
+            channel.setInternalInterestOps(interestOps);
+        }
+    }
 
-				cleanUpWriteBuffer(channel);
-				if (iothread) {
-					fireChannelClosed(channel);
-				} else {
-					fireChannelClosedLater(channel);
-				}
-			} else {
-				future.setSuccess();
-			}
-		} catch (Throwable t) {
-			future.setFailure(t);
-			if (iothread) {
-				fireExceptionCaught(channel, t);
-			} else {
-				fireExceptionCaughtLater(channel, t);
-			}
-		}
-	}
+    protected void clearOpWrite(AbstractNioChannel<?> channel) {
+        Selector selector = this.selector;
+        SelectionKey key = channel.channel.keyFor(selector);
+        if (key == null) {
+            return;
+        }
+        if (!key.isValid()) {
+            close(key);
+            return;
+        }
 
-	protected static void cleanUpWriteBuffer(AbstractNioChannel<?> channel) {
-		Exception cause = null;
-		boolean fireExceptionCaught = false;
+        int interestOps = channel.getInternalInterestOps();
+        if ((interestOps & SelectionKey.OP_WRITE) != 0) {
+            interestOps &= ~SelectionKey.OP_WRITE;
+            key.interestOps(interestOps);
+            channel.setInternalInterestOps(interestOps);
+        }
+    }
 
-		// Clean up the stale messages in the write buffer.
-		synchronized (channel.writeLock) {
-			MessageEvent evt = channel.currentWriteEvent;
-			if (evt != null) {
-				// Create the exception only once to avoid the excessive
-				// overhead
-				// caused by fillStackTrace.
-				if (channel.isOpen()) {
-					cause = new NotYetConnectedException();
-				} else {
-					cause = new ClosedChannelException();
-				}
+    protected void close(AbstractNioChannel<?> channel, ChannelFuture future) {
+        boolean connected = channel.isConnected();
+        boolean bound = channel.isBound();
+        boolean iothread = isIoThread(channel);
 
-				ChannelFuture future = evt.getFuture();
-				if (channel.currentWriteBuffer != null) {
-					channel.currentWriteBuffer.release();
-					channel.currentWriteBuffer = null;
-				}
-				channel.currentWriteEvent = null;
-				// Mark the event object for garbage collection.
-				// noinspection UnusedAssignment
-				evt = null;
-				future.setFailure(cause);
-				fireExceptionCaught = true;
-			}
+        try {
+            channel.channel.close();
+            increaseCancelledKeys();
 
-			WriteRequestQueue writeBuffer = channel.writeBufferQueue;
-			for (;;) {
-				evt = writeBuffer.poll();
-				if (evt == null) {
-					break;
-				}
-				// Create the exception only once to avoid the excessive
-				// overhead
-				// caused by fillStackTrace.
-				if (cause == null) {
-					if (channel.isOpen()) {
-						cause = new NotYetConnectedException();
-					} else {
-						cause = new ClosedChannelException();
-					}
-					fireExceptionCaught = true;
-				}
-				evt.getFuture().setFailure(cause);
-			}
-		}
+            if (channel.setClosed()) {
+                future.setSuccess();
+                if (connected) {
+                    if (iothread) {
+                        fireChannelDisconnected(channel);
+                    } else {
+                        fireChannelDisconnectedLater(channel);
+                    }
+                }
+                if (bound) {
+                    if (iothread) {
+                        fireChannelUnbound(channel);
+                    } else {
+                        fireChannelUnboundLater(channel);
+                    }
+                }
 
-		if (fireExceptionCaught) {
-			if (isIoThread(channel)) {
-				fireExceptionCaught(channel, cause);
-			} else {
-				fireExceptionCaughtLater(channel, cause);
-			}
-		}
-	}
+                cleanUpWriteBuffer(channel);
+                if (iothread) {
+                    fireChannelClosed(channel);
+                } else {
+                    fireChannelClosedLater(channel);
+                }
+            } else {
+                future.setSuccess();
+            }
+        } catch (Throwable t) {
+            future.setFailure(t);
+            if (iothread) {
+                fireExceptionCaught(channel, t);
+            } else {
+                fireExceptionCaughtLater(channel, t);
+            }
+        }
+    }
 
-	void setInterestOps(final AbstractNioChannel<?> channel, final ChannelFuture future, final int interestOps) {
-		boolean iothread = isIoThread(channel);
-		if (!iothread) {
-			channel.getPipeline().execute(new Runnable() {
-				public void run() {
-					setInterestOps(channel, future, interestOps);
-				}
-			});
-			return;
-		}
+    void setInterestOps(final AbstractNioChannel<?> channel, final ChannelFuture future, final int interestOps) {
+        boolean iothread = isIoThread(channel);
+        if (!iothread) {
+            channel.getPipeline().execute(new Runnable() {
+                public void run() {
+                    setInterestOps(channel, future, interestOps);
+                }
+            });
+            return;
+        }
 
-		boolean changed = false;
-		try {
-			Selector selector = this.selector;
-			SelectionKey key = channel.channel.keyFor(selector);
+        boolean changed = false;
+        try {
+            Selector selector = this.selector;
+            SelectionKey key = channel.channel.keyFor(selector);
 
-			// Override OP_WRITE flag - a user cannot change this flag.
-			int newInterestOps = interestOps & ~Channel.OP_WRITE | channel.getInternalInterestOps() & Channel.OP_WRITE;
+            // Override OP_WRITE flag - a user cannot change this flag.
+            int newInterestOps = interestOps & ~Channel.OP_WRITE | channel.getInternalInterestOps() & Channel.OP_WRITE;
 
-			if (key == null || selector == null) {
-				if (channel.getInternalInterestOps() != newInterestOps) {
-					changed = true;
-				}
+            if (key == null || selector == null) {
+                if (channel.getInternalInterestOps() != newInterestOps) {
+                    changed = true;
+                }
 
-				// Not registered to the worker yet.
-				// Set the rawInterestOps immediately; RegisterTask will pick it
-				// up.
-				channel.setInternalInterestOps(newInterestOps);
+                // Not registered to the worker yet.
+                // Set the rawInterestOps immediately; RegisterTask will pick it
+                // up.
+                channel.setInternalInterestOps(newInterestOps);
 
-				future.setSuccess();
-				if (changed) {
-					if (iothread) {
-						fireChannelInterestChanged(channel);
-					} else {
-						fireChannelInterestChangedLater(channel);
-					}
-				}
+                future.setSuccess();
+                if (changed) {
+                    if (iothread) {
+                        fireChannelInterestChanged(channel);
+                    } else {
+                        fireChannelInterestChangedLater(channel);
+                    }
+                }
 
-				return;
-			}
+                return;
+            }
 
-			if (channel.getInternalInterestOps() != newInterestOps) {
-				changed = true;
-				key.interestOps(newInterestOps);
-				if (Thread.currentThread() != thread && wakenUp.compareAndSet(false, true)) {
-					selector.wakeup();
-				}
-				channel.setInternalInterestOps(newInterestOps);
-			}
+            if (channel.getInternalInterestOps() != newInterestOps) {
+                changed = true;
+                key.interestOps(newInterestOps);
+                if (Thread.currentThread() != thread && wakenUp.compareAndSet(false, true)) {
+                    selector.wakeup();
+                }
+                channel.setInternalInterestOps(newInterestOps);
+            }
 
-			future.setSuccess();
-			if (changed) {
-				fireChannelInterestChanged(channel);
-			}
-		} catch (CancelledKeyException e) {
-			// setInterestOps() was called on a closed channel.
-			ClosedChannelException cce = new ClosedChannelException();
-			future.setFailure(cce);
-			fireExceptionCaught(channel, cce);
-		} catch (Throwable t) {
-			future.setFailure(t);
-			fireExceptionCaught(channel, t);
-		}
-	}
+            future.setSuccess();
+            if (changed) {
+                fireChannelInterestChanged(channel);
+            }
+        } catch (CancelledKeyException e) {
+            // setInterestOps() was called on a closed channel.
+            ClosedChannelException cce = new ClosedChannelException();
+            future.setFailure(cce);
+            fireExceptionCaught(channel, cce);
+        } catch (Throwable t) {
+            future.setFailure(t);
+            fireExceptionCaught(channel, t);
+        }
+    }
 
-	/**
-	 * Read is called when a Selector has been notified that the underlying
-	 * channel was something to be read. The channel would previously have
-	 * registered its interest in read operations.
-	 *
-	 * @param k
-	 *            The selection key which contains the Selector registration
-	 *            information.
-	 */
-	protected abstract boolean read(SelectionKey k);
+    /**
+     * Read is called when a Selector has been notified that the underlying
+     * channel was something to be read. The channel would previously have
+     * registered its interest in read operations.
+     *
+     * @param k The selection key which contains the Selector registration
+     *          information.
+     */
+    protected abstract boolean read(SelectionKey k);
 
 }

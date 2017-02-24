@@ -20,6 +20,6 @@ package com.freeswitch.netty.handler.codec.serialization;
  */
 public interface ClassResolver {
 
-	Class<?> resolve(String className) throws ClassNotFoundException;
+    Class<?> resolve(String className) throws ClassNotFoundException;
 
 }

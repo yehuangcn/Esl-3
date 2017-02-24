@@ -15,17 +15,12 @@
  */
 package com.freeswitch.netty.handler.codec.oneone;
 
-import static com.freeswitch.netty.channel.Channels.fireMessageReceived;
-
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelUpstreamHandler;
-import com.freeswitch.netty.channel.MessageEvent;
+import com.freeswitch.netty.channel.*;
 import com.freeswitch.netty.handler.codec.frame.DelimiterBasedFrameDecoder;
 import com.freeswitch.netty.handler.codec.frame.Delimiters;
 import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
+
+import static com.freeswitch.netty.channel.Channels.fireMessageReceived;
 
 /**
  * Transforms a received message into another message. Please note that this
@@ -33,7 +28,7 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  * {@link DelimiterBasedFrameDecoder} or you must implement proper framing
  * mechanism by yourself if you are using a stream-based transport such as
  * TCP/IP. A typical setup for TCP/IP would be:
- * 
+ * <p>
  * <pre>
  * {@link ChannelPipeline} pipeline = ...;
  *
@@ -49,32 +44,32 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  */
 public abstract class OneToOneDecoder implements ChannelUpstreamHandler {
 
-	/**
-	 * Creates a new instance with the current system character set.
-	 */
-	protected OneToOneDecoder() {
-	}
+    /**
+     * Creates a new instance with the current system character set.
+     */
+    protected OneToOneDecoder() {
+    }
 
-	public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent evt) throws Exception {
-		if (!(evt instanceof MessageEvent)) {
-			ctx.sendUpstream(evt);
-			return;
-		}
+    public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent evt) throws Exception {
+        if (!(evt instanceof MessageEvent)) {
+            ctx.sendUpstream(evt);
+            return;
+        }
 
-		MessageEvent e = (MessageEvent) evt;
-		Object originalMessage = e.getMessage();
-		Object decodedMessage = decode(ctx, e.getChannel(), originalMessage);
-		if (originalMessage == decodedMessage) {
-			ctx.sendUpstream(evt);
-		} else if (decodedMessage != null) {
-			fireMessageReceived(ctx, decodedMessage, e.getRemoteAddress());
-		}
-	}
+        MessageEvent e = (MessageEvent) evt;
+        Object originalMessage = e.getMessage();
+        Object decodedMessage = decode(ctx, e.getChannel(), originalMessage);
+        if (originalMessage == decodedMessage) {
+            ctx.sendUpstream(evt);
+        } else if (decodedMessage != null) {
+            fireMessageReceived(ctx, decodedMessage, e.getRemoteAddress());
+        }
+    }
 
-	/**
-	 * Transforms the specified received message into another message and return
-	 * the transformed message. Return {@code null} if the received message is
-	 * supposed to be discarded.
-	 */
-	protected abstract Object decode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception;
+    /**
+     * Transforms the specified received message into another message and return
+     * the transformed message. Return {@code null} if the received message is
+     * supposed to be discarded.
+     */
+    protected abstract Object decode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception;
 }

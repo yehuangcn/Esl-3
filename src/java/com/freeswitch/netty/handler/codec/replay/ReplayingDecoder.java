@@ -15,16 +15,11 @@
  */
 package com.freeswitch.netty.handler.codec.replay;
 
-import java.net.SocketAddress;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelHandler;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.MessageEvent;
+import com.freeswitch.netty.channel.*;
 import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
+
+import java.net.SocketAddress;
 
 /**
  * A specialized variation of {@link FrameDecoder} which enables implementation
@@ -36,7 +31,7 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  * bytes were received already, rather than checking the availability of the
  * required bytes. For server, the following {@link FrameDecoder}
  * implementation:
- * 
+ * <p>
  * <pre>
  * public class IntegerHeaderFrameDecoder extends {@link FrameDecoder} {
  *
@@ -61,9 +56,9 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  *   }
  * }
  * </pre>
- * 
+ * <p>
  * is simplified like the following with {@link ReplayingDecoder}:
- * 
+ * <p>
  * <pre>
  * public class IntegerHeaderFrameDecoder
  *      extends {@link ReplayingDecoder}&lt;{@link VoidEnum}&gt; {
@@ -77,7 +72,7 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  *   }
  * }
  * </pre>
- *
+ * <p>
  * <h3>How does this work?</h3>
  * <p>
  * {@link ReplayingDecoder} passes a specialized {@link ChannelBuffer}
@@ -95,7 +90,7 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  * Please note that {@link ReplayingDecoder} always throws the same cached
  * {@link Error} instance to avoid the overhead of creating a new {@link Error}
  * and filling its stack trace for every throw.
- *
+ * <p>
  * <h3>Limitations</h3>
  * <p>
  * At the cost of the simplicity, {@link ReplayingDecoder} enforces you a few
@@ -108,7 +103,7 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  * <li>You must keep in mind that {@code decode(..)} method can be called many
  * times to decode a single message. For server, the following code will not
  * work:
- * 
+ * <p>
  * <pre>
  *  public class MyDecoder extends {@link ReplayingDecoder}&lt;{@link VoidEnum}&gt; {
  *
@@ -128,10 +123,10 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  *   }
  * }
  * </pre>
- * 
+ * <p>
  * The correct implementation looks like the following, and you can also utilize
  * the 'checkpoint' feature which is explained in detail in the next section.
- * 
+ * <p>
  * <pre>
  *  public class MyDecoder extends {@link ReplayingDecoder}&lt;{@link VoidEnum}&gt; {
  *
@@ -154,10 +149,10 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  *   }
  * }
  * </pre>
- * 
+ * <p>
  * </li>
  * </ul>
- *
+ * <p>
  * <h3>Improving the performance</h3>
  * <p>
  * Fortunately, the performance of a complex decoder implementation can be
@@ -165,7 +160,7 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  * {@code checkpoint()} method updates the 'initial' position of the buffer so
  * that {@link ReplayingDecoder} rewinds the {@code readerIndex} of the buffer
  * to the last position where you called the {@code checkpoint()} method.
- *
+ * <p>
  * <h4>Calling {@code checkpoint(T)} with an {@link Enum}</h4>
  * <p>
  * Although you can just use {@code checkpoint()} method and manage the state of
@@ -174,7 +169,7 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  * decoder and to call {@code checkpoint(T)} method whenever the state changes.
  * You can have as many states as you want depending on the complexity of the
  * message you want to decode:
- *
+ * <p>
  * <pre>
  * public enum MyDecoderState {
  *   READ_LENGTH,
@@ -210,11 +205,11 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  *   }
  * }
  * </pre>
- *
+ * <p>
  * <h4>Calling {@code checkpoint()} with no parameter</h4>
  * <p>
  * An alternative way to manage the decoder state is to manage it by yourself.
- * 
+ * <p>
  * <pre>
  * public class IntegerHeaderFrameDecoder
  *      extends {@link ReplayingDecoder}&lt;<strong>{@link VoidEnum}</strong>&gt; {
@@ -242,7 +237,7 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  *   }
  * }
  * </pre>
- *
+ * <p>
  * <h3>Replacing a decoder with another decoder in a pipeline</h3>
  * <p>
  * If you are going to write a protocol multiplexer, you will probably want to
@@ -251,7 +246,7 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  * It is not possible to achieve this simply by calling
  * {@link ChannelPipeline#replace(ChannelHandler, String, ChannelHandler)}, but
  * some additional steps are required:
- * 
+ * <p>
  * <pre>
  * public class FirstDecoder extends {@link ReplayingDecoder}&lt;{@link VoidEnum}&gt; {
  *
@@ -284,300 +279,288 @@ import com.freeswitch.netty.handler.codec.frame.FrameDecoder;
  *     }
  * </pre>
  *
- * @param <T>
- *            the state type; use {@link VoidEnum} if state management is unused
- *
+ * @param <T> the state type; use {@link VoidEnum} if state management is unused
  * @apiviz.landmark
  * @apiviz.has org.jboss.netty.handler.codec.replay.UnreplayableOperationException
- *             oneway - - throws
+ * oneway - - throws
  */
 public abstract class ReplayingDecoder<T extends Enum<T>> extends FrameDecoder {
 
-	private final ReplayingDecoderBuffer replayable = new ReplayingDecoderBuffer(this);
-	private T state;
-	private int checkpoint;
-	private boolean needsCleanup;
+    private final ReplayingDecoderBuffer replayable = new ReplayingDecoderBuffer(this);
+    private T state;
+    private int checkpoint;
+    private boolean needsCleanup;
 
-	/**
-	 * Creates a new instance with no initial state (i.e: {@code null}).
-	 */
-	protected ReplayingDecoder() {
-		this(null);
-	}
+    /**
+     * Creates a new instance with no initial state (i.e: {@code null}).
+     */
+    protected ReplayingDecoder() {
+        this(null);
+    }
 
-	protected ReplayingDecoder(boolean unfold) {
-		this(null, unfold);
-	}
+    protected ReplayingDecoder(boolean unfold) {
+        this(null, unfold);
+    }
 
-	/**
-	 * Creates a new instance with the specified initial state.
-	 */
-	protected ReplayingDecoder(T initialState) {
-		this(initialState, false);
-	}
+    /**
+     * Creates a new instance with the specified initial state.
+     */
+    protected ReplayingDecoder(T initialState) {
+        this(initialState, false);
+    }
 
-	protected ReplayingDecoder(T initialState, boolean unfold) {
-		super(unfold);
-		state = initialState;
-	}
+    protected ReplayingDecoder(T initialState, boolean unfold) {
+        super(unfold);
+        state = initialState;
+    }
 
-	@Override
-	protected ChannelBuffer internalBuffer() {
-		return super.internalBuffer();
-	}
+    @Override
+    protected ChannelBuffer internalBuffer() {
+        return super.internalBuffer();
+    }
 
-	/**
-	 * Stores the internal cumulative buffer's reader position.
-	 */
-	protected void checkpoint() {
-		ChannelBuffer cumulation = this.cumulation;
-		if (cumulation != null) {
-			checkpoint = cumulation.readerIndex();
-		} else {
-			checkpoint = -1; // buffer not available (already cleaned up)
-		}
-	}
+    /**
+     * Stores the internal cumulative buffer's reader position.
+     */
+    protected void checkpoint() {
+        ChannelBuffer cumulation = this.cumulation;
+        if (cumulation != null) {
+            checkpoint = cumulation.readerIndex();
+        } else {
+            checkpoint = -1; // buffer not available (already cleaned up)
+        }
+    }
 
-	/**
-	 * Stores the internal cumulative buffer's reader position and updates the
-	 * current decoder state.
-	 */
-	protected void checkpoint(T state) {
-		checkpoint();
-		setState(state);
-	}
+    /**
+     * Stores the internal cumulative buffer's reader position and updates the
+     * current decoder state.
+     */
+    protected void checkpoint(T state) {
+        checkpoint();
+        setState(state);
+    }
 
-	/**
-	 * Returns the current state of this decoder.
-	 * 
-	 * @return the current state of this decoder
-	 */
-	protected T getState() {
-		return state;
-	}
+    /**
+     * Returns the current state of this decoder.
+     *
+     * @return the current state of this decoder
+     */
+    protected T getState() {
+        return state;
+    }
 
-	/**
-	 * Sets the current state of this decoder.
-	 * 
-	 * @return the old state of this decoder
-	 */
-	protected T setState(T newState) {
-		T oldState = state;
-		state = newState;
-		return oldState;
-	}
+    /**
+     * Sets the current state of this decoder.
+     *
+     * @return the old state of this decoder
+     */
+    protected T setState(T newState) {
+        T oldState = state;
+        state = newState;
+        return oldState;
+    }
 
-	/**
-	 * Decodes the received packets so far into a frame.
-	 *
-	 * @param ctx
-	 *            the context of this handler
-	 * @param channel
-	 *            the current channel
-	 * @param buffer
-	 *            the cumulative buffer of received packets so far. Note that
-	 *            the buffer might be empty, which means you should not make an
-	 *            assumption that the buffer contains at least one byte in your
-	 *            decoder implementation.
-	 * @param state
-	 *            the current decoder state ({@code null} if unused)
-	 *
-	 * @return the decoded frame
-	 */
-	protected abstract Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer, T state) throws Exception;
+    /**
+     * Decodes the received packets so far into a frame.
+     *
+     * @param ctx     the context of this handler
+     * @param channel the current channel
+     * @param buffer  the cumulative buffer of received packets so far. Note that
+     *                the buffer might be empty, which means you should not make an
+     *                assumption that the buffer contains at least one byte in your
+     *                decoder implementation.
+     * @param state   the current decoder state ({@code null} if unused)
+     * @return the decoded frame
+     */
+    protected abstract Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer, T state) throws Exception;
 
-	/**
-	 * Decodes the received data so far into a frame when the channel is
-	 * disconnected.
-	 *
-	 * @param ctx
-	 *            the context of this handler
-	 * @param channel
-	 *            the current channel
-	 * @param buffer
-	 *            the cumulative buffer of received packets so far. Note that
-	 *            the buffer might be empty, which means you should not make an
-	 *            assumption that the buffer contains at least one byte in your
-	 *            decoder implementation.
-	 * @param state
-	 *            the current decoder state ({@code null} if unused)
-	 *
-	 * @return the decoded frame
-	 */
-	protected Object decodeLast(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer, T state) throws Exception {
-		return decode(ctx, channel, buffer, state);
-	}
+    /**
+     * Decodes the received data so far into a frame when the channel is
+     * disconnected.
+     *
+     * @param ctx     the context of this handler
+     * @param channel the current channel
+     * @param buffer  the cumulative buffer of received packets so far. Note that
+     *                the buffer might be empty, which means you should not make an
+     *                assumption that the buffer contains at least one byte in your
+     *                decoder implementation.
+     * @param state   the current decoder state ({@code null} if unused)
+     * @return the decoded frame
+     */
+    protected Object decodeLast(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer, T state) throws Exception {
+        return decode(ctx, channel, buffer, state);
+    }
 
-	/**
-	 * Calls
-	 * {@link #decode(ChannelHandlerContext, Channel, ChannelBuffer, Enum)}.
-	 * This method should be never used by {@link ReplayingDecoder} itself. But
-	 * to be safe we should handle it anyway
-	 */
-	@Override
-	protected final Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) throws Exception {
-		return decode(ctx, channel, buffer, state);
-	}
+    /**
+     * Calls
+     * {@link #decode(ChannelHandlerContext, Channel, ChannelBuffer, Enum)}.
+     * This method should be never used by {@link ReplayingDecoder} itself. But
+     * to be safe we should handle it anyway
+     */
+    @Override
+    protected final Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) throws Exception {
+        return decode(ctx, channel, buffer, state);
+    }
 
-	@Override
-	protected final Object decodeLast(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) throws Exception {
-		return decodeLast(ctx, channel, buffer, state);
-	}
+    @Override
+    protected final Object decodeLast(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) throws Exception {
+        return decodeLast(ctx, channel, buffer, state);
+    }
 
-	@Override
-	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+    @Override
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
 
-		Object m = e.getMessage();
-		if (!(m instanceof ChannelBuffer)) {
-			ctx.sendUpstream(e);
-			return;
-		}
+        Object m = e.getMessage();
+        if (!(m instanceof ChannelBuffer)) {
+            ctx.sendUpstream(e);
+            return;
+        }
 
-		ChannelBuffer input = (ChannelBuffer) m;
-		if (!input.readable()) {
-			return;
-		}
+        ChannelBuffer input = (ChannelBuffer) m;
+        if (!input.readable()) {
+            return;
+        }
 
-		needsCleanup = true;
+        needsCleanup = true;
 
-		if (cumulation == null) {
-			// the cumulation buffer is not created yet so just pass the input
-			// to callDecode(...) method
-			cumulation = input;
+        if (cumulation == null) {
+            // the cumulation buffer is not created yet so just pass the input
+            // to callDecode(...) method
+            cumulation = input;
 
-			int oldReaderIndex = input.readerIndex();
-			int inputSize = input.readableBytes();
+            int oldReaderIndex = input.readerIndex();
+            int inputSize = input.readableBytes();
 
-			try {
-				callDecode(ctx, e.getChannel(), input, replayable, e.getRemoteAddress());
-			} finally {
-				int readableBytes = input.readableBytes();
-				if (readableBytes > 0) {
-					int inputCapacity = input.capacity();
-					// check if readableBytes == capacity we can safe the copy
-					// as we will not be able to
-					// optimize memory usage anyway
-					boolean copy = readableBytes != inputCapacity && inputCapacity > getMaxCumulationBufferCapacity();
+            try {
+                callDecode(ctx, e.getChannel(), input, replayable, e.getRemoteAddress());
+            } finally {
+                int readableBytes = input.readableBytes();
+                if (readableBytes > 0) {
+                    int inputCapacity = input.capacity();
+                    // check if readableBytes == capacity we can safe the copy
+                    // as we will not be able to
+                    // optimize memory usage anyway
+                    boolean copy = readableBytes != inputCapacity && inputCapacity > getMaxCumulationBufferCapacity();
 
-					// seems like there is something readable left in the input
-					// buffer
-					// or decoder wants a replay - create the cumulation buffer
-					// and
-					// copy the input into it
-					ChannelBuffer cumulation;
-					if (checkpoint > 0) {
-						int bytesToPreserve = inputSize - (checkpoint - oldReaderIndex);
-						if (copy) {
-							this.cumulation = cumulation = newCumulationBuffer(ctx, bytesToPreserve);
-							cumulation.writeBytes(input, checkpoint, bytesToPreserve);
-						} else {
-							this.cumulation = input.slice(checkpoint, bytesToPreserve);
-						}
-					} else if (checkpoint == 0) {
-						if (copy) {
-							this.cumulation = cumulation = newCumulationBuffer(ctx, inputSize);
-							cumulation.writeBytes(input, oldReaderIndex, inputSize);
-							cumulation.readerIndex(input.readerIndex());
-						} else {
-							this.cumulation = cumulation = input.slice(oldReaderIndex, inputSize);
-							cumulation.readerIndex(input.readerIndex());
-						}
-					} else {
-						if (copy) {
-							this.cumulation = cumulation = newCumulationBuffer(ctx, input.readableBytes());
-							cumulation.writeBytes(input);
-						} else {
-							this.cumulation = input;
-						}
-					}
-				} else {
-					cumulation = null;
-				}
-			}
-		} else {
-			input = appendToCumulation(input);
-			try {
-				callDecode(ctx, e.getChannel(), input, replayable, e.getRemoteAddress());
-			} finally {
-				updateCumulation(ctx, input);
-			}
-		}
-	}
+                    // seems like there is something readable left in the input
+                    // buffer
+                    // or decoder wants a replay - create the cumulation buffer
+                    // and
+                    // copy the input into it
+                    ChannelBuffer cumulation;
+                    if (checkpoint > 0) {
+                        int bytesToPreserve = inputSize - (checkpoint - oldReaderIndex);
+                        if (copy) {
+                            this.cumulation = cumulation = newCumulationBuffer(ctx, bytesToPreserve);
+                            cumulation.writeBytes(input, checkpoint, bytesToPreserve);
+                        } else {
+                            this.cumulation = input.slice(checkpoint, bytesToPreserve);
+                        }
+                    } else if (checkpoint == 0) {
+                        if (copy) {
+                            this.cumulation = cumulation = newCumulationBuffer(ctx, inputSize);
+                            cumulation.writeBytes(input, oldReaderIndex, inputSize);
+                            cumulation.readerIndex(input.readerIndex());
+                        } else {
+                            this.cumulation = cumulation = input.slice(oldReaderIndex, inputSize);
+                            cumulation.readerIndex(input.readerIndex());
+                        }
+                    } else {
+                        if (copy) {
+                            this.cumulation = cumulation = newCumulationBuffer(ctx, input.readableBytes());
+                            cumulation.writeBytes(input);
+                        } else {
+                            this.cumulation = input;
+                        }
+                    }
+                } else {
+                    cumulation = null;
+                }
+            }
+        } else {
+            input = appendToCumulation(input);
+            try {
+                callDecode(ctx, e.getChannel(), input, replayable, e.getRemoteAddress());
+            } finally {
+                updateCumulation(ctx, input);
+            }
+        }
+    }
 
-	private void callDecode(ChannelHandlerContext context, Channel channel, ChannelBuffer input, ChannelBuffer replayableInput, SocketAddress remoteAddress) throws Exception {
-		while (input.readable()) {
-			int oldReaderIndex = checkpoint = input.readerIndex();
-			Object result = null;
-			T oldState = state;
-			try {
-				result = decode(context, channel, replayableInput, state);
-				if (result == null) {
-					if (oldReaderIndex == input.readerIndex() && oldState == state) {
-						throw new IllegalStateException("null cannot be returned if no data is consumed and state didn't change.");
-					} else {
-						// Previous data has been discarded or caused state
-						// transition.
-						// Probably it is reading on.
-						continue;
-					}
-				}
-			} catch (ReplayError replay) {
-				// Return to the checkpoint (or oldPosition) and retry.
-				int checkpoint = this.checkpoint;
-				if (checkpoint >= 0) {
-					input.readerIndex(checkpoint);
-				} else {
-					// Called by cleanup() - no need to maintain the readerIndex
-					// anymore because the buffer has been released already.
-				}
-			}
+    private void callDecode(ChannelHandlerContext context, Channel channel, ChannelBuffer input, ChannelBuffer replayableInput, SocketAddress remoteAddress) throws Exception {
+        while (input.readable()) {
+            int oldReaderIndex = checkpoint = input.readerIndex();
+            Object result = null;
+            T oldState = state;
+            try {
+                result = decode(context, channel, replayableInput, state);
+                if (result == null) {
+                    if (oldReaderIndex == input.readerIndex() && oldState == state) {
+                        throw new IllegalStateException("null cannot be returned if no data is consumed and state didn't change.");
+                    } else {
+                        // Previous data has been discarded or caused state
+                        // transition.
+                        // Probably it is reading on.
+                        continue;
+                    }
+                }
+            } catch (ReplayError replay) {
+                // Return to the checkpoint (or oldPosition) and retry.
+                int checkpoint = this.checkpoint;
+                if (checkpoint >= 0) {
+                    input.readerIndex(checkpoint);
+                } else {
+                    // Called by cleanup() - no need to maintain the readerIndex
+                    // anymore because the buffer has been released already.
+                }
+            }
 
-			if (result == null) {
-				// Seems like more data is required.
-				// Let us wait for the next notification.
-				break;
-			}
+            if (result == null) {
+                // Seems like more data is required.
+                // Let us wait for the next notification.
+                break;
+            }
 
-			if (oldReaderIndex == input.readerIndex() && oldState == state) {
-				throw new IllegalStateException("decode() method must consume at least one byte " + "if it returned a decoded message (caused by: " + getClass() + ')');
-			}
+            if (oldReaderIndex == input.readerIndex() && oldState == state) {
+                throw new IllegalStateException("decode() method must consume at least one byte " + "if it returned a decoded message (caused by: " + getClass() + ')');
+            }
 
-			// A successful decode
-			unfoldAndFireMessageReceived(context, remoteAddress, result);
-		}
-	}
+            // A successful decode
+            unfoldAndFireMessageReceived(context, remoteAddress, result);
+        }
+    }
 
-	@Override
-	protected void cleanup(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		try {
-			ChannelBuffer cumulation = this.cumulation;
-			if (!needsCleanup) {
-				return;
-			}
+    @Override
+    protected void cleanup(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        try {
+            ChannelBuffer cumulation = this.cumulation;
+            if (!needsCleanup) {
+                return;
+            }
 
-			needsCleanup = false;
-			replayable.terminate();
+            needsCleanup = false;
+            replayable.terminate();
 
-			if (cumulation != null && cumulation.readable()) {
-				// Make sure all data was read before notifying a closed
-				// channel.
-				callDecode(ctx, e.getChannel(), cumulation, replayable, null);
-			}
+            if (cumulation != null && cumulation.readable()) {
+                // Make sure all data was read before notifying a closed
+                // channel.
+                callDecode(ctx, e.getChannel(), cumulation, replayable, null);
+            }
 
-			// Call decodeLast() finally. Please note that decodeLast() is
-			// called even if there's nothing more to read from the buffer to
-			// notify a user that the connection was closed explicitly.
-			Object partiallyDecoded = decodeLast(ctx, e.getChannel(), replayable, state);
+            // Call decodeLast() finally. Please note that decodeLast() is
+            // called even if there's nothing more to read from the buffer to
+            // notify a user that the connection was closed explicitly.
+            Object partiallyDecoded = decodeLast(ctx, e.getChannel(), replayable, state);
 
-			this.cumulation = null;
+            this.cumulation = null;
 
-			if (partiallyDecoded != null) {
-				unfoldAndFireMessageReceived(ctx, null, partiallyDecoded);
-			}
-		} catch (ReplayError replay) {
-			// Ignore
-		} finally {
-			ctx.sendUpstream(e);
-		}
-	}
+            if (partiallyDecoded != null) {
+                unfoldAndFireMessageReceived(ctx, null, partiallyDecoded);
+            }
+        } catch (ReplayError replay) {
+            // Ignore
+        } finally {
+            ctx.sendUpstream(e);
+        }
+    }
 }

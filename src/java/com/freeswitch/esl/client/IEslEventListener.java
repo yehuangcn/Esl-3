@@ -33,24 +33,22 @@ import com.freeswitch.esl.transport.event.EslEvent;
  * This design ensures that incoming event processing is not blocked by any
  * long-running listener process. However multiple listeners will be notified
  * sequentially, and so one slow listener can cause latency to other listeners.
- * 
+ *
  * @author david varnes
  */
 public interface IEslEventListener {
-	/**
-	 * Signal of a server initiated event.
-	 * 
-	 * @param event
-	 *            as an {@link EslEvent}
-	 */
-	void eventReceived(EslEvent event);
+    /**
+     * Signal of a server initiated event.
+     *
+     * @param event as an {@link EslEvent}
+     */
+    void eventReceived(EslEvent event);
 
-	/**
-	 * Signal of an event containing the result of a client requested background
-	 * job. The Job-UUID will be available as an event header of that name.
-	 * 
-	 * @param event
-	 *            as an {@link EslEvent}
-	 */
-	void backgroundJobResultReceived(EslEvent event);
+    /**
+     * Signal of an event containing the result of a client requested background
+     * job. The Job-UUID will be available as an event header of that name.
+     *
+     * @param event as an {@link EslEvent}
+     */
+    void backgroundJobResultReceived(EslEvent event);
 }

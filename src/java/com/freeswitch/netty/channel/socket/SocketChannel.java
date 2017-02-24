@@ -15,9 +15,9 @@
  */
 package com.freeswitch.netty.channel.socket;
 
-import java.net.InetSocketAddress;
-
 import com.freeswitch.netty.channel.Channel;
+
+import java.net.InetSocketAddress;
 
 /**
  * A TCP/IP socket {@link Channel} which was either accepted by
@@ -27,9 +27,9 @@ import com.freeswitch.netty.channel.Channel;
  * @apiviz.composedOf org.jboss.netty.channel.socket.SocketChannelConfig
  */
 public interface SocketChannel extends Channel {
-	SocketChannelConfig getConfig();
+    SocketChannelConfig getConfig();
 
-	InetSocketAddress getLocalAddress();
+    InetSocketAddress getLocalAddress();
 
-	InetSocketAddress getRemoteAddress();
+    InetSocketAddress getRemoteAddress();
 }

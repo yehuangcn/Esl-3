@@ -15,22 +15,17 @@
  */
 package com.freeswitch.netty.handler.codec.oneone;
 
-import static com.freeswitch.netty.channel.Channels.write;
-
 import com.freeswitch.netty.buffer.ChannelBuffers;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelDownstreamHandler;
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.MessageEvent;
+import com.freeswitch.netty.channel.*;
 import com.freeswitch.netty.handler.codec.frame.DelimiterBasedFrameDecoder;
 import com.freeswitch.netty.handler.codec.frame.Delimiters;
+
+import static com.freeswitch.netty.channel.Channels.write;
 
 /**
  * Transforms a write request into another write request. A typical setup for
  * TCP/IP would be:
- * 
+ * <p>
  * <pre>
  * {@link ChannelPipeline} pipeline = ...;
  *
@@ -46,39 +41,39 @@ import com.freeswitch.netty.handler.codec.frame.Delimiters;
  */
 public abstract class OneToOneEncoder implements ChannelDownstreamHandler {
 
-	protected OneToOneEncoder() {
-	}
+    protected OneToOneEncoder() {
+    }
 
-	public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent evt) throws Exception {
-		if (!(evt instanceof MessageEvent)) {
-			ctx.sendDownstream(evt);
-			return;
-		}
+    public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent evt) throws Exception {
+        if (!(evt instanceof MessageEvent)) {
+            ctx.sendDownstream(evt);
+            return;
+        }
 
-		MessageEvent e = (MessageEvent) evt;
-		if (!doEncode(ctx, e)) {
-			ctx.sendDownstream(e);
-		}
-	}
+        MessageEvent e = (MessageEvent) evt;
+        if (!doEncode(ctx, e)) {
+            ctx.sendDownstream(e);
+        }
+    }
 
-	protected boolean doEncode(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-		Object originalMessage = e.getMessage();
-		Object encodedMessage = encode(ctx, e.getChannel(), originalMessage);
-		if (originalMessage == encodedMessage) {
-			return false;
-		}
-		if (encodedMessage != null) {
-			write(ctx, e.getFuture(), encodedMessage, e.getRemoteAddress());
-		}
-		return true;
-	}
+    protected boolean doEncode(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+        Object originalMessage = e.getMessage();
+        Object encodedMessage = encode(ctx, e.getChannel(), originalMessage);
+        if (originalMessage == encodedMessage) {
+            return false;
+        }
+        if (encodedMessage != null) {
+            write(ctx, e.getFuture(), encodedMessage, e.getRemoteAddress());
+        }
+        return true;
+    }
 
-	/**
-	 * Transforms the specified message into another message and return the
-	 * transformed message. Note that you can not return {@code null}, unlike
-	 * you can in
-	 * {@link OneToOneDecoder#decode(ChannelHandlerContext, Channel, Object)};
-	 * you must return something, at least {@link ChannelBuffers#EMPTY_BUFFER}.
-	 */
-	protected abstract Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception;
+    /**
+     * Transforms the specified message into another message and return the
+     * transformed message. Note that you can not return {@code null}, unlike
+     * you can in
+     * {@link OneToOneDecoder#decode(ChannelHandlerContext, Channel, Object)};
+     * you must return something, at least {@link ChannelBuffers#EMPTY_BUFFER}.
+     */
+    protected abstract Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception;
 }

@@ -22,5 +22,5 @@ import com.freeswitch.netty.channel.ServerChannelFactory;
  * A {@link ServerChannelFactory} that creates a {@link LocalServerChannel}.
  */
 public interface LocalServerChannelFactory extends ServerChannelFactory {
-	LocalServerChannel newChannel(ChannelPipeline pipeline);
+    LocalServerChannel newChannel(ChannelPipeline pipeline);
 }

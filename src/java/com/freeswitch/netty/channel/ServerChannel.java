@@ -23,5 +23,5 @@ import com.freeswitch.netty.channel.socket.ServerSocketChannel;
  * good server.
  */
 public interface ServerChannel extends Channel {
-	// This is a tag interface.
+    // This is a tag interface.
 }

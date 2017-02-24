@@ -15,11 +15,6 @@
  */
 package com.freeswitch.netty.handler.codec.serialization;
 
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.util.concurrent.atomic.AtomicReference;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
 import com.freeswitch.netty.buffer.ChannelBufferFactory;
 import com.freeswitch.netty.buffer.ChannelBufferOutputStream;
@@ -27,6 +22,11 @@ import com.freeswitch.netty.buffer.ChannelBuffers;
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelHandlerContext;
 import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
+
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * An encoder which serializes a Java object into a {@link ChannelBuffer}
@@ -37,83 +37,82 @@ import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
  */
 public class CompatibleObjectEncoder extends OneToOneEncoder {
 
-	private final AtomicReference<ChannelBuffer> buffer = new AtomicReference<ChannelBuffer>();
-	private final int resetInterval;
-	private volatile ObjectOutputStream oout;
-	private int writtenObjects;
+    private final AtomicReference<ChannelBuffer> buffer = new AtomicReference<ChannelBuffer>();
+    private final int resetInterval;
+    private volatile ObjectOutputStream oout;
+    private int writtenObjects;
 
-	/**
-	 * Creates a new instance with the reset interval of {@code 16}.
-	 */
-	public CompatibleObjectEncoder() {
-		this(16); // Reset at every sixteen writes
-	}
+    /**
+     * Creates a new instance with the reset interval of {@code 16}.
+     */
+    public CompatibleObjectEncoder() {
+        this(16); // Reset at every sixteen writes
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param resetInterval
-	 *            the number of objects between
-	 *            {@link ObjectOutputStream#reset()}. {@code 0} will disable
-	 *            resetting the stream, but the remote peer will be at the risk
-	 *            of getting {@link OutOfMemoryError} in the long term.
-	 */
-	public CompatibleObjectEncoder(int resetInterval) {
-		if (resetInterval < 0) {
-			throw new IllegalArgumentException("resetInterval: " + resetInterval);
-		}
-		this.resetInterval = resetInterval;
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param resetInterval the number of objects between
+     *                      {@link ObjectOutputStream#reset()}. {@code 0} will disable
+     *                      resetting the stream, but the remote peer will be at the risk
+     *                      of getting {@link OutOfMemoryError} in the long term.
+     */
+    public CompatibleObjectEncoder(int resetInterval) {
+        if (resetInterval < 0) {
+            throw new IllegalArgumentException("resetInterval: " + resetInterval);
+        }
+        this.resetInterval = resetInterval;
+    }
 
-	/**
-	 * Creates a new {@link ObjectOutputStream} which wraps the specified
-	 * {@link OutputStream}. Override this method to use a subclass of the
-	 * {@link ObjectOutputStream}.
-	 */
-	protected ObjectOutputStream newObjectOutputStream(OutputStream out) throws Exception {
-		return new ObjectOutputStream(out);
-	}
+    /**
+     * Creates a new {@link ObjectOutputStream} which wraps the specified
+     * {@link OutputStream}. Override this method to use a subclass of the
+     * {@link ObjectOutputStream}.
+     */
+    protected ObjectOutputStream newObjectOutputStream(OutputStream out) throws Exception {
+        return new ObjectOutputStream(out);
+    }
 
-	@Override
-	protected Object encode(ChannelHandlerContext context, Channel channel, Object msg) throws Exception {
-		ChannelBuffer buffer = buffer(context);
-		ObjectOutputStream oout = this.oout;
-		if (resetInterval != 0) {
-			// Resetting will prevent OOM on the receiving side.
-			writtenObjects++;
-			if (writtenObjects % resetInterval == 0) {
-				oout.reset();
+    @Override
+    protected Object encode(ChannelHandlerContext context, Channel channel, Object msg) throws Exception {
+        ChannelBuffer buffer = buffer(context);
+        ObjectOutputStream oout = this.oout;
+        if (resetInterval != 0) {
+            // Resetting will prevent OOM on the receiving side.
+            writtenObjects++;
+            if (writtenObjects % resetInterval == 0) {
+                oout.reset();
 
-				// Also discard the byproduct to avoid OOM on the sending side.
-				buffer.discardReadBytes();
-			}
-		}
-		oout.writeObject(msg);
-		oout.flush();
+                // Also discard the byproduct to avoid OOM on the sending side.
+                buffer.discardReadBytes();
+            }
+        }
+        oout.writeObject(msg);
+        oout.flush();
 
-		ChannelBuffer encoded = buffer.readBytes(buffer.readableBytes());
-		return encoded;
-	}
+        ChannelBuffer encoded = buffer.readBytes(buffer.readableBytes());
+        return encoded;
+    }
 
-	private ChannelBuffer buffer(ChannelHandlerContext ctx) throws Exception {
-		ChannelBuffer buf = buffer.get();
-		if (buf == null) {
-			ChannelBufferFactory factory = ctx.getChannel().getConfig().getBufferFactory();
-			buf = ChannelBuffers.dynamicBuffer(factory);
-			if (buffer.compareAndSet(null, buf)) {
-				boolean success = false;
-				try {
-					oout = newObjectOutputStream(new ChannelBufferOutputStream(buf));
-					success = true;
-				} finally {
-					if (!success) {
-						oout = null;
-					}
-				}
-			} else {
-				buf = buffer.get();
-			}
-		}
-		return buf;
-	}
+    private ChannelBuffer buffer(ChannelHandlerContext ctx) throws Exception {
+        ChannelBuffer buf = buffer.get();
+        if (buf == null) {
+            ChannelBufferFactory factory = ctx.getChannel().getConfig().getBufferFactory();
+            buf = ChannelBuffers.dynamicBuffer(factory);
+            if (buffer.compareAndSet(null, buf)) {
+                boolean success = false;
+                try {
+                    oout = newObjectOutputStream(new ChannelBufferOutputStream(buf));
+                    success = true;
+                } finally {
+                    if (!success) {
+                        oout = null;
+                    }
+                }
+            } else {
+                buf = buffer.get();
+            }
+        }
+        return buf;
+    }
 }

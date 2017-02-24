@@ -15,93 +15,93 @@
  */
 package com.freeswitch.netty.channel.socket;
 
-import java.net.ServerSocket;
-import java.net.SocketException;
-
 import com.freeswitch.netty.channel.ChannelException;
 import com.freeswitch.netty.channel.DefaultServerChannelConfig;
 import com.freeswitch.netty.util.internal.ConversionUtil;
+
+import java.net.ServerSocket;
+import java.net.SocketException;
 
 /**
  * The default {@link ServerSocketChannelConfig} implementation.
  */
 public class DefaultServerSocketChannelConfig extends DefaultServerChannelConfig implements ServerSocketChannelConfig {
 
-	private final ServerSocket socket;
-	private volatile int backlog;
+    private final ServerSocket socket;
+    private volatile int backlog;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public DefaultServerSocketChannelConfig(ServerSocket socket) {
-		if (socket == null) {
-			throw new NullPointerException("socket");
-		}
-		this.socket = socket;
-	}
+    /**
+     * Creates a new instance.
+     */
+    public DefaultServerSocketChannelConfig(ServerSocket socket) {
+        if (socket == null) {
+            throw new NullPointerException("socket");
+        }
+        this.socket = socket;
+    }
 
-	@Override
-	public boolean setOption(String key, Object value) {
-		if (super.setOption(key, value)) {
-			return true;
-		}
+    @Override
+    public boolean setOption(String key, Object value) {
+        if (super.setOption(key, value)) {
+            return true;
+        }
 
-		if ("receiveBufferSize".equals(key)) {
-			setReceiveBufferSize(ConversionUtil.toInt(value));
-		} else if ("reuseAddress".equals(key)) {
-			setReuseAddress(ConversionUtil.toBoolean(value));
-		} else if ("backlog".equals(key)) {
-			setBacklog(ConversionUtil.toInt(value));
-		} else {
-			return false;
-		}
-		return true;
-	}
+        if ("receiveBufferSize".equals(key)) {
+            setReceiveBufferSize(ConversionUtil.toInt(value));
+        } else if ("reuseAddress".equals(key)) {
+            setReuseAddress(ConversionUtil.toBoolean(value));
+        } else if ("backlog".equals(key)) {
+            setBacklog(ConversionUtil.toInt(value));
+        } else {
+            return false;
+        }
+        return true;
+    }
 
-	public boolean isReuseAddress() {
-		try {
-			return socket.getReuseAddress();
-		} catch (SocketException e) {
-			throw new ChannelException(e);
-		}
-	}
+    public boolean isReuseAddress() {
+        try {
+            return socket.getReuseAddress();
+        } catch (SocketException e) {
+            throw new ChannelException(e);
+        }
+    }
 
-	public void setReuseAddress(boolean reuseAddress) {
-		try {
-			socket.setReuseAddress(reuseAddress);
-		} catch (SocketException e) {
-			throw new ChannelException(e);
-		}
-	}
+    public void setReuseAddress(boolean reuseAddress) {
+        try {
+            socket.setReuseAddress(reuseAddress);
+        } catch (SocketException e) {
+            throw new ChannelException(e);
+        }
+    }
 
-	public int getReceiveBufferSize() {
-		try {
-			return socket.getReceiveBufferSize();
-		} catch (SocketException e) {
-			throw new ChannelException(e);
-		}
-	}
+    public int getReceiveBufferSize() {
+        try {
+            return socket.getReceiveBufferSize();
+        } catch (SocketException e) {
+            throw new ChannelException(e);
+        }
+    }
 
-	public void setReceiveBufferSize(int receiveBufferSize) {
-		try {
-			socket.setReceiveBufferSize(receiveBufferSize);
-		} catch (SocketException e) {
-			throw new ChannelException(e);
-		}
-	}
+    public void setReceiveBufferSize(int receiveBufferSize) {
+        try {
+            socket.setReceiveBufferSize(receiveBufferSize);
+        } catch (SocketException e) {
+            throw new ChannelException(e);
+        }
+    }
 
-	public void setPerformancePreferences(int connectionTime, int latency, int bandwidth) {
-		socket.setPerformancePreferences(connectionTime, latency, bandwidth);
-	}
+    public void setPerformancePreferences(int connectionTime, int latency, int bandwidth) {
+        socket.setPerformancePreferences(connectionTime, latency, bandwidth);
+    }
 
-	public int getBacklog() {
-		return backlog;
-	}
+    public int getBacklog() {
+        return backlog;
+    }
 
-	public void setBacklog(int backlog) {
-		if (backlog < 0) {
-			throw new IllegalArgumentException("backlog: " + backlog);
-		}
-		this.backlog = backlog;
-	}
+    public void setBacklog(int backlog) {
+        if (backlog < 0) {
+            throw new IllegalArgumentException("backlog: " + backlog);
+        }
+        this.backlog = backlog;
+    }
 }

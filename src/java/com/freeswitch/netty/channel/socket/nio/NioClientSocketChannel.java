@@ -15,66 +15,59 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.logging.InternalLogger;
+import com.freeswitch.netty.logging.InternalLoggerFactory;
+import com.freeswitch.netty.util.Timeout;
 
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
-import com.freeswitch.netty.channel.ChannelException;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
-import com.freeswitch.netty.logging.InternalLogger;
-import com.freeswitch.netty.logging.InternalLoggerFactory;
-import com.freeswitch.netty.util.Timeout;
+import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
 
 final class NioClientSocketChannel extends NioSocketChannel {
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(NioClientSocketChannel.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(NioClientSocketChannel.class);
+    volatile ChannelFuture connectFuture;
+    volatile boolean boundManually;
+    // Does not need to be volatile as it's accessed by only one thread.
+    long connectDeadlineNanos;
+    volatile SocketAddress requestedRemoteAddress;
+    volatile Timeout timoutTimer;
 
-	private static SocketChannel newSocket() {
-		SocketChannel socket;
-		try {
-			socket = SocketChannel.open();
-		} catch (IOException e) {
-			throw new ChannelException("Failed to open a socket.", e);
-		}
+    NioClientSocketChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, NioWorker worker) {
 
-		boolean success = false;
-		try {
-			socket.configureBlocking(false);
-			success = true;
-		} catch (IOException e) {
-			throw new ChannelException("Failed to enter non-blocking mode.", e);
-		} finally {
-			if (!success) {
-				try {
-					socket.close();
-				} catch (IOException e) {
-					if (logger.isWarnEnabled()) {
-						logger.warn("Failed to close a partially initialized socket.", e);
-					}
-				}
-			}
-		}
+        super(null, factory, pipeline, sink, newSocket(), worker);
+        fireChannelOpen(this);
+    }
 
-		return socket;
-	}
+    private static SocketChannel newSocket() {
+        SocketChannel socket;
+        try {
+            socket = SocketChannel.open();
+        } catch (IOException e) {
+            throw new ChannelException("Failed to open a socket.", e);
+        }
 
-	volatile ChannelFuture connectFuture;
-	volatile boolean boundManually;
+        boolean success = false;
+        try {
+            socket.configureBlocking(false);
+            success = true;
+        } catch (IOException e) {
+            throw new ChannelException("Failed to enter non-blocking mode.", e);
+        } finally {
+            if (!success) {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    if (logger.isWarnEnabled()) {
+                        logger.warn("Failed to close a partially initialized socket.", e);
+                    }
+                }
+            }
+        }
 
-	// Does not need to be volatile as it's accessed by only one thread.
-	long connectDeadlineNanos;
-	volatile SocketAddress requestedRemoteAddress;
-
-	volatile Timeout timoutTimer;
-
-	NioClientSocketChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink, NioWorker worker) {
-
-		super(null, factory, pipeline, sink, newSocket(), worker);
-		fireChannelOpen(this);
-	}
+        return socket;
+    }
 }

@@ -22,29 +22,28 @@ package com.freeswitch.netty.channel;
  */
 public class SucceededChannelFuture extends CompleteChannelFuture {
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param channel
-	 *            the {@link Channel} associated with this future
-	 */
-	public SucceededChannelFuture(Channel channel) {
-		super(channel);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param channel the {@link Channel} associated with this future
+     */
+    public SucceededChannelFuture(Channel channel) {
+        super(channel);
+    }
 
-	public Throwable getCause() {
-		return null;
-	}
+    public Throwable getCause() {
+        return null;
+    }
 
-	public boolean isSuccess() {
-		return true;
-	}
+    public boolean isSuccess() {
+        return true;
+    }
 
-	public ChannelFuture sync() throws InterruptedException {
-		return this;
-	}
+    public ChannelFuture sync() throws InterruptedException {
+        return this;
+    }
 
-	public ChannelFuture syncUninterruptibly() {
-		return this;
-	}
+    public ChannelFuture syncUninterruptibly() {
+        return this;
+    }
 }

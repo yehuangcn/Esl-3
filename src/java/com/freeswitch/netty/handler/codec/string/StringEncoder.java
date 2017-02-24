@@ -15,24 +15,24 @@
  */
 package com.freeswitch.netty.handler.codec.string;
 
-import static com.freeswitch.netty.buffer.ChannelBuffers.copiedBuffer;
-
-import java.nio.charset.Charset;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
 import com.freeswitch.netty.channel.Channel;
+import com.freeswitch.netty.channel.ChannelHandler.Sharable;
 import com.freeswitch.netty.channel.ChannelHandlerContext;
 import com.freeswitch.netty.channel.ChannelPipeline;
 import com.freeswitch.netty.channel.MessageEvent;
-import com.freeswitch.netty.channel.ChannelHandler.Sharable;
 import com.freeswitch.netty.handler.codec.frame.DelimiterBasedFrameDecoder;
 import com.freeswitch.netty.handler.codec.frame.Delimiters;
 import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
 
+import java.nio.charset.Charset;
+
+import static com.freeswitch.netty.buffer.ChannelBuffers.copiedBuffer;
+
 /**
  * Encodes the requested {@link String} into a {@link ChannelBuffer}. A typical
  * setup for a text-based line protocol in a TCP/IP socket would be:
- * 
+ * <p>
  * <pre>
  * {@link ChannelPipeline} pipeline = ...;
  *
@@ -43,10 +43,10 @@ import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
  * // Encoder
  * pipeline.addLast("stringEncoder", new {@link StringEncoder}(CharsetUtil.UTF_8));
  * </pre>
- * 
+ * <p>
  * and then you can use a {@link String} instead of a {@link ChannelBuffer} as a
  * message:
- * 
+ * <p>
  * <pre>
  * void messageReceived({@link ChannelHandlerContext} ctx, {@link MessageEvent} e) {
  *     String msg = (String) e.getMessage();
@@ -59,32 +59,32 @@ import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
 @Sharable
 public class StringEncoder extends OneToOneEncoder {
 
-	// TODO Use CharsetEncoder instead.
-	private final Charset charset;
+    // TODO Use CharsetEncoder instead.
+    private final Charset charset;
 
-	/**
-	 * Creates a new instance with the current system character set.
-	 */
-	public StringEncoder() {
-		this(Charset.defaultCharset());
-	}
+    /**
+     * Creates a new instance with the current system character set.
+     */
+    public StringEncoder() {
+        this(Charset.defaultCharset());
+    }
 
-	/**
-	 * Creates a new instance with the specified character set.
-	 */
-	public StringEncoder(Charset charset) {
-		if (charset == null) {
-			throw new NullPointerException("charset");
-		}
-		this.charset = charset;
-	}
+    /**
+     * Creates a new instance with the specified character set.
+     */
+    public StringEncoder(Charset charset) {
+        if (charset == null) {
+            throw new NullPointerException("charset");
+        }
+        this.charset = charset;
+    }
 
-	@Override
-	protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
-		if (msg instanceof String) {
-			return copiedBuffer(ctx.getChannel().getConfig().getBufferFactory().getDefaultOrder(), (String) msg, charset);
-		}
+    @Override
+    protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
+        if (msg instanceof String) {
+            return copiedBuffer(ctx.getChannel().getConfig().getBufferFactory().getDefaultOrder(), (String) msg, charset);
+        }
 
-		return msg;
-	}
+        return msg;
+    }
 }

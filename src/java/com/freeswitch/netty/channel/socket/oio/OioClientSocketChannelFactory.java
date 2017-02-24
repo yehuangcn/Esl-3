@@ -15,10 +15,6 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelPipeline;
 import com.freeswitch.netty.channel.group.ChannelGroup;
@@ -27,22 +23,26 @@ import com.freeswitch.netty.channel.socket.SocketChannel;
 import com.freeswitch.netty.util.ThreadNameDeterminer;
 import com.freeswitch.netty.util.internal.ExecutorUtil;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+
 /**
  * A {@link ClientSocketChannelFactory} which creates a client-side blocking I/O
  * based {@link SocketChannel}. It utilizes the good old blocking I/O API which
  * is known to yield better throughput and latency when there are relatively
  * small number of connections to serve.
- *
+ * <p>
  * <h3>How threads work</h3>
  * <p>
  * There is only one type of threads in {@link OioClientSocketChannelFactory};
  * worker threads.
- *
+ * <p>
  * <h4>Worker threads</h4>
  * <p>
  * Each connected {@link Channel} has a dedicated worker thread, just like a
  * traditional blocking I/O thread model.
- *
+ * <p>
  * <h3>Life cycle of threads and graceful shutdown</h3>
  * <p>
  * Worker threads are acquired from the {@link Executor} which was specified
@@ -54,17 +54,17 @@ import com.freeswitch.netty.util.internal.ExecutorUtil;
  * left to process. All the related resources are also released when the worker
  * threads are released. Therefore, to shut down a service gracefully, you
  * should do the following:
- *
+ * <p>
  * <ol>
  * <li>close all channels created by the factory usually using
  * {@link ChannelGroup#close()}, and</li>
  * <li>call {@link #releaseExternalResources()}.</li>
  * </ol>
- *
+ * <p>
  * Please make sure not to shut down the executor until all channels are closed.
  * Otherwise, you will end up with a {@link RejectedExecutionException} and the
  * related resources might not be released properly.
- *
+ * <p>
  * <h3>Limitation</h3>
  * <p>
  * A {@link SocketChannel} created by this factory does not support asynchronous
@@ -75,58 +75,55 @@ import com.freeswitch.netty.util.internal.ExecutorUtil;
  */
 public class OioClientSocketChannelFactory implements ClientSocketChannelFactory {
 
-	private final Executor workerExecutor;
-	final OioClientSocketPipelineSink sink;
-	private boolean shutdownExecutor;
+    final OioClientSocketPipelineSink sink;
+    private final Executor workerExecutor;
+    private boolean shutdownExecutor;
 
-	/**
-	 * Creates a new instance with a {@link Executors#newCachedThreadPool()} as
-	 * worker executor.
-	 *
-	 * See {@link #OioClientSocketChannelFactory(Executor)}
-	 */
-	public OioClientSocketChannelFactory() {
-		this(Executors.newCachedThreadPool());
-		shutdownExecutor = true;
-	}
+    /**
+     * Creates a new instance with a {@link Executors#newCachedThreadPool()} as
+     * worker executor.
+     * <p>
+     * See {@link #OioClientSocketChannelFactory(Executor)}
+     */
+    public OioClientSocketChannelFactory() {
+        this(Executors.newCachedThreadPool());
+        shutdownExecutor = true;
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param workerExecutor
-	 *            the {@link Executor} which will execute the I/O worker threads
-	 */
-	public OioClientSocketChannelFactory(Executor workerExecutor) {
-		this(workerExecutor, null);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param workerExecutor the {@link Executor} which will execute the I/O worker threads
+     */
+    public OioClientSocketChannelFactory(Executor workerExecutor) {
+        this(workerExecutor, null);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param workerExecutor
-	 *            the {@link Executor} which will execute the I/O worker threads
-	 * @param determiner
-	 *            the {@link ThreadNameDeterminer} to set the thread names.
-	 */
-	public OioClientSocketChannelFactory(Executor workerExecutor, ThreadNameDeterminer determiner) {
-		if (workerExecutor == null) {
-			throw new NullPointerException("workerExecutor");
-		}
-		this.workerExecutor = workerExecutor;
-		sink = new OioClientSocketPipelineSink(workerExecutor, determiner);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param workerExecutor the {@link Executor} which will execute the I/O worker threads
+     * @param determiner     the {@link ThreadNameDeterminer} to set the thread names.
+     */
+    public OioClientSocketChannelFactory(Executor workerExecutor, ThreadNameDeterminer determiner) {
+        if (workerExecutor == null) {
+            throw new NullPointerException("workerExecutor");
+        }
+        this.workerExecutor = workerExecutor;
+        sink = new OioClientSocketPipelineSink(workerExecutor, determiner);
+    }
 
-	public SocketChannel newChannel(ChannelPipeline pipeline) {
-		return new OioClientSocketChannel(this, pipeline, sink);
-	}
+    public SocketChannel newChannel(ChannelPipeline pipeline) {
+        return new OioClientSocketChannel(this, pipeline, sink);
+    }
 
-	public void shutdown() {
-		if (shutdownExecutor) {
-			ExecutorUtil.shutdownNow(workerExecutor);
-		}
-	}
+    public void shutdown() {
+        if (shutdownExecutor) {
+            ExecutorUtil.shutdownNow(workerExecutor);
+        }
+    }
 
-	public void releaseExternalResources() {
-		ExecutorUtil.shutdownNow(workerExecutor);
-	}
+    public void releaseExternalResources() {
+        ExecutorUtil.shutdownNow(workerExecutor);
+    }
 }

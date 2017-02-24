@@ -24,5 +24,5 @@ import com.freeswitch.netty.channel.ChannelPipeline;
  * @apiviz.has org.jboss.netty.channel.socket.DatagramChannel oneway - - creates
  */
 public interface DatagramChannelFactory extends ChannelFactory {
-	DatagramChannel newChannel(ChannelPipeline pipeline);
+    DatagramChannel newChannel(ChannelPipeline pipeline);
 }

@@ -15,34 +15,34 @@
  */
 package com.freeswitch.netty.channel.local;
 
+import com.freeswitch.netty.channel.Channel;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import com.freeswitch.netty.channel.Channel;
 
 /**
  */
 final class LocalChannelRegistry {
 
-	private static final ConcurrentMap<LocalAddress, Channel> map = new ConcurrentHashMap<LocalAddress, Channel>();
+    private static final ConcurrentMap<LocalAddress, Channel> map = new ConcurrentHashMap<LocalAddress, Channel>();
 
-	static boolean isRegistered(LocalAddress address) {
-		return map.containsKey(address);
-	}
+    private LocalChannelRegistry() {
+        // Unused
+    }
 
-	static Channel getChannel(LocalAddress address) {
-		return map.get(address);
-	}
+    static boolean isRegistered(LocalAddress address) {
+        return map.containsKey(address);
+    }
 
-	static boolean register(LocalAddress address, Channel channel) {
-		return map.putIfAbsent(address, channel) == null;
-	}
+    static Channel getChannel(LocalAddress address) {
+        return map.get(address);
+    }
 
-	static boolean unregister(LocalAddress address) {
-		return map.remove(address) != null;
-	}
+    static boolean register(LocalAddress address, Channel channel) {
+        return map.putIfAbsent(address, channel) == null;
+    }
 
-	private LocalChannelRegistry() {
-		// Unused
-	}
+    static boolean unregister(LocalAddress address) {
+        return map.remove(address) != null;
+    }
 }

@@ -20,12 +20,12 @@ package com.freeswitch.netty.handler.ssl;
  * An enumeration of SSL/TLS protocol providers.
  */
 public enum SslProvider {
-	/**
-	 * JDK's default implementation.
-	 */
-	JDK,
-	/**
-	 * OpenSSL-based implementation.
-	 */
-	OPENSSL
+    /**
+     * JDK's default implementation.
+     */
+    JDK,
+    /**
+     * OpenSSL-based implementation.
+     */
+    OPENSSL
 }

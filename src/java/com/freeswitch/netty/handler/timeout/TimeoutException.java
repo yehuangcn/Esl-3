@@ -23,32 +23,32 @@ import com.freeswitch.netty.channel.ChannelException;
  */
 public class TimeoutException extends ChannelException {
 
-	private static final long serialVersionUID = 4673641882869672533L;
+    private static final long serialVersionUID = 4673641882869672533L;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public TimeoutException() {
-	}
+    /**
+     * Creates a new instance.
+     */
+    public TimeoutException() {
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public TimeoutException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public TimeoutException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public TimeoutException(String message) {
-		super(message);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public TimeoutException(String message) {
+        super(message);
+    }
 
-	/**
-	 * Creates a new instance.
-	 */
-	public TimeoutException(Throwable cause) {
-		super(cause);
-	}
+    /**
+     * Creates a new instance.
+     */
+    public TimeoutException(Throwable cause) {
+        super(cause);
+    }
 }

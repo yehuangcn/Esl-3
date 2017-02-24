@@ -27,15 +27,15 @@ package com.freeswitch.netty.channel;
  */
 public interface ChannelStateEvent extends ChannelEvent {
 
-	/**
-	 * Returns the changed property of the {@link Channel}.
-	 */
-	ChannelState getState();
+    /**
+     * Returns the changed property of the {@link Channel}.
+     */
+    ChannelState getState();
 
-	/**
-	 * Returns the value of the changed property of the {@link Channel}. Please
-	 * refer to {@link ChannelState} documentation to find out the allowed
-	 * values for each property.
-	 */
-	Object getValue();
+    /**
+     * Returns the value of the changed property of the {@link Channel}. Please
+     * refer to {@link ChannelState} documentation to find out the allowed
+     * values for each property.
+     */
+    Object getValue();
 }

@@ -15,7 +15,12 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
+import com.freeswitch.netty.channel.*;
+import com.freeswitch.netty.channel.socket.DefaultServerSocketChannelConfig;
+import com.freeswitch.netty.channel.socket.ServerSocketChannel;
+import com.freeswitch.netty.channel.socket.ServerSocketChannelConfig;
+import com.freeswitch.netty.logging.InternalLogger;
+import com.freeswitch.netty.logging.InternalLoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -23,71 +28,62 @@ import java.net.ServerSocket;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.freeswitch.netty.channel.AbstractServerChannel;
-import com.freeswitch.netty.channel.ChannelException;
-import com.freeswitch.netty.channel.ChannelFactory;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelSink;
-import com.freeswitch.netty.channel.socket.DefaultServerSocketChannelConfig;
-import com.freeswitch.netty.channel.socket.ServerSocketChannel;
-import com.freeswitch.netty.channel.socket.ServerSocketChannelConfig;
-import com.freeswitch.netty.logging.InternalLogger;
-import com.freeswitch.netty.logging.InternalLoggerFactory;
+import static com.freeswitch.netty.channel.Channels.fireChannelOpen;
 
 class OioServerSocketChannel extends AbstractServerChannel implements ServerSocketChannel {
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(OioServerSocketChannel.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(OioServerSocketChannel.class);
 
-	final ServerSocket socket;
-	final Lock shutdownLock = new ReentrantLock();
-	private final ServerSocketChannelConfig config;
+    final ServerSocket socket;
+    final Lock shutdownLock = new ReentrantLock();
+    private final ServerSocketChannelConfig config;
 
-	OioServerSocketChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
+    OioServerSocketChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
 
-		super(factory, pipeline, sink);
+        super(factory, pipeline, sink);
 
-		try {
-			socket = new ServerSocket();
-		} catch (IOException e) {
-			throw new ChannelException("Failed to open a server socket.", e);
-		}
+        try {
+            socket = new ServerSocket();
+        } catch (IOException e) {
+            throw new ChannelException("Failed to open a server socket.", e);
+        }
 
-		try {
-			socket.setSoTimeout(1000);
-		} catch (IOException e) {
-			try {
-				socket.close();
-			} catch (IOException e2) {
-				if (logger.isWarnEnabled()) {
-					logger.warn("Failed to close a partially initialized socket.", e2);
-				}
-			}
-			throw new ChannelException("Failed to set the server socket timeout.", e);
-		}
+        try {
+            socket.setSoTimeout(1000);
+        } catch (IOException e) {
+            try {
+                socket.close();
+            } catch (IOException e2) {
+                if (logger.isWarnEnabled()) {
+                    logger.warn("Failed to close a partially initialized socket.", e2);
+                }
+            }
+            throw new ChannelException("Failed to set the server socket timeout.", e);
+        }
 
-		config = new DefaultServerSocketChannelConfig(socket);
+        config = new DefaultServerSocketChannelConfig(socket);
 
-		fireChannelOpen(this);
-	}
+        fireChannelOpen(this);
+    }
 
-	public ServerSocketChannelConfig getConfig() {
-		return config;
-	}
+    public ServerSocketChannelConfig getConfig() {
+        return config;
+    }
 
-	public InetSocketAddress getLocalAddress() {
-		return (InetSocketAddress) socket.getLocalSocketAddress();
-	}
+    public InetSocketAddress getLocalAddress() {
+        return (InetSocketAddress) socket.getLocalSocketAddress();
+    }
 
-	public InetSocketAddress getRemoteAddress() {
-		return null;
-	}
+    public InetSocketAddress getRemoteAddress() {
+        return null;
+    }
 
-	public boolean isBound() {
-		return isOpen() && socket.isBound();
-	}
+    public boolean isBound() {
+        return isOpen() && socket.isBound();
+    }
 
-	@Override
-	protected boolean setClosed() {
-		return super.setClosed();
-	}
+    @Override
+    protected boolean setClosed() {
+        return super.setClosed();
+    }
 }

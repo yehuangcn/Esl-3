@@ -30,27 +30,27 @@ import com.freeswitch.netty.handler.execution.OrderedMemoryAwareThreadPoolExecut
  * <p>
  * Convenience factory to assemble a Netty processing pipeline for handler
  * clients.
- * 
+ *
  * @author david varnes
  */
 public class EslPipelineFactory implements ChannelPipelineFactory {
-	private final ChannelHandler handler;
+    private final ChannelHandler handler;
 
-	public EslPipelineFactory(ChannelHandler handler) {
-		this.handler = handler;
-	}
+    public EslPipelineFactory(ChannelHandler handler) {
+        this.handler = handler;
+    }
 
-	public ChannelPipeline getPipeline() throws Exception {
-		ChannelPipeline pipeline = Channels.pipeline();
-		pipeline.addLast("encoder", new StringEncoder());
-		pipeline.addLast("decoder", new EslFrameDecoder(8192));
-		// Add an executor to ensure separate thread for each upstream message
-		// from here
-		pipeline.addLast("executor", new ExecutionHandler(new OrderedMemoryAwareThreadPoolExecutor(16, 1048576, 1048576)));
+    public ChannelPipeline getPipeline() throws Exception {
+        ChannelPipeline pipeline = Channels.pipeline();
+        pipeline.addLast("encoder", new StringEncoder());
+        pipeline.addLast("decoder", new EslFrameDecoder(8192));
+        // Add an executor to ensure separate thread for each upstream message
+        // from here
+        pipeline.addLast("executor", new ExecutionHandler(new OrderedMemoryAwareThreadPoolExecutor(16, 1048576, 1048576)));
 
-		// now the handler client logic
-		pipeline.addLast("clientHandler", handler);
+        // now the handler client logic
+        pipeline.addLast("clientHandler", handler);
 
-		return pipeline;
-	}
+        return pipeline;
+    }
 }

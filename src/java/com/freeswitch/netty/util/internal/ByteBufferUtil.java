@@ -22,43 +22,43 @@ import java.nio.ByteBuffer;
  * This is fork of ElasticSearch's ByteBufferAllocator.Cleaner class
  */
 public final class ByteBufferUtil {
-	private static final boolean CLEAN_SUPPORTED;
-	private static final Method directBufferCleaner;
-	private static final Method directBufferCleanerClean;
+    private static final boolean CLEAN_SUPPORTED;
+    private static final Method directBufferCleaner;
+    private static final Method directBufferCleanerClean;
 
-	static {
-		Method directBufferCleanerX = null;
-		Method directBufferCleanerCleanX = null;
-		boolean v;
-		try {
-			directBufferCleanerX = Class.forName("java.nio.DirectByteBuffer").getMethod("cleaner");
-			directBufferCleanerX.setAccessible(true);
-			directBufferCleanerCleanX = Class.forName("sun.misc.Cleaner").getMethod("clean");
-			directBufferCleanerCleanX.setAccessible(true);
-			v = true;
-		} catch (Exception e) {
-			v = false;
-		}
-		CLEAN_SUPPORTED = v;
-		directBufferCleaner = directBufferCleanerX;
-		directBufferCleanerClean = directBufferCleanerCleanX;
-	}
+    static {
+        Method directBufferCleanerX = null;
+        Method directBufferCleanerCleanX = null;
+        boolean v;
+        try {
+            directBufferCleanerX = Class.forName("java.nio.DirectByteBuffer").getMethod("cleaner");
+            directBufferCleanerX.setAccessible(true);
+            directBufferCleanerCleanX = Class.forName("sun.misc.Cleaner").getMethod("clean");
+            directBufferCleanerCleanX.setAccessible(true);
+            v = true;
+        } catch (Exception e) {
+            v = false;
+        }
+        CLEAN_SUPPORTED = v;
+        directBufferCleaner = directBufferCleanerX;
+        directBufferCleanerClean = directBufferCleanerCleanX;
+    }
 
-	/**
-	 * Destroy the given {@link ByteBuffer} if possible
-	 */
-	public static void destroy(ByteBuffer buffer) {
-		if (CLEAN_SUPPORTED && buffer.isDirect()) {
-			try {
-				Object cleaner = directBufferCleaner.invoke(buffer);
-				directBufferCleanerClean.invoke(cleaner);
-			} catch (Exception e) {
-				// silently ignore exception
-			}
-		}
-	}
+    private ByteBufferUtil() {
+        // Utility class
+    }
 
-	private ByteBufferUtil() {
-		// Utility class
-	}
+    /**
+     * Destroy the given {@link ByteBuffer} if possible
+     */
+    public static void destroy(ByteBuffer buffer) {
+        if (CLEAN_SUPPORTED && buffer.isDirect()) {
+            try {
+                Object cleaner = directBufferCleaner.invoke(buffer);
+                directBufferCleanerClean.invoke(cleaner);
+            } catch (Exception e) {
+                // silently ignore exception
+            }
+        }
+    }
 }

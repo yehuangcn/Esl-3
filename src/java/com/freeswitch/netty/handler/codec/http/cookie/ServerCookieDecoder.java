@@ -22,10 +22,10 @@ import java.util.TreeSet;
 /**
  * A <a href="http://tools.ietf.org/html/rfc6265">RFC6265</a> compliant cookie
  * decoder to be used server side.
- *
+ * <p>
  * Only name and value fields are expected, so old fields are not populated
  * (path, domain, etc).
- *
+ * <p>
  * Old <a href="http://tools.ietf.org/html/rfc2965">RFC2965</a> cookies are
  * still supported, old fields will simply be ignored.
  *
@@ -33,125 +33,122 @@ import java.util.TreeSet;
  */
 public final class ServerCookieDecoder extends CookieDecoder {
 
-	private static final String RFC2965_VERSION = "$Version";
+    /**
+     * Strict encoder that validates that name and value chars are in the valid
+     * scope defined in RFC6265
+     */
+    public static final ServerCookieDecoder STRICT = new ServerCookieDecoder(true);
+    /**
+     * Lax instance that doesn't validate name and value
+     */
+    public static final ServerCookieDecoder LAX = new ServerCookieDecoder(false);
+    private static final String RFC2965_VERSION = "$Version";
+    private static final String RFC2965_PATH = "$" + CookieHeaderNames.PATH;
+    private static final String RFC2965_DOMAIN = "$" + CookieHeaderNames.DOMAIN;
+    private static final String RFC2965_PORT = "$Port";
 
-	private static final String RFC2965_PATH = "$" + CookieHeaderNames.PATH;
+    private ServerCookieDecoder(boolean strict) {
+        super(strict);
+    }
 
-	private static final String RFC2965_DOMAIN = "$" + CookieHeaderNames.DOMAIN;
+    /**
+     * Decodes the specified Set-Cookie HTTP header value into a {@link Cookie}.
+     *
+     * @return the decoded {@link Cookie}
+     */
+    public Set<Cookie> decode(String header) {
+        if (header == null) {
+            throw new NullPointerException("header");
+        }
+        final int headerLen = header.length();
 
-	private static final String RFC2965_PORT = "$Port";
+        if (headerLen == 0) {
+            return Collections.emptySet();
+        }
 
-	/**
-	 * Strict encoder that validates that name and value chars are in the valid
-	 * scope defined in RFC6265
-	 */
-	public static final ServerCookieDecoder STRICT = new ServerCookieDecoder(true);
+        Set<Cookie> cookies = new TreeSet<Cookie>();
 
-	/**
-	 * Lax instance that doesn't validate name and value
-	 */
-	public static final ServerCookieDecoder LAX = new ServerCookieDecoder(false);
+        int i = 0;
 
-	private ServerCookieDecoder(boolean strict) {
-		super(strict);
-	}
+        boolean rfc2965Style = false;
+        if (header.regionMatches(true, 0, RFC2965_VERSION, 0, RFC2965_VERSION.length())) {
+            // RFC 2965 style cookie, move to after version value
+            i = header.indexOf(';') + 1;
+            rfc2965Style = true;
+        }
 
-	/**
-	 * Decodes the specified Set-Cookie HTTP header value into a {@link Cookie}.
-	 *
-	 * @return the decoded {@link Cookie}
-	 */
-	public Set<Cookie> decode(String header) {
-		if (header == null) {
-			throw new NullPointerException("header");
-		}
-		final int headerLen = header.length();
+        loop:
+        for (; ; ) {
 
-		if (headerLen == 0) {
-			return Collections.emptySet();
-		}
+            // Skip spaces and separators.
+            for (; ; ) {
+                if (i == headerLen) {
+                    break loop;
+                }
+                char c = header.charAt(i);
+                if (c == '\t' || c == '\n' || c == 0x0b || c == '\f' || c == '\r' || c == ' ' || c == ',' || c == ';') {
+                    i++;
+                    continue;
+                }
+                break;
+            }
 
-		Set<Cookie> cookies = new TreeSet<Cookie>();
+            int nameBegin = i;
+            int nameEnd = i;
+            int valueBegin = -1;
+            int valueEnd = -1;
 
-		int i = 0;
+            if (i != headerLen) {
+                keyValLoop:
+                for (; ; ) {
 
-		boolean rfc2965Style = false;
-		if (header.regionMatches(true, 0, RFC2965_VERSION, 0, RFC2965_VERSION.length())) {
-			// RFC 2965 style cookie, move to after version value
-			i = header.indexOf(';') + 1;
-			rfc2965Style = true;
-		}
+                    char curChar = header.charAt(i);
+                    if (curChar == ';') {
+                        // NAME; (no value till ';')
+                        nameEnd = i;
+                        valueBegin = valueEnd = -1;
+                        break keyValLoop;
 
-		loop: for (;;) {
+                    } else if (curChar == '=') {
+                        // NAME=VALUE
+                        nameEnd = i;
+                        i++;
+                        if (i == headerLen) {
+                            // NAME= (empty value, i.e. nothing after '=')
+                            valueBegin = valueEnd = 0;
+                            break keyValLoop;
+                        }
 
-			// Skip spaces and separators.
-			for (;;) {
-				if (i == headerLen) {
-					break loop;
-				}
-				char c = header.charAt(i);
-				if (c == '\t' || c == '\n' || c == 0x0b || c == '\f' || c == '\r' || c == ' ' || c == ',' || c == ';') {
-					i++;
-					continue;
-				}
-				break;
-			}
+                        valueBegin = i;
+                        // NAME=VALUE;
+                        int semiPos = header.indexOf(';', i);
+                        valueEnd = i = semiPos > 0 ? semiPos : headerLen;
+                        break keyValLoop;
+                    } else {
+                        i++;
+                    }
 
-			int nameBegin = i;
-			int nameEnd = i;
-			int valueBegin = -1;
-			int valueEnd = -1;
+                    if (i == headerLen) {
+                        // NAME (no value till the end of string)
+                        nameEnd = headerLen;
+                        valueBegin = valueEnd = -1;
+                        break;
+                    }
+                }
+            }
 
-			if (i != headerLen) {
-				keyValLoop: for (;;) {
+            if (rfc2965Style && (header.regionMatches(nameBegin, RFC2965_PATH, 0, RFC2965_PATH.length()) || header.regionMatches(nameBegin, RFC2965_DOMAIN, 0, RFC2965_DOMAIN.length()) || header.regionMatches(nameBegin, RFC2965_PORT, 0, RFC2965_PORT.length()))) {
 
-					char curChar = header.charAt(i);
-					if (curChar == ';') {
-						// NAME; (no value till ';')
-						nameEnd = i;
-						valueBegin = valueEnd = -1;
-						break keyValLoop;
+                // skip obsolete RFC2965 fields
+                continue;
+            }
 
-					} else if (curChar == '=') {
-						// NAME=VALUE
-						nameEnd = i;
-						i++;
-						if (i == headerLen) {
-							// NAME= (empty value, i.e. nothing after '=')
-							valueBegin = valueEnd = 0;
-							break keyValLoop;
-						}
+            DefaultCookie cookie = initCookie(header, nameBegin, nameEnd, valueBegin, valueEnd);
+            if (cookie != null) {
+                cookies.add(cookie);
+            }
+        }
 
-						valueBegin = i;
-						// NAME=VALUE;
-						int semiPos = header.indexOf(';', i);
-						valueEnd = i = semiPos > 0 ? semiPos : headerLen;
-						break keyValLoop;
-					} else {
-						i++;
-					}
-
-					if (i == headerLen) {
-						// NAME (no value till the end of string)
-						nameEnd = headerLen;
-						valueBegin = valueEnd = -1;
-						break;
-					}
-				}
-			}
-
-			if (rfc2965Style && (header.regionMatches(nameBegin, RFC2965_PATH, 0, RFC2965_PATH.length()) || header.regionMatches(nameBegin, RFC2965_DOMAIN, 0, RFC2965_DOMAIN.length()) || header.regionMatches(nameBegin, RFC2965_PORT, 0, RFC2965_PORT.length()))) {
-
-				// skip obsolete RFC2965 fields
-				continue;
-			}
-
-			DefaultCookie cookie = initCookie(header, nameBegin, nameEnd, valueBegin, valueEnd);
-			if (cookie != null) {
-				cookies.add(cookie);
-			}
-		}
-
-		return cookies;
-	}
+        return cookies;
+    }
 }

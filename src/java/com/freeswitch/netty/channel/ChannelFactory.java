@@ -15,11 +15,11 @@
  */
 package com.freeswitch.netty.channel;
 
-import java.util.concurrent.Executor;
-
 import com.freeswitch.netty.channel.group.ChannelGroup;
 import com.freeswitch.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import com.freeswitch.netty.util.ExternalResourceReleasable;
+
+import java.util.concurrent.Executor;
 
 /**
  * The main interface to a transport that creates a {@link Channel} associated
@@ -31,7 +31,7 @@ import com.freeswitch.netty.util.ExternalResourceReleasable;
  * specified as a parameter in the {@link #newChannel(ChannelPipeline)} is
  * attached to the new {@link Channel}, and starts to handle all associated
  * {@link ChannelEvent}s.
- *
+ * <p>
  * <h3>Graceful shutdown</h3>
  * <p>
  * To shut down a network application service which is managed by a factory. you
@@ -48,42 +48,37 @@ import com.freeswitch.netty.util.ExternalResourceReleasable;
  *
  * @apiviz.landmark
  * @apiviz.has org.jboss.netty.channel.Channel oneway - - creates
- *
  * @apiviz.exclude ^org\.jboss\.netty\.channel\.([a-z]+\.)+.*ChannelFactory$
  */
 public interface ChannelFactory extends ExternalResourceReleasable {
 
-	/**
-	 * Creates and opens a new {@link Channel} and attaches the specified
-	 * {@link ChannelPipeline} to the new {@link Channel}.
-	 *
-	 * @param pipeline
-	 *            the {@link ChannelPipeline} which is going to be attached to
-	 *            the new {@link Channel}
-	 *
-	 * @return the newly open channel
-	 *
-	 * @throws ChannelException
-	 *             if failed to create and open a new channel
-	 */
-	Channel newChannel(ChannelPipeline pipeline);
+    /**
+     * Creates and opens a new {@link Channel} and attaches the specified
+     * {@link ChannelPipeline} to the new {@link Channel}.
+     *
+     * @param pipeline the {@link ChannelPipeline} which is going to be attached to
+     *                 the new {@link Channel}
+     * @return the newly open channel
+     * @throws ChannelException if failed to create and open a new channel
+     */
+    Channel newChannel(ChannelPipeline pipeline);
 
-	/**
-	 * Shudown the ChannelFactory and all the resource it created internal.
-	 */
-	void shutdown();
+    /**
+     * Shudown the ChannelFactory and all the resource it created internal.
+     */
+    void shutdown();
 
-	/**
-	 * Releases the external resources that this factory depends on to function.
-	 * An external resource is a resource that this factory didn't create by
-	 * itself. For server, {@link Executor}s that you specified in the factory
-	 * constructor are external resources. You can call this method to release
-	 * all external resources conveniently when the resources are not used by
-	 * this factory or any other part of your application. An unexpected
-	 * behavior will be resulted in if the resources are released when there's
-	 * an open channel which is managed by this factory.
-	 *
-	 * This will also call {@link #shutdown()} before do any action
-	 */
-	void releaseExternalResources();
+    /**
+     * Releases the external resources that this factory depends on to function.
+     * An external resource is a resource that this factory didn't create by
+     * itself. For server, {@link Executor}s that you specified in the factory
+     * constructor are external resources. You can call this method to release
+     * all external resources conveniently when the resources are not used by
+     * this factory or any other part of your application. An unexpected
+     * behavior will be resulted in if the resources are released when there's
+     * an open channel which is managed by this factory.
+     * <p>
+     * This will also call {@link #shutdown()} before do any action
+     */
+    void releaseExternalResources();
 }

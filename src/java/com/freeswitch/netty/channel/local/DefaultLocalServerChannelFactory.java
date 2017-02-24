@@ -21,29 +21,29 @@ import com.freeswitch.netty.channel.group.DefaultChannelGroup;
 
 /**
  * The default {@link LocalServerChannelFactory} implementation.
- * 
+ *
  * @apiviz.landmark
  */
 public class DefaultLocalServerChannelFactory implements LocalServerChannelFactory {
 
-	private final DefaultChannelGroup group = new DefaultChannelGroup();
-	private final ChannelSink sink = new LocalServerChannelSink();
+    private final DefaultChannelGroup group = new DefaultChannelGroup();
+    private final ChannelSink sink = new LocalServerChannelSink();
 
-	public LocalServerChannel newChannel(ChannelPipeline pipeline) {
-		LocalServerChannel channel = new DefaultLocalServerChannel(this, pipeline, sink);
-		group.add(channel);
-		return channel;
-	}
+    public LocalServerChannel newChannel(ChannelPipeline pipeline) {
+        LocalServerChannel channel = new DefaultLocalServerChannel(this, pipeline, sink);
+        group.add(channel);
+        return channel;
+    }
 
-	/**
-	 * Release all the previous created channels. This takes care of calling
-	 * {@link LocalChannelRegistry#unregister(LocalAddress)} for each of them.
-	 */
-	public void releaseExternalResources() {
-		group.close().awaitUninterruptibly();
-	}
+    /**
+     * Release all the previous created channels. This takes care of calling
+     * {@link LocalChannelRegistry#unregister(LocalAddress)} for each of them.
+     */
+    public void releaseExternalResources() {
+        group.close().awaitUninterruptibly();
+    }
 
-	public void shutdown() {
-		// nothing to shutdown
-	}
+    public void shutdown() {
+        // nothing to shutdown
+    }
 }

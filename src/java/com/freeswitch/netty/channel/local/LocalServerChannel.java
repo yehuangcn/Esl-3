@@ -21,7 +21,7 @@ import com.freeswitch.netty.channel.ServerChannel;
  * A {@link ServerChannel} for the local transport.
  */
 public interface LocalServerChannel extends ServerChannel {
-	LocalAddress getLocalAddress();
+    LocalAddress getLocalAddress();
 
-	LocalAddress getRemoteAddress();
+    LocalAddress getRemoteAddress();
 }

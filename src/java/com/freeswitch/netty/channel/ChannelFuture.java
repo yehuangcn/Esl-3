@@ -15,10 +15,10 @@
  */
 package com.freeswitch.netty.channel;
 
-import java.util.concurrent.TimeUnit;
-
 import com.freeswitch.netty.bootstrap.ClientBootstrap;
 import com.freeswitch.netty.handler.execution.ExecutionHandler;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * The result of an asynchronous {@link Channel} I/O operation.
@@ -37,7 +37,7 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  * marked as completed with more specific information, such as the cause of the
  * failure. Please note that even failure and cancellation belong to the
  * completed state.
- * 
+ * <p>
  * <pre>
  *                                      +---------------------------+
  *                                      | Completed successfully    |
@@ -56,15 +56,15 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  *                                      | isCancelled() = <b>true</b>      |
  *                                      +---------------------------+
  * </pre>
- *
+ * <p>
  * Various methods are provided to let you check if the I/O operation has been
  * completed, wait for the completion, and retrieve the result of the I/O
  * operation. It also allows you to add {@link ChannelFutureListener}s so you
  * can get notified when the I/O operation is completed.
- *
+ * <p>
  * <h3>Prefer {@link #addListener(ChannelFutureListener)} to
  * {@link #await()}</h3>
- *
+ * <p>
  * It is recommended to prefer {@link #addListener(ChannelFutureListener)} to
  * {@link #await()} wherever possible to get notified when an I/O operation is
  * done and to do any follow-up tasks.
@@ -83,7 +83,7 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  * unnecessarily until the I/O operation is done and there's relatively
  * expensive cost of inter-thread notification. Moreover, there's a chance of
  * dead lock in a particular circumstance, which is described below.
- *
+ * <p>
  * <h3>Do not call {@link #await()} inside {@link ChannelHandler}</h3>
  * <p>
  * The event handler methods in {@link ChannelHandler} is often called by an I/O
@@ -92,7 +92,7 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  * the I/O thread, the I/O operation it is waiting for might never be complete
  * because {@link #await()} can block the I/O operation it is waiting for, which
  * is a dead lock.
- * 
+ * <p>
  * <pre>
  * // BAD - NEVER DO THIS
  * {@code @Override}
@@ -124,16 +124,16 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  * where it is more convenient to call {@link #await()}. In such a case, please
  * make sure you do not call {@link #await()} in an I/O thread. Otherwise,
  * {@link IllegalStateException} will be raised to prevent a dead lock.
- *
+ * <p>
  * <h3>Do not confuse I/O timeout and await timeout</h3>
- *
+ * <p>
  * The timeout value you specify with {@link #await(long)},
  * {@link #await(long, TimeUnit)}, {@link #awaitUninterruptibly(long)}, or
  * {@link #awaitUninterruptibly(long, TimeUnit)} are not related with I/O
  * timeout at all. If an I/O operation times out, the future will be marked as
  * 'completed with failure,' as depicted in the diagram above. For server,
  * connect timeout should be configured via a transport-specific option:
- * 
+ * <p>
  * <pre>
  * // BAD - NEVER DO THIS
  * {@link ClientBootstrap} b = ...;
@@ -173,161 +173,156 @@ import com.freeswitch.netty.handler.execution.ExecutionHandler;
  */
 public interface ChannelFuture {
 
-	/**
-	 * Returns a channel where the I/O operation associated with this future
-	 * takes place.
-	 */
-	Channel getChannel();
+    /**
+     * Returns a channel where the I/O operation associated with this future
+     * takes place.
+     */
+    Channel getChannel();
 
-	/**
-	 * Returns {@code true} if and only if this future is complete, regardless
-	 * of whether the operation was successful, failed, or cancelled.
-	 */
-	boolean isDone();
+    /**
+     * Returns {@code true} if and only if this future is complete, regardless
+     * of whether the operation was successful, failed, or cancelled.
+     */
+    boolean isDone();
 
-	/**
-	 * Returns {@code true} if and only if this future was cancelled by a
-	 * {@link #cancel()} method.
-	 */
-	boolean isCancelled();
+    /**
+     * Returns {@code true} if and only if this future was cancelled by a
+     * {@link #cancel()} method.
+     */
+    boolean isCancelled();
 
-	/**
-	 * Returns {@code true} if and only if the I/O operation was completed
-	 * successfully.
-	 */
-	boolean isSuccess();
+    /**
+     * Returns {@code true} if and only if the I/O operation was completed
+     * successfully.
+     */
+    boolean isSuccess();
 
-	/**
-	 * Returns the cause of the failed I/O operation if the I/O operation has
-	 * failed.
-	 *
-	 * @return the cause of the failure. {@code null} if succeeded or this
-	 *         future is not completed yet.
-	 */
-	Throwable getCause();
+    /**
+     * Returns the cause of the failed I/O operation if the I/O operation has
+     * failed.
+     *
+     * @return the cause of the failure. {@code null} if succeeded or this
+     * future is not completed yet.
+     */
+    Throwable getCause();
 
-	/**
-	 * Cancels the I/O operation associated with this future and notifies all
-	 * listeners if canceled successfully.
-	 *
-	 * @return {@code true} if and only if the operation has been canceled.
-	 *         {@code false} if the operation can't be canceled or is already
-	 *         completed.
-	 */
-	boolean cancel();
+    /**
+     * Cancels the I/O operation associated with this future and notifies all
+     * listeners if canceled successfully.
+     *
+     * @return {@code true} if and only if the operation has been canceled.
+     * {@code false} if the operation can't be canceled or is already
+     * completed.
+     */
+    boolean cancel();
 
-	/**
-	 * Marks this future as a success and notifies all listeners.
-	 *
-	 * @return {@code true} if and only if successfully marked this future as a
-	 *         success. Otherwise {@code false} because this future is already
-	 *         marked as either a success or a failure.
-	 */
-	boolean setSuccess();
+    /**
+     * Marks this future as a success and notifies all listeners.
+     *
+     * @return {@code true} if and only if successfully marked this future as a
+     * success. Otherwise {@code false} because this future is already
+     * marked as either a success or a failure.
+     */
+    boolean setSuccess();
 
-	/**
-	 * Marks this future as a failure and notifies all listeners.
-	 *
-	 * @return {@code true} if and only if successfully marked this future as a
-	 *         failure. Otherwise {@code false} because this future is already
-	 *         marked as either a success or a failure.
-	 */
-	boolean setFailure(Throwable cause);
+    /**
+     * Marks this future as a failure and notifies all listeners.
+     *
+     * @return {@code true} if and only if successfully marked this future as a
+     * failure. Otherwise {@code false} because this future is already
+     * marked as either a success or a failure.
+     */
+    boolean setFailure(Throwable cause);
 
-	/**
-	 * Notifies the progress of the operation to the listeners that implements
-	 * {@link ChannelFutureProgressListener}. Please note that this method will
-	 * not do anything and return {@code false} if this future is complete
-	 * already.
-	 *
-	 * @return {@code true} if and only if notification was made.
-	 */
-	boolean setProgress(long amount, long current, long total);
+    /**
+     * Notifies the progress of the operation to the listeners that implements
+     * {@link ChannelFutureProgressListener}. Please note that this method will
+     * not do anything and return {@code false} if this future is complete
+     * already.
+     *
+     * @return {@code true} if and only if notification was made.
+     */
+    boolean setProgress(long amount, long current, long total);
 
-	/**
-	 * Adds the specified listener to this future. The specified listener is
-	 * notified when this future is {@linkplain #isDone() done}. If this future
-	 * is already completed, the specified listener is notified immediately.
-	 */
-	void addListener(ChannelFutureListener listener);
+    /**
+     * Adds the specified listener to this future. The specified listener is
+     * notified when this future is {@linkplain #isDone() done}. If this future
+     * is already completed, the specified listener is notified immediately.
+     */
+    void addListener(ChannelFutureListener listener);
 
-	/**
-	 * Removes the specified listener from this future. The specified listener
-	 * is no longer notified when this future is {@linkplain #isDone() done}. If
-	 * the specified listener is not associated with this future, this method
-	 * does nothing and returns silently.
-	 */
-	void removeListener(ChannelFutureListener listener);
+    /**
+     * Removes the specified listener from this future. The specified listener
+     * is no longer notified when this future is {@linkplain #isDone() done}. If
+     * the specified listener is not associated with this future, this method
+     * does nothing and returns silently.
+     */
+    void removeListener(ChannelFutureListener listener);
 
-	/**
-	 * Waits for this future until it is done, and rethrows the cause of the
-	 * failure if this future failed. If the cause of the failure is a checked
-	 * exception, it is wrapped with a new {@link ChannelException} before being
-	 * thrown.
-	 */
-	ChannelFuture sync() throws InterruptedException;
+    /**
+     * Waits for this future until it is done, and rethrows the cause of the
+     * failure if this future failed. If the cause of the failure is a checked
+     * exception, it is wrapped with a new {@link ChannelException} before being
+     * thrown.
+     */
+    ChannelFuture sync() throws InterruptedException;
 
-	/**
-	 * Waits for this future until it is done, and rethrows the cause of the
-	 * failure if this future failed. If the cause of the failure is a checked
-	 * exception, it is wrapped with a new {@link ChannelException} before being
-	 * thrown.
-	 */
-	ChannelFuture syncUninterruptibly();
+    /**
+     * Waits for this future until it is done, and rethrows the cause of the
+     * failure if this future failed. If the cause of the failure is a checked
+     * exception, it is wrapped with a new {@link ChannelException} before being
+     * thrown.
+     */
+    ChannelFuture syncUninterruptibly();
 
-	/**
-	 * Waits for this future to be completed.
-	 *
-	 * @throws InterruptedException
-	 *             if the current thread was interrupted
-	 */
-	ChannelFuture await() throws InterruptedException;
+    /**
+     * Waits for this future to be completed.
+     *
+     * @throws InterruptedException if the current thread was interrupted
+     */
+    ChannelFuture await() throws InterruptedException;
 
-	/**
-	 * Waits for this future to be completed without interruption. This method
-	 * catches an {@link InterruptedException} and discards it silently.
-	 */
-	ChannelFuture awaitUninterruptibly();
+    /**
+     * Waits for this future to be completed without interruption. This method
+     * catches an {@link InterruptedException} and discards it silently.
+     */
+    ChannelFuture awaitUninterruptibly();
 
-	/**
-	 * Waits for this future to be completed within the specified time limit.
-	 *
-	 * @return {@code true} if and only if the future was completed within the
-	 *         specified time limit
-	 *
-	 * @throws InterruptedException
-	 *             if the current thread was interrupted
-	 */
-	boolean await(long timeout, TimeUnit unit) throws InterruptedException;
+    /**
+     * Waits for this future to be completed within the specified time limit.
+     *
+     * @return {@code true} if and only if the future was completed within the
+     * specified time limit
+     * @throws InterruptedException if the current thread was interrupted
+     */
+    boolean await(long timeout, TimeUnit unit) throws InterruptedException;
 
-	/**
-	 * Waits for this future to be completed within the specified time limit.
-	 *
-	 * @return {@code true} if and only if the future was completed within the
-	 *         specified time limit
-	 *
-	 * @throws InterruptedException
-	 *             if the current thread was interrupted
-	 */
-	boolean await(long timeoutMillis) throws InterruptedException;
+    /**
+     * Waits for this future to be completed within the specified time limit.
+     *
+     * @return {@code true} if and only if the future was completed within the
+     * specified time limit
+     * @throws InterruptedException if the current thread was interrupted
+     */
+    boolean await(long timeoutMillis) throws InterruptedException;
 
-	/**
-	 * Waits for this future to be completed within the specified time limit
-	 * without interruption. This method catches an {@link InterruptedException}
-	 * and discards it silently.
-	 *
-	 * @return {@code true} if and only if the future was completed within the
-	 *         specified time limit
-	 */
-	boolean awaitUninterruptibly(long timeout, TimeUnit unit);
+    /**
+     * Waits for this future to be completed within the specified time limit
+     * without interruption. This method catches an {@link InterruptedException}
+     * and discards it silently.
+     *
+     * @return {@code true} if and only if the future was completed within the
+     * specified time limit
+     */
+    boolean awaitUninterruptibly(long timeout, TimeUnit unit);
 
-	/**
-	 * Waits for this future to be completed within the specified time limit
-	 * without interruption. This method catches an {@link InterruptedException}
-	 * and discards it silently.
-	 *
-	 * @return {@code true} if and only if the future was completed within the
-	 *         specified time limit
-	 */
-	boolean awaitUninterruptibly(long timeoutMillis);
+    /**
+     * Waits for this future to be completed within the specified time limit
+     * without interruption. This method catches an {@link InterruptedException}
+     * and discards it silently.
+     *
+     * @return {@code true} if and only if the future was completed within the
+     * specified time limit
+     */
+    boolean awaitUninterruptibly(long timeoutMillis);
 }

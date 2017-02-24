@@ -15,13 +15,9 @@
  */
 package com.freeswitch.netty.channel.socket.oio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelDisconnected;
-import static com.freeswitch.netty.channel.Channels.fireChannelDisconnectedLater;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaughtLater;
-import static com.freeswitch.netty.channel.Channels.fireMessageReceived;
-import static com.freeswitch.netty.channel.Channels.fireWriteComplete;
-import static com.freeswitch.netty.channel.Channels.fireWriteCompleteLater;
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.channel.ChannelFuture;
+import com.freeswitch.netty.channel.ReceiveBufferSizePredictor;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -29,96 +25,94 @@ import java.net.DatagramPacket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
-import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ReceiveBufferSizePredictor;
+import static com.freeswitch.netty.channel.Channels.*;
 
 class OioDatagramWorker extends AbstractOioWorker<OioDatagramChannel> {
 
-	OioDatagramWorker(OioDatagramChannel channel) {
-		super(channel);
-	}
+    OioDatagramWorker(OioDatagramChannel channel) {
+        super(channel);
+    }
 
-	@Override
-	boolean process() throws IOException {
+    static void write(OioDatagramChannel channel, ChannelFuture future, Object message, SocketAddress remoteAddress) {
+        boolean iothread = isIoThread(channel);
 
-		ReceiveBufferSizePredictor predictor = channel.getConfig().getReceiveBufferSizePredictor();
+        try {
+            ChannelBuffer buf = (ChannelBuffer) message;
+            int offset = buf.readerIndex();
+            int length = buf.readableBytes();
+            ByteBuffer nioBuf = buf.toByteBuffer();
+            DatagramPacket packet;
+            if (nioBuf.hasArray()) {
+                // Avoid copy if the buffer is backed by an array.
+                packet = new DatagramPacket(nioBuf.array(), nioBuf.arrayOffset() + offset, length);
+            } else {
+                // Otherwise it will be expensive.
+                byte[] arrayBuf = new byte[length];
+                buf.getBytes(0, arrayBuf);
+                packet = new DatagramPacket(arrayBuf, length);
+            }
 
-		byte[] buf = new byte[predictor.nextReceiveBufferSize()];
-		DatagramPacket packet = new DatagramPacket(buf, buf.length);
-		try {
-			channel.socket.receive(packet);
-		} catch (InterruptedIOException e) {
-			// Can happen on interruption.
-			// Keep receiving unless the channel is closed.
-			return true;
-		}
+            if (remoteAddress != null) {
+                packet.setSocketAddress(remoteAddress);
+            }
+            channel.socket.send(packet);
+            if (iothread) {
+                fireWriteComplete(channel, length);
+            } else {
+                fireWriteCompleteLater(channel, length);
+            }
+            future.setSuccess();
+        } catch (Throwable t) {
+            future.setFailure(t);
+            if (iothread) {
+                fireExceptionCaught(channel, t);
+            } else {
+                fireExceptionCaughtLater(channel, t);
+            }
+        }
+    }
 
-		fireMessageReceived(channel, channel.getConfig().getBufferFactory().getBuffer(buf, 0, packet.getLength()), packet.getSocketAddress());
-		return true;
-	}
+    static void disconnect(OioDatagramChannel channel, ChannelFuture future) {
+        boolean connected = channel.isConnected();
+        boolean iothread = isIoThread(channel);
 
-	static void write(OioDatagramChannel channel, ChannelFuture future, Object message, SocketAddress remoteAddress) {
-		boolean iothread = isIoThread(channel);
+        try {
+            channel.socket.disconnect();
+            future.setSuccess();
+            if (connected) {
+                // Notify.
+                if (iothread) {
+                    fireChannelDisconnected(channel);
+                } else {
+                    fireChannelDisconnectedLater(channel);
+                }
+            }
+        } catch (Throwable t) {
+            future.setFailure(t);
+            if (iothread) {
+                fireExceptionCaught(channel, t);
+            } else {
+                fireExceptionCaughtLater(channel, t);
+            }
+        }
+    }
 
-		try {
-			ChannelBuffer buf = (ChannelBuffer) message;
-			int offset = buf.readerIndex();
-			int length = buf.readableBytes();
-			ByteBuffer nioBuf = buf.toByteBuffer();
-			DatagramPacket packet;
-			if (nioBuf.hasArray()) {
-				// Avoid copy if the buffer is backed by an array.
-				packet = new DatagramPacket(nioBuf.array(), nioBuf.arrayOffset() + offset, length);
-			} else {
-				// Otherwise it will be expensive.
-				byte[] arrayBuf = new byte[length];
-				buf.getBytes(0, arrayBuf);
-				packet = new DatagramPacket(arrayBuf, length);
-			}
+    @Override
+    boolean process() throws IOException {
 
-			if (remoteAddress != null) {
-				packet.setSocketAddress(remoteAddress);
-			}
-			channel.socket.send(packet);
-			if (iothread) {
-				fireWriteComplete(channel, length);
-			} else {
-				fireWriteCompleteLater(channel, length);
-			}
-			future.setSuccess();
-		} catch (Throwable t) {
-			future.setFailure(t);
-			if (iothread) {
-				fireExceptionCaught(channel, t);
-			} else {
-				fireExceptionCaughtLater(channel, t);
-			}
-		}
-	}
+        ReceiveBufferSizePredictor predictor = channel.getConfig().getReceiveBufferSizePredictor();
 
-	static void disconnect(OioDatagramChannel channel, ChannelFuture future) {
-		boolean connected = channel.isConnected();
-		boolean iothread = isIoThread(channel);
+        byte[] buf = new byte[predictor.nextReceiveBufferSize()];
+        DatagramPacket packet = new DatagramPacket(buf, buf.length);
+        try {
+            channel.socket.receive(packet);
+        } catch (InterruptedIOException e) {
+            // Can happen on interruption.
+            // Keep receiving unless the channel is closed.
+            return true;
+        }
 
-		try {
-			channel.socket.disconnect();
-			future.setSuccess();
-			if (connected) {
-				// Notify.
-				if (iothread) {
-					fireChannelDisconnected(channel);
-				} else {
-					fireChannelDisconnectedLater(channel);
-				}
-			}
-		} catch (Throwable t) {
-			future.setFailure(t);
-			if (iothread) {
-				fireExceptionCaught(channel, t);
-			} else {
-				fireExceptionCaughtLater(channel, t);
-			}
-		}
-	}
+        fireMessageReceived(channel, channel.getConfig().getBufferFactory().getBuffer(buf, 0, packet.getLength()), packet.getSocketAddress());
+        return true;
+    }
 }

@@ -38,8 +38,8 @@ import com.freeswitch.netty.bootstrap.ConnectionlessBootstrap;
  */
 public interface ChannelPipelineFactory {
 
-	/**
-	 * Returns a newly created {@link ChannelPipeline}.
-	 */
-	ChannelPipeline getPipeline() throws Exception;
+    /**
+     * Returns a newly created {@link ChannelPipeline}.
+     */
+    ChannelPipeline getPipeline() throws Exception;
 }

@@ -24,32 +24,32 @@ package com.freeswitch.netty.channel;
  */
 public class ChannelHandlerLifeCycleException extends RuntimeException {
 
-	private static final long serialVersionUID = 8764799996088850672L;
+    private static final long serialVersionUID = 8764799996088850672L;
 
-	/**
-	 * Creates a new exception.
-	 */
-	public ChannelHandlerLifeCycleException() {
-	}
+    /**
+     * Creates a new exception.
+     */
+    public ChannelHandlerLifeCycleException() {
+    }
 
-	/**
-	 * Creates a new exception.
-	 */
-	public ChannelHandlerLifeCycleException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    /**
+     * Creates a new exception.
+     */
+    public ChannelHandlerLifeCycleException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-	/**
-	 * Creates a new exception.
-	 */
-	public ChannelHandlerLifeCycleException(String message) {
-		super(message);
-	}
+    /**
+     * Creates a new exception.
+     */
+    public ChannelHandlerLifeCycleException(String message) {
+        super(message);
+    }
 
-	/**
-	 * Creates a new exception.
-	 */
-	public ChannelHandlerLifeCycleException(Throwable cause) {
-		super(cause);
-	}
+    /**
+     * Creates a new exception.
+     */
+    public ChannelHandlerLifeCycleException(Throwable cause) {
+        super(cause);
+    }
 }

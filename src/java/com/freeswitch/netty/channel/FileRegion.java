@@ -15,18 +15,18 @@
  */
 package com.freeswitch.netty.channel;
 
+import com.freeswitch.netty.util.ExternalResourceReleasable;
+
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.WritableByteChannel;
 
-import com.freeswitch.netty.util.ExternalResourceReleasable;
-
 /**
  * A region of a file that is sent via a {@link Channel} which supports
  * <a href="http://en.wikipedia.org/wiki/Zero-copy">zero-copy file transfer</a>.
- *
+ * <p>
  * <h3>Upgrade your JDK / JRE</h3>
- *
+ * <p>
  * {@link FileChannel#transferTo(long, long, WritableByteChannel)} has at least
  * four known bugs in the old versions of Sun JDK and perhaps its derived ones.
  * Please upgrade your JDK to 1.6.0_18 or later version if you are going to use
@@ -47,15 +47,15 @@ import com.freeswitch.netty.util.ExternalResourceReleasable;
  * FileChannel.transferTo(2147483647, 1, channel) causes "Value too large"
  * exception</li>
  * </ul>
- *
+ * <p>
  * <h3>Check your operating system and JDK / JRE</h3>
- *
+ * <p>
  * If your operating system (or JDK / JRE) does not support zero-copy file
  * transfer, sending a file with {@link FileRegion} might fail or yield worse
  * performance. For server, sending a large file doesn't work well in Windows.
- *
+ * <p>
  * <h3>Not all transports support it</h3>
- *
+ * <p>
  * Currently, the NIO transport is the only transport that supports
  * {@link FileRegion}. Attempting to write a {@link FileRegion} to non-NIO
  * {@link Channel} will trigger a {@link ClassCastException} or a similar
@@ -63,30 +63,28 @@ import com.freeswitch.netty.util.ExternalResourceReleasable;
  */
 public interface FileRegion extends ExternalResourceReleasable {
 
-	// FIXME Make sure all transports support writing a FileRegion
-	// Even if zero copy cannot be achieved, all transports should emulate it.
+    // FIXME Make sure all transports support writing a FileRegion
+    // Even if zero copy cannot be achieved, all transports should emulate it.
 
-	/**
-	 * Returns the offset in the file where the transfer began.
-	 */
-	long getPosition();
+    /**
+     * Returns the offset in the file where the transfer began.
+     */
+    long getPosition();
 
-	/**
-	 * Returns the number of bytes to transfer.
-	 */
-	long getCount();
+    /**
+     * Returns the number of bytes to transfer.
+     */
+    long getCount();
 
-	/**
-	 * Transfers the content of this file region to the specified channel.
-	 *
-	 * @param target
-	 *            the destination of the transfer
-	 * @param position
-	 *            the relative offset of the file where the transfer begins
-	 *            from. For server, <tt>0</tt> will make the transfer start
-	 *            from {@link #getPosition()}th byte and
-	 *            <tt>{@link #getCount()} - 1</tt> will make the last byte of
-	 *            the region transferred.
-	 */
-	long transferTo(WritableByteChannel target, long position) throws IOException;
+    /**
+     * Transfers the content of this file region to the specified channel.
+     *
+     * @param target   the destination of the transfer
+     * @param position the relative offset of the file where the transfer begins
+     *                 from. For server, <tt>0</tt> will make the transfer start
+     *                 from {@link #getPosition()}th byte and
+     *                 <tt>{@link #getCount()} - 1</tt> will make the last byte of
+     *                 the region transferred.
+     */
+    long transferTo(WritableByteChannel target, long position) throws IOException;
 }

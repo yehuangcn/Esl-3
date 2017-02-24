@@ -17,12 +17,12 @@ package com.freeswitch.netty.handler.codec.http;
 
 /**
  * An HTTP request.
- *
+ * <p>
  * <h3>Accessing Query Parameters and Cookie</h3>
  * <p>
  * Unlike the Servlet API, a query string is constructed and decomposed by
  * {@link QueryStringEncoder} and {@link QueryStringDecoder}.
- *
+ * <p>
  * {@link com.freeswitch.netty.handler.codec.http.cookie.Cookie} support is also
  * provided separately via
  * {@link com.freeswitch.netty.handler.codec.http.cookie.ServerCookieDecoder},
@@ -38,23 +38,23 @@ package com.freeswitch.netty.handler.codec.http;
  */
 public interface HttpRequest extends HttpMessage {
 
-	/**
-	 * Returns the method of this request.
-	 */
-	HttpMethod getMethod();
+    /**
+     * Returns the method of this request.
+     */
+    HttpMethod getMethod();
 
-	/**
-	 * Sets the method of this request.
-	 */
-	void setMethod(HttpMethod method);
+    /**
+     * Sets the method of this request.
+     */
+    void setMethod(HttpMethod method);
 
-	/**
-	 * Returns the URI (or path) of this request.
-	 */
-	String getUri();
+    /**
+     * Returns the URI (or path) of this request.
+     */
+    String getUri();
 
-	/**
-	 * Sets the URI (or path) of this request.
-	 */
-	void setUri(String uri);
+    /**
+     * Sets the URI (or path) of this request.
+     */
+    void setUri(String uri);
 }

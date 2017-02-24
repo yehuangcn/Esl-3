@@ -15,16 +15,16 @@
  */
 package com.freeswitch.netty.channel;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import com.freeswitch.netty.logging.InternalLogger;
+import com.freeswitch.netty.logging.InternalLoggerFactory;
+import com.freeswitch.netty.util.internal.DeadLockProofWorker;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import com.freeswitch.netty.logging.InternalLogger;
-import com.freeswitch.netty.logging.InternalLoggerFactory;
-import com.freeswitch.netty.util.internal.DeadLockProofWorker;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * The default {@link ChannelFuture} implementation. It is recommended to use
@@ -34,411 +34,406 @@ import com.freeswitch.netty.util.internal.DeadLockProofWorker;
  */
 public class DefaultChannelFuture implements ChannelFuture {
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(DefaultChannelFuture.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(DefaultChannelFuture.class);
 
-	private static final Throwable CANCELLED = new Throwable();
+    private static final Throwable CANCELLED = new Throwable();
 
-	private static volatile boolean useDeadLockChecker = true;
-	private static boolean disabledDeadLockCheckerOnce;
+    private static volatile boolean useDeadLockChecker = true;
+    private static boolean disabledDeadLockCheckerOnce;
+    private final Channel channel;
+    private final boolean cancellable;
+    private ChannelFutureListener firstListener;
+    private List<ChannelFutureListener> otherListeners;
+    private List<ChannelFutureProgressListener> progressListeners;
+    private boolean done;
+    private Throwable cause;
+    private int waiters;
+    /**
+     * Creates a new instance.
+     *
+     * @param channel     the {@link Channel} associated with this future
+     * @param cancellable {@code true} if and only if this future can be canceled
+     */
+    public DefaultChannelFuture(Channel channel, boolean cancellable) {
+        this.channel = channel;
+        this.cancellable = cancellable;
+    }
 
-	/**
-	 * Returns {@code true} if and only if the dead lock checker is enabled.
-	 */
-	public static boolean isUseDeadLockChecker() {
-		return useDeadLockChecker;
-	}
+    /**
+     * Returns {@code true} if and only if the dead lock checker is enabled.
+     */
+    public static boolean isUseDeadLockChecker() {
+        return useDeadLockChecker;
+    }
 
-	/**
-	 * Enables or disables the dead lock checker. It is not recommended to
-	 * disable the dead lock checker. Disable it at your own risk!
-	 */
-	public static void setUseDeadLockChecker(boolean useDeadLockChecker) {
-		if (!useDeadLockChecker && !disabledDeadLockCheckerOnce) {
-			disabledDeadLockCheckerOnce = true;
-			if (logger.isDebugEnabled()) {
-				logger.debug("The dead lock checker in " + DefaultChannelFuture.class.getSimpleName() + " has been disabled as requested at your own risk.");
-			}
-		}
-		DefaultChannelFuture.useDeadLockChecker = useDeadLockChecker;
-	}
+    /**
+     * Enables or disables the dead lock checker. It is not recommended to
+     * disable the dead lock checker. Disable it at your own risk!
+     */
+    public static void setUseDeadLockChecker(boolean useDeadLockChecker) {
+        if (!useDeadLockChecker && !disabledDeadLockCheckerOnce) {
+            disabledDeadLockCheckerOnce = true;
+            if (logger.isDebugEnabled()) {
+                logger.debug("The dead lock checker in " + DefaultChannelFuture.class.getSimpleName() + " has been disabled as requested at your own risk.");
+            }
+        }
+        DefaultChannelFuture.useDeadLockChecker = useDeadLockChecker;
+    }
 
-	private final Channel channel;
-	private final boolean cancellable;
+    private static void checkDeadLock() {
+        if (isUseDeadLockChecker() && DeadLockProofWorker.PARENT.get() != null) {
+            throw new IllegalStateException("await*() in I/O thread causes a dead lock or " + "sudden performance drop. Use addListener() instead or " + "call await*() from a different thread.");
+        }
+    }
 
-	private ChannelFutureListener firstListener;
-	private List<ChannelFutureListener> otherListeners;
-	private List<ChannelFutureProgressListener> progressListeners;
-	private boolean done;
-	private Throwable cause;
-	private int waiters;
+    public Channel getChannel() {
+        return channel;
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param channel
-	 *            the {@link Channel} associated with this future
-	 * @param cancellable
-	 *            {@code true} if and only if this future can be canceled
-	 */
-	public DefaultChannelFuture(Channel channel, boolean cancellable) {
-		this.channel = channel;
-		this.cancellable = cancellable;
-	}
+    public synchronized boolean isDone() {
+        return done;
+    }
 
-	public Channel getChannel() {
-		return channel;
-	}
+    public synchronized boolean isSuccess() {
+        return done && cause == null;
+    }
 
-	public synchronized boolean isDone() {
-		return done;
-	}
+    public synchronized Throwable getCause() {
+        if (cause != CANCELLED) {
+            return cause;
+        } else {
+            return null;
+        }
+    }
 
-	public synchronized boolean isSuccess() {
-		return done && cause == null;
-	}
+    public synchronized boolean isCancelled() {
+        return cause == CANCELLED;
+    }
 
-	public synchronized Throwable getCause() {
-		if (cause != CANCELLED) {
-			return cause;
-		} else {
-			return null;
-		}
-	}
+    public void addListener(ChannelFutureListener listener) {
+        if (listener == null) {
+            throw new NullPointerException("listener");
+        }
 
-	public synchronized boolean isCancelled() {
-		return cause == CANCELLED;
-	}
+        boolean notifyNow = false;
+        synchronized (this) {
+            if (done) {
+                notifyNow = true;
+            } else {
+                if (firstListener == null) {
+                    firstListener = listener;
+                } else {
+                    if (otherListeners == null) {
+                        otherListeners = new ArrayList<ChannelFutureListener>(1);
+                    }
+                    otherListeners.add(listener);
+                }
 
-	public void addListener(ChannelFutureListener listener) {
-		if (listener == null) {
-			throw new NullPointerException("listener");
-		}
+                if (listener instanceof ChannelFutureProgressListener) {
+                    if (progressListeners == null) {
+                        progressListeners = new ArrayList<ChannelFutureProgressListener>(1);
+                    }
+                    progressListeners.add((ChannelFutureProgressListener) listener);
+                }
+            }
+        }
 
-		boolean notifyNow = false;
-		synchronized (this) {
-			if (done) {
-				notifyNow = true;
-			} else {
-				if (firstListener == null) {
-					firstListener = listener;
-				} else {
-					if (otherListeners == null) {
-						otherListeners = new ArrayList<ChannelFutureListener>(1);
-					}
-					otherListeners.add(listener);
-				}
+        if (notifyNow) {
+            notifyListener(listener);
+        }
+    }
 
-				if (listener instanceof ChannelFutureProgressListener) {
-					if (progressListeners == null) {
-						progressListeners = new ArrayList<ChannelFutureProgressListener>(1);
-					}
-					progressListeners.add((ChannelFutureProgressListener) listener);
-				}
-			}
-		}
+    public void removeListener(ChannelFutureListener listener) {
+        if (listener == null) {
+            throw new NullPointerException("listener");
+        }
 
-		if (notifyNow) {
-			notifyListener(listener);
-		}
-	}
+        synchronized (this) {
+            if (!done) {
+                if (listener == firstListener) {
+                    if (otherListeners != null && !otherListeners.isEmpty()) {
+                        firstListener = otherListeners.remove(0);
+                    } else {
+                        firstListener = null;
+                    }
+                } else if (otherListeners != null) {
+                    otherListeners.remove(listener);
+                }
 
-	public void removeListener(ChannelFutureListener listener) {
-		if (listener == null) {
-			throw new NullPointerException("listener");
-		}
+                if (listener instanceof ChannelFutureProgressListener) {
+                    progressListeners.remove(listener);
+                }
+            }
+        }
+    }
 
-		synchronized (this) {
-			if (!done) {
-				if (listener == firstListener) {
-					if (otherListeners != null && !otherListeners.isEmpty()) {
-						firstListener = otherListeners.remove(0);
-					} else {
-						firstListener = null;
-					}
-				} else if (otherListeners != null) {
-					otherListeners.remove(listener);
-				}
+    public ChannelFuture sync() throws InterruptedException {
+        await();
+        rethrowIfFailed0();
+        return this;
+    }
 
-				if (listener instanceof ChannelFutureProgressListener) {
-					progressListeners.remove(listener);
-				}
-			}
-		}
-	}
+    public ChannelFuture syncUninterruptibly() {
+        awaitUninterruptibly();
+        rethrowIfFailed0();
+        return this;
+    }
 
-	public ChannelFuture sync() throws InterruptedException {
-		await();
-		rethrowIfFailed0();
-		return this;
-	}
+    private void rethrowIfFailed0() {
+        Throwable cause = getCause();
+        if (cause == null) {
+            return;
+        }
 
-	public ChannelFuture syncUninterruptibly() {
-		awaitUninterruptibly();
-		rethrowIfFailed0();
-		return this;
-	}
+        if (cause instanceof RuntimeException) {
+            throw (RuntimeException) cause;
+        }
 
-	private void rethrowIfFailed0() {
-		Throwable cause = getCause();
-		if (cause == null) {
-			return;
-		}
+        if (cause instanceof Error) {
+            throw (Error) cause;
+        }
 
-		if (cause instanceof RuntimeException) {
-			throw (RuntimeException) cause;
-		}
+        throw new ChannelException(cause);
+    }
 
-		if (cause instanceof Error) {
-			throw (Error) cause;
-		}
+    public ChannelFuture await() throws InterruptedException {
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
 
-		throw new ChannelException(cause);
-	}
+        synchronized (this) {
+            while (!done) {
+                checkDeadLock();
+                waiters++;
+                try {
+                    wait();
+                } finally {
+                    waiters--;
+                }
+            }
+        }
+        return this;
+    }
 
-	public ChannelFuture await() throws InterruptedException {
-		if (Thread.interrupted()) {
-			throw new InterruptedException();
-		}
+    public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
+        return await0(unit.toNanos(timeout), true);
+    }
 
-		synchronized (this) {
-			while (!done) {
-				checkDeadLock();
-				waiters++;
-				try {
-					wait();
-				} finally {
-					waiters--;
-				}
-			}
-		}
-		return this;
-	}
+    public boolean await(long timeoutMillis) throws InterruptedException {
+        return await0(MILLISECONDS.toNanos(timeoutMillis), true);
+    }
 
-	public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
-		return await0(unit.toNanos(timeout), true);
-	}
+    public ChannelFuture awaitUninterruptibly() {
+        boolean interrupted = false;
+        synchronized (this) {
+            while (!done) {
+                checkDeadLock();
+                waiters++;
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                } finally {
+                    waiters--;
+                }
+            }
+        }
 
-	public boolean await(long timeoutMillis) throws InterruptedException {
-		return await0(MILLISECONDS.toNanos(timeoutMillis), true);
-	}
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
 
-	public ChannelFuture awaitUninterruptibly() {
-		boolean interrupted = false;
-		synchronized (this) {
-			while (!done) {
-				checkDeadLock();
-				waiters++;
-				try {
-					wait();
-				} catch (InterruptedException e) {
-					interrupted = true;
-				} finally {
-					waiters--;
-				}
-			}
-		}
+        return this;
+    }
 
-		if (interrupted) {
-			Thread.currentThread().interrupt();
-		}
+    public boolean awaitUninterruptibly(long timeout, TimeUnit unit) {
+        try {
+            return await0(unit.toNanos(timeout), false);
+        } catch (InterruptedException e) {
+            throw new InternalError();
+        }
+    }
 
-		return this;
-	}
+    public boolean awaitUninterruptibly(long timeoutMillis) {
+        try {
+            return await0(MILLISECONDS.toNanos(timeoutMillis), false);
+        } catch (InterruptedException e) {
+            throw new InternalError();
+        }
+    }
 
-	public boolean awaitUninterruptibly(long timeout, TimeUnit unit) {
-		try {
-			return await0(unit.toNanos(timeout), false);
-		} catch (InterruptedException e) {
-			throw new InternalError();
-		}
-	}
+    private boolean await0(long timeoutNanos, boolean interruptable) throws InterruptedException {
+        if (interruptable && Thread.interrupted()) {
+            throw new InterruptedException();
+        }
 
-	public boolean awaitUninterruptibly(long timeoutMillis) {
-		try {
-			return await0(MILLISECONDS.toNanos(timeoutMillis), false);
-		} catch (InterruptedException e) {
-			throw new InternalError();
-		}
-	}
+        long startTime = timeoutNanos <= 0 ? 0 : System.nanoTime();
+        long waitTime = timeoutNanos;
+        boolean interrupted = false;
 
-	private boolean await0(long timeoutNanos, boolean interruptable) throws InterruptedException {
-		if (interruptable && Thread.interrupted()) {
-			throw new InterruptedException();
-		}
+        try {
+            synchronized (this) {
+                if (done || waitTime <= 0) {
+                    return done;
+                }
 
-		long startTime = timeoutNanos <= 0 ? 0 : System.nanoTime();
-		long waitTime = timeoutNanos;
-		boolean interrupted = false;
+                checkDeadLock();
+                waiters++;
+                try {
+                    for (; ; ) {
+                        try {
+                            wait(waitTime / 1000000, (int) (waitTime % 1000000));
+                        } catch (InterruptedException e) {
+                            if (interruptable) {
+                                throw e;
+                            } else {
+                                interrupted = true;
+                            }
+                        }
 
-		try {
-			synchronized (this) {
-				if (done || waitTime <= 0) {
-					return done;
-				}
+                        if (done) {
+                            return true;
+                        } else {
+                            waitTime = timeoutNanos - (System.nanoTime() - startTime);
+                            if (waitTime <= 0) {
+                                return done;
+                            }
+                        }
+                    }
+                } finally {
+                    waiters--;
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
 
-				checkDeadLock();
-				waiters++;
-				try {
-					for (;;) {
-						try {
-							wait(waitTime / 1000000, (int) (waitTime % 1000000));
-						} catch (InterruptedException e) {
-							if (interruptable) {
-								throw e;
-							} else {
-								interrupted = true;
-							}
-						}
+    public boolean setSuccess() {
+        synchronized (this) {
+            // Allow only once.
+            if (done) {
+                return false;
+            }
 
-						if (done) {
-							return true;
-						} else {
-							waitTime = timeoutNanos - (System.nanoTime() - startTime);
-							if (waitTime <= 0) {
-								return done;
-							}
-						}
-					}
-				} finally {
-					waiters--;
-				}
-			}
-		} finally {
-			if (interrupted) {
-				Thread.currentThread().interrupt();
-			}
-		}
-	}
+            done = true;
+            if (waiters > 0) {
+                notifyAll();
+            }
+        }
 
-	private static void checkDeadLock() {
-		if (isUseDeadLockChecker() && DeadLockProofWorker.PARENT.get() != null) {
-			throw new IllegalStateException("await*() in I/O thread causes a dead lock or " + "sudden performance drop. Use addListener() instead or " + "call await*() from a different thread.");
-		}
-	}
+        notifyListeners();
+        return true;
+    }
 
-	public boolean setSuccess() {
-		synchronized (this) {
-			// Allow only once.
-			if (done) {
-				return false;
-			}
+    public boolean setFailure(Throwable cause) {
+        if (cause == null) {
+            throw new NullPointerException("cause");
+        }
 
-			done = true;
-			if (waiters > 0) {
-				notifyAll();
-			}
-		}
+        synchronized (this) {
+            // Allow only once.
+            if (done) {
+                return false;
+            }
 
-		notifyListeners();
-		return true;
-	}
+            this.cause = cause;
+            done = true;
+            if (waiters > 0) {
+                notifyAll();
+            }
+        }
 
-	public boolean setFailure(Throwable cause) {
-		if (cause == null) {
-			throw new NullPointerException("cause");
-		}
+        notifyListeners();
+        return true;
+    }
 
-		synchronized (this) {
-			// Allow only once.
-			if (done) {
-				return false;
-			}
+    public boolean cancel() {
+        if (!cancellable) {
+            return false;
+        }
 
-			this.cause = cause;
-			done = true;
-			if (waiters > 0) {
-				notifyAll();
-			}
-		}
+        synchronized (this) {
+            // Allow only once.
+            if (done) {
+                return false;
+            }
 
-		notifyListeners();
-		return true;
-	}
+            cause = CANCELLED;
+            done = true;
+            if (waiters > 0) {
+                notifyAll();
+            }
+        }
 
-	public boolean cancel() {
-		if (!cancellable) {
-			return false;
-		}
+        notifyListeners();
+        return true;
+    }
 
-		synchronized (this) {
-			// Allow only once.
-			if (done) {
-				return false;
-			}
+    private void notifyListeners() {
+        // This method doesn't need synchronization because:
+        // 1) This method is always called after synchronized (this) block.
+        // Hence any listener list modification happens-before this method.
+        // 2) This method is called only when 'done' is true. Once 'done'
+        // becomes true, the listener list is never modified - see
+        // add/removeListener()
+        if (firstListener != null) {
+            notifyListener(firstListener);
+            firstListener = null;
 
-			cause = CANCELLED;
-			done = true;
-			if (waiters > 0) {
-				notifyAll();
-			}
-		}
+            if (otherListeners != null) {
+                for (ChannelFutureListener l : otherListeners) {
+                    notifyListener(l);
+                }
+                otherListeners = null;
+            }
+        }
+    }
 
-		notifyListeners();
-		return true;
-	}
+    private void notifyListener(ChannelFutureListener l) {
+        try {
+            l.operationComplete(this);
+        } catch (Throwable t) {
+            if (logger.isWarnEnabled()) {
+                logger.warn("An exception was thrown by " + ChannelFutureListener.class.getSimpleName() + '.', t);
+            }
+        }
+    }
 
-	private void notifyListeners() {
-		// This method doesn't need synchronization because:
-		// 1) This method is always called after synchronized (this) block.
-		// Hence any listener list modification happens-before this method.
-		// 2) This method is called only when 'done' is true. Once 'done'
-		// becomes true, the listener list is never modified - see
-		// add/removeListener()
-		if (firstListener != null) {
-			notifyListener(firstListener);
-			firstListener = null;
+    public boolean setProgress(long amount, long current, long total) {
+        ChannelFutureProgressListener[] plisteners;
+        synchronized (this) {
+            // Do not generate progress event after completion.
+            if (done) {
+                return false;
+            }
 
-			if (otherListeners != null) {
-				for (ChannelFutureListener l : otherListeners) {
-					notifyListener(l);
-				}
-				otherListeners = null;
-			}
-		}
-	}
+            Collection<ChannelFutureProgressListener> progressListeners = this.progressListeners;
+            if (progressListeners == null || progressListeners.isEmpty()) {
+                // Nothing to notify - no need to create an empty array.
+                return true;
+            }
 
-	private void notifyListener(ChannelFutureListener l) {
-		try {
-			l.operationComplete(this);
-		} catch (Throwable t) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("An exception was thrown by " + ChannelFutureListener.class.getSimpleName() + '.', t);
-			}
-		}
-	}
+            plisteners = progressListeners.toArray(new ChannelFutureProgressListener[progressListeners.size()]);
+        }
 
-	public boolean setProgress(long amount, long current, long total) {
-		ChannelFutureProgressListener[] plisteners;
-		synchronized (this) {
-			// Do not generate progress event after completion.
-			if (done) {
-				return false;
-			}
+        for (ChannelFutureProgressListener pl : plisteners) {
+            notifyProgressListener(pl, amount, current, total);
+        }
 
-			Collection<ChannelFutureProgressListener> progressListeners = this.progressListeners;
-			if (progressListeners == null || progressListeners.isEmpty()) {
-				// Nothing to notify - no need to create an empty array.
-				return true;
-			}
+        return true;
+    }
 
-			plisteners = progressListeners.toArray(new ChannelFutureProgressListener[progressListeners.size()]);
-		}
+    private void notifyProgressListener(ChannelFutureProgressListener l, long amount, long current, long total) {
 
-		for (ChannelFutureProgressListener pl : plisteners) {
-			notifyProgressListener(pl, amount, current, total);
-		}
-
-		return true;
-	}
-
-	private void notifyProgressListener(ChannelFutureProgressListener l, long amount, long current, long total) {
-
-		try {
-			l.operationProgressed(this, amount, current, total);
-		} catch (Throwable t) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("An exception was thrown by " + ChannelFutureProgressListener.class.getSimpleName() + '.', t);
-			}
-		}
-	}
+        try {
+            l.operationProgressed(this, amount, current, total);
+        } catch (Throwable t) {
+            if (logger.isWarnEnabled()) {
+                logger.warn("An exception was thrown by " + ChannelFutureProgressListener.class.getSimpleName() + '.', t);
+            }
+        }
+    }
 }

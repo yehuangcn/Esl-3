@@ -19,5 +19,5 @@ package com.freeswitch.netty.channel.socket;
  * Internet Protocol (IP) families
  */
 public enum InternetProtocolFamily {
-	IPv4, IPv6
+    IPv4, IPv6
 }

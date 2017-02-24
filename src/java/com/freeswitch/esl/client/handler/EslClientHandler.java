@@ -21,9 +21,9 @@ import com.freeswitch.esl.client.internal.IEslProtocolListener;
 import com.freeswitch.esl.transport.CommandResponse;
 import com.freeswitch.esl.transport.event.EslEvent;
 import com.freeswitch.esl.transport.message.EslHeaders.Value;
+import com.freeswitch.esl.transport.message.EslMessage;
 import com.freeswitch.netty.channel.ChannelHandlerContext;
 import com.freeswitch.netty.handler.execution.ExecutionHandler;
-import com.freeswitch.esl.transport.message.EslMessage;
 
 /**
  * End users of the handler {@link EslClient} should not need to use this class.
@@ -41,40 +41,40 @@ import com.freeswitch.esl.transport.message.EslMessage;
  * placed in the processing pipeline prior to this handler. This will ensure
  * that each incoming message is processed in its own thread (although still
  * guaranteed to be processed in the order of receipt).
- * 
+ *
  * @author david varnes
  */
 public class EslClientHandler extends AbstractEslClientHandler {
-	private final String password;
-	private final IEslProtocolListener listener;
+    private final String password;
+    private final IEslProtocolListener listener;
 
-	public EslClientHandler(String password, IEslProtocolListener listener) {
-		this.password = password;
-		this.listener = listener;
-	}
+    public EslClientHandler(String password, IEslProtocolListener listener) {
+        this.password = password;
+        this.listener = listener;
+    }
 
-	protected void handleEslEvent(ChannelHandlerContext ctx, EslEvent event) {
-		log.trace("Received event: [{}]", event);
-		listener.eventReceived(event);
-	}
+    protected void handleEslEvent(ChannelHandlerContext ctx, EslEvent event) {
+        log.trace("Received event: [{}]", event);
+        listener.eventReceived(event);
+    }
 
-	protected void handleAuthRequest(ChannelHandlerContext ctx) {
+    protected void handleAuthRequest(ChannelHandlerContext ctx) {
 //		log.debug("Auth requested, sending [auth {}]", "*****");
-		EslMessage response = sendSyncSingleLineCommand(ctx.getChannel(), "auth " + password);
+        EslMessage response = sendSyncSingleLineCommand(ctx.getChannel(), "auth " + password);
 //		log.debug("Auth response [{}]", response);
-		if (response.getContentType().equals(Value.COMMAND_REPLY)) {
-			CommandResponse commandResponse = new CommandResponse("auth " + password, response);
-			listener.authResponseReceived(commandResponse);
-		} else {
-			log.error("Bad auth response message [{}]", response);
-			throw new IllegalStateException("Incorrect auth response");
-		}
-	}
+        if (response.getContentType().equals(Value.COMMAND_REPLY)) {
+            CommandResponse commandResponse = new CommandResponse("auth " + password, response);
+            listener.authResponseReceived(commandResponse);
+        } else {
+            log.error("Bad auth response message [{}]", response);
+            throw new IllegalStateException("Incorrect auth response");
+        }
+    }
 
-	@Override
-	protected void handleDisconnectionNotice() {
-		log.debug("Received disconnection notice");
-		listener.disconnected();
-	}
+    @Override
+    protected void handleDisconnectionNotice() {
+        log.debug("Received disconnection notice");
+        listener.disconnected();
+    }
 
 }

@@ -15,10 +15,10 @@
  */
 package com.freeswitch.netty.handler.execution;
 
+import com.freeswitch.netty.util.ExternalResourceReleasable;
+
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-
-import com.freeswitch.netty.util.ExternalResourceReleasable;
 
 /**
  * A special {@link Executor} which allows to chain a series of
@@ -26,71 +26,68 @@ import com.freeswitch.netty.util.ExternalResourceReleasable;
  */
 public class ChainedExecutor implements Executor, ExternalResourceReleasable {
 
-	private final Executor cur;
-	private final Executor next;
-	private final ChannelEventRunnableFilter filter;
+    private final Executor cur;
+    private final Executor next;
+    private final ChannelEventRunnableFilter filter;
 
-	/**
-	 * Create a new {@link ChainedExecutor} which will used the given
-	 * {@link ChannelEventRunnableFilter} to see if the {@link #cur}
-	 * {@link Executor} should get used. Otherwise it will pass the work to the
-	 * {@link #next} {@link Executor}
-	 *
-	 * @param filter
-	 *            the {@link ChannelEventRunnableFilter} which will be used to
-	 *            check if the {@link ChannelEventRunnable} should be passed to
-	 *            the cur or next {@link Executor}
-	 * @param cur
-	 *            the {@link Executor} to use if the
-	 *            {@link ChannelEventRunnableFilter} match
-	 * @param next
-	 *            the {@link Executor} to use if the
-	 *            {@link ChannelEventRunnableFilter} does not match
-	 */
-	public ChainedExecutor(ChannelEventRunnableFilter filter, Executor cur, Executor next) {
-		if (filter == null) {
-			throw new NullPointerException("filter");
-		}
-		if (cur == null) {
-			throw new NullPointerException("cur");
-		}
-		if (next == null) {
-			throw new NullPointerException("next");
-		}
+    /**
+     * Create a new {@link ChainedExecutor} which will used the given
+     * {@link ChannelEventRunnableFilter} to see if the {@link #cur}
+     * {@link Executor} should get used. Otherwise it will pass the work to the
+     * {@link #next} {@link Executor}
+     *
+     * @param filter the {@link ChannelEventRunnableFilter} which will be used to
+     *               check if the {@link ChannelEventRunnable} should be passed to
+     *               the cur or next {@link Executor}
+     * @param cur    the {@link Executor} to use if the
+     *               {@link ChannelEventRunnableFilter} match
+     * @param next   the {@link Executor} to use if the
+     *               {@link ChannelEventRunnableFilter} does not match
+     */
+    public ChainedExecutor(ChannelEventRunnableFilter filter, Executor cur, Executor next) {
+        if (filter == null) {
+            throw new NullPointerException("filter");
+        }
+        if (cur == null) {
+            throw new NullPointerException("cur");
+        }
+        if (next == null) {
+            throw new NullPointerException("next");
+        }
 
-		this.filter = filter;
-		this.cur = cur;
-		this.next = next;
-	}
+        this.filter = filter;
+        this.cur = cur;
+        this.next = next;
+    }
 
-	/**
-	 * Execute the passed {@link ChannelEventRunnable} with the current
-	 * {@link Executor} if the {@link ChannelEventRunnableFilter} match.
-	 * Otherwise pass it to the next {@link Executor} in the chain.
-	 */
-	public void execute(Runnable command) {
-		assert command instanceof ChannelEventRunnable;
-		if (filter.filter((ChannelEventRunnable) command)) {
-			cur.execute(command);
-		} else {
-			next.execute(command);
-		}
-	}
+    private static void releaseExternal(Executor executor) {
+        if (executor instanceof ExternalResourceReleasable) {
+            ((ExternalResourceReleasable) executor).releaseExternalResources();
+        }
+    }
 
-	public void releaseExternalResources() {
-		if (cur instanceof ExecutorService) {
-			((ExecutorService) cur).shutdown();
-		}
-		if (next instanceof ExecutorService) {
-			((ExecutorService) next).shutdown();
-		}
-		releaseExternal(cur);
-		releaseExternal(next);
-	}
+    /**
+     * Execute the passed {@link ChannelEventRunnable} with the current
+     * {@link Executor} if the {@link ChannelEventRunnableFilter} match.
+     * Otherwise pass it to the next {@link Executor} in the chain.
+     */
+    public void execute(Runnable command) {
+        assert command instanceof ChannelEventRunnable;
+        if (filter.filter((ChannelEventRunnable) command)) {
+            cur.execute(command);
+        } else {
+            next.execute(command);
+        }
+    }
 
-	private static void releaseExternal(Executor executor) {
-		if (executor instanceof ExternalResourceReleasable) {
-			((ExternalResourceReleasable) executor).releaseExternalResources();
-		}
-	}
+    public void releaseExternalResources() {
+        if (cur instanceof ExecutorService) {
+            ((ExecutorService) cur).shutdown();
+        }
+        if (next instanceof ExecutorService) {
+            ((ExecutorService) next).shutdown();
+        }
+        releaseExternal(cur);
+        releaseExternal(next);
+    }
 }

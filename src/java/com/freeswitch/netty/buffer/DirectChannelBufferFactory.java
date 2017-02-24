@@ -32,165 +32,160 @@ import java.nio.ByteOrder;
  */
 public class DirectChannelBufferFactory extends AbstractChannelBufferFactory {
 
-	private static final DirectChannelBufferFactory INSTANCE_BE = new DirectChannelBufferFactory(ByteOrder.BIG_ENDIAN);
+    private static final DirectChannelBufferFactory INSTANCE_BE = new DirectChannelBufferFactory(ByteOrder.BIG_ENDIAN);
 
-	private static final DirectChannelBufferFactory INSTANCE_LE = new DirectChannelBufferFactory(ByteOrder.LITTLE_ENDIAN);
+    private static final DirectChannelBufferFactory INSTANCE_LE = new DirectChannelBufferFactory(ByteOrder.LITTLE_ENDIAN);
+    private final Object bigEndianLock = new Object();
+    private final Object littleEndianLock = new Object();
+    private final int preallocatedBufCapacity;
+    private ChannelBuffer preallocatedBEBuf;
+    private int preallocatedBEBufPos;
+    private ChannelBuffer preallocatedLEBuf;
+    private int preallocatedLEBufPos;
+    /**
+     * Creates a new factory whose default {@link ByteOrder} is
+     * {@link ByteOrder#BIG_ENDIAN}.
+     */
+    public DirectChannelBufferFactory() {
+        this(ByteOrder.BIG_ENDIAN);
+    }
+    /**
+     * Creates a new factory whose default {@link ByteOrder} is
+     * {@link ByteOrder#BIG_ENDIAN}.
+     */
+    public DirectChannelBufferFactory(int preallocatedBufferCapacity) {
+        this(ByteOrder.BIG_ENDIAN, preallocatedBufferCapacity);
+    }
 
-	public static ChannelBufferFactory getInstance() {
-		return INSTANCE_BE;
-	}
+    /**
+     * Creates a new factory with the specified default {@link ByteOrder}.
+     *
+     * @param defaultOrder the default {@link ByteOrder} of this factory
+     */
+    public DirectChannelBufferFactory(ByteOrder defaultOrder) {
+        this(defaultOrder, 1048576);
+    }
 
-	public static ChannelBufferFactory getInstance(ByteOrder defaultEndianness) {
-		if (defaultEndianness == ByteOrder.BIG_ENDIAN) {
-			return INSTANCE_BE;
-		} else if (defaultEndianness == ByteOrder.LITTLE_ENDIAN) {
-			return INSTANCE_LE;
-		} else if (defaultEndianness == null) {
-			throw new NullPointerException("defaultEndianness");
-		} else {
-			throw new IllegalStateException("Should not reach here");
-		}
-	}
+    /**
+     * Creates a new factory with the specified default {@link ByteOrder}.
+     *
+     * @param defaultOrder the default {@link ByteOrder} of this factory
+     */
+    public DirectChannelBufferFactory(ByteOrder defaultOrder, int preallocatedBufferCapacity) {
+        super(defaultOrder);
+        if (preallocatedBufferCapacity <= 0) {
+            throw new IllegalArgumentException("preallocatedBufCapacity must be greater than 0: " + preallocatedBufferCapacity);
+        }
 
-	private final Object bigEndianLock = new Object();
-	private final Object littleEndianLock = new Object();
-	private final int preallocatedBufCapacity;
-	private ChannelBuffer preallocatedBEBuf;
-	private int preallocatedBEBufPos;
-	private ChannelBuffer preallocatedLEBuf;
-	private int preallocatedLEBufPos;
+        preallocatedBufCapacity = preallocatedBufferCapacity;
+    }
 
-	/**
-	 * Creates a new factory whose default {@link ByteOrder} is
-	 * {@link ByteOrder#BIG_ENDIAN}.
-	 */
-	public DirectChannelBufferFactory() {
-		this(ByteOrder.BIG_ENDIAN);
-	}
+    public static ChannelBufferFactory getInstance() {
+        return INSTANCE_BE;
+    }
 
-	/**
-	 * Creates a new factory whose default {@link ByteOrder} is
-	 * {@link ByteOrder#BIG_ENDIAN}.
-	 */
-	public DirectChannelBufferFactory(int preallocatedBufferCapacity) {
-		this(ByteOrder.BIG_ENDIAN, preallocatedBufferCapacity);
-	}
+    public static ChannelBufferFactory getInstance(ByteOrder defaultEndianness) {
+        if (defaultEndianness == ByteOrder.BIG_ENDIAN) {
+            return INSTANCE_BE;
+        } else if (defaultEndianness == ByteOrder.LITTLE_ENDIAN) {
+            return INSTANCE_LE;
+        } else if (defaultEndianness == null) {
+            throw new NullPointerException("defaultEndianness");
+        } else {
+            throw new IllegalStateException("Should not reach here");
+        }
+    }
 
-	/**
-	 * Creates a new factory with the specified default {@link ByteOrder}.
-	 *
-	 * @param defaultOrder
-	 *            the default {@link ByteOrder} of this factory
-	 */
-	public DirectChannelBufferFactory(ByteOrder defaultOrder) {
-		this(defaultOrder, 1048576);
-	}
+    public ChannelBuffer getBuffer(ByteOrder order, int capacity) {
+        if (order == null) {
+            throw new NullPointerException("order");
+        }
+        if (capacity < 0) {
+            throw new IllegalArgumentException("capacity: " + capacity);
+        }
+        if (capacity == 0) {
+            return ChannelBuffers.EMPTY_BUFFER;
+        }
+        if (capacity >= preallocatedBufCapacity) {
+            return ChannelBuffers.directBuffer(order, capacity);
+        }
 
-	/**
-	 * Creates a new factory with the specified default {@link ByteOrder}.
-	 *
-	 * @param defaultOrder
-	 *            the default {@link ByteOrder} of this factory
-	 */
-	public DirectChannelBufferFactory(ByteOrder defaultOrder, int preallocatedBufferCapacity) {
-		super(defaultOrder);
-		if (preallocatedBufferCapacity <= 0) {
-			throw new IllegalArgumentException("preallocatedBufCapacity must be greater than 0: " + preallocatedBufferCapacity);
-		}
+        ChannelBuffer slice;
+        if (order == ByteOrder.BIG_ENDIAN) {
+            slice = allocateBigEndianBuffer(capacity);
+        } else {
+            slice = allocateLittleEndianBuffer(capacity);
+        }
+        slice.clear();
+        return slice;
+    }
 
-		preallocatedBufCapacity = preallocatedBufferCapacity;
-	}
+    public ChannelBuffer getBuffer(ByteOrder order, byte[] array, int offset, int length) {
+        if (array == null) {
+            throw new NullPointerException("array");
+        }
+        if (offset < 0) {
+            throw new IndexOutOfBoundsException("offset: " + offset);
+        }
+        if (length == 0) {
+            return ChannelBuffers.EMPTY_BUFFER;
+        }
+        if (offset + length > array.length) {
+            throw new IndexOutOfBoundsException("length: " + length);
+        }
 
-	public ChannelBuffer getBuffer(ByteOrder order, int capacity) {
-		if (order == null) {
-			throw new NullPointerException("order");
-		}
-		if (capacity < 0) {
-			throw new IllegalArgumentException("capacity: " + capacity);
-		}
-		if (capacity == 0) {
-			return ChannelBuffers.EMPTY_BUFFER;
-		}
-		if (capacity >= preallocatedBufCapacity) {
-			return ChannelBuffers.directBuffer(order, capacity);
-		}
+        ChannelBuffer buf = getBuffer(order, length);
+        buf.writeBytes(array, offset, length);
+        return buf;
+    }
 
-		ChannelBuffer slice;
-		if (order == ByteOrder.BIG_ENDIAN) {
-			slice = allocateBigEndianBuffer(capacity);
-		} else {
-			slice = allocateLittleEndianBuffer(capacity);
-		}
-		slice.clear();
-		return slice;
-	}
+    public ChannelBuffer getBuffer(ByteBuffer nioBuffer) {
+        if (!nioBuffer.isReadOnly() && nioBuffer.isDirect()) {
+            return ChannelBuffers.wrappedBuffer(nioBuffer);
+        }
 
-	public ChannelBuffer getBuffer(ByteOrder order, byte[] array, int offset, int length) {
-		if (array == null) {
-			throw new NullPointerException("array");
-		}
-		if (offset < 0) {
-			throw new IndexOutOfBoundsException("offset: " + offset);
-		}
-		if (length == 0) {
-			return ChannelBuffers.EMPTY_BUFFER;
-		}
-		if (offset + length > array.length) {
-			throw new IndexOutOfBoundsException("length: " + length);
-		}
+        ChannelBuffer buf = getBuffer(nioBuffer.order(), nioBuffer.remaining());
+        int pos = nioBuffer.position();
+        buf.writeBytes(nioBuffer);
+        nioBuffer.position(pos);
+        return buf;
+    }
 
-		ChannelBuffer buf = getBuffer(order, length);
-		buf.writeBytes(array, offset, length);
-		return buf;
-	}
+    private ChannelBuffer allocateBigEndianBuffer(int capacity) {
+        ChannelBuffer slice;
+        synchronized (bigEndianLock) {
+            if (preallocatedBEBuf == null) {
+                preallocatedBEBuf = ChannelBuffers.directBuffer(ByteOrder.BIG_ENDIAN, preallocatedBufCapacity);
+                slice = preallocatedBEBuf.slice(0, capacity);
+                preallocatedBEBufPos = capacity;
+            } else if (preallocatedBEBuf.capacity() - preallocatedBEBufPos >= capacity) {
+                slice = preallocatedBEBuf.slice(preallocatedBEBufPos, capacity);
+                preallocatedBEBufPos += capacity;
+            } else {
+                preallocatedBEBuf = ChannelBuffers.directBuffer(ByteOrder.BIG_ENDIAN, preallocatedBufCapacity);
+                slice = preallocatedBEBuf.slice(0, capacity);
+                preallocatedBEBufPos = capacity;
+            }
+        }
+        return slice;
+    }
 
-	public ChannelBuffer getBuffer(ByteBuffer nioBuffer) {
-		if (!nioBuffer.isReadOnly() && nioBuffer.isDirect()) {
-			return ChannelBuffers.wrappedBuffer(nioBuffer);
-		}
-
-		ChannelBuffer buf = getBuffer(nioBuffer.order(), nioBuffer.remaining());
-		int pos = nioBuffer.position();
-		buf.writeBytes(nioBuffer);
-		nioBuffer.position(pos);
-		return buf;
-	}
-
-	private ChannelBuffer allocateBigEndianBuffer(int capacity) {
-		ChannelBuffer slice;
-		synchronized (bigEndianLock) {
-			if (preallocatedBEBuf == null) {
-				preallocatedBEBuf = ChannelBuffers.directBuffer(ByteOrder.BIG_ENDIAN, preallocatedBufCapacity);
-				slice = preallocatedBEBuf.slice(0, capacity);
-				preallocatedBEBufPos = capacity;
-			} else if (preallocatedBEBuf.capacity() - preallocatedBEBufPos >= capacity) {
-				slice = preallocatedBEBuf.slice(preallocatedBEBufPos, capacity);
-				preallocatedBEBufPos += capacity;
-			} else {
-				preallocatedBEBuf = ChannelBuffers.directBuffer(ByteOrder.BIG_ENDIAN, preallocatedBufCapacity);
-				slice = preallocatedBEBuf.slice(0, capacity);
-				preallocatedBEBufPos = capacity;
-			}
-		}
-		return slice;
-	}
-
-	private ChannelBuffer allocateLittleEndianBuffer(int capacity) {
-		ChannelBuffer slice;
-		synchronized (littleEndianLock) {
-			if (preallocatedLEBuf == null) {
-				preallocatedLEBuf = ChannelBuffers.directBuffer(ByteOrder.LITTLE_ENDIAN, preallocatedBufCapacity);
-				slice = preallocatedLEBuf.slice(0, capacity);
-				preallocatedLEBufPos = capacity;
-			} else if (preallocatedLEBuf.capacity() - preallocatedLEBufPos >= capacity) {
-				slice = preallocatedLEBuf.slice(preallocatedLEBufPos, capacity);
-				preallocatedLEBufPos += capacity;
-			} else {
-				preallocatedLEBuf = ChannelBuffers.directBuffer(ByteOrder.LITTLE_ENDIAN, preallocatedBufCapacity);
-				slice = preallocatedLEBuf.slice(0, capacity);
-				preallocatedLEBufPos = capacity;
-			}
-		}
-		return slice;
-	}
+    private ChannelBuffer allocateLittleEndianBuffer(int capacity) {
+        ChannelBuffer slice;
+        synchronized (littleEndianLock) {
+            if (preallocatedLEBuf == null) {
+                preallocatedLEBuf = ChannelBuffers.directBuffer(ByteOrder.LITTLE_ENDIAN, preallocatedBufCapacity);
+                slice = preallocatedLEBuf.slice(0, capacity);
+                preallocatedLEBufPos = capacity;
+            } else if (preallocatedLEBuf.capacity() - preallocatedLEBufPos >= capacity) {
+                slice = preallocatedLEBuf.slice(preallocatedLEBufPos, capacity);
+                preallocatedLEBufPos += capacity;
+            } else {
+                preallocatedLEBuf = ChannelBuffers.directBuffer(ByteOrder.LITTLE_ENDIAN, preallocatedBufCapacity);
+                slice = preallocatedLEBuf.slice(0, capacity);
+                preallocatedLEBufPos = capacity;
+            }
+        }
+        return slice;
+    }
 }

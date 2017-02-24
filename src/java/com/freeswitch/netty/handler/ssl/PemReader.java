@@ -16,12 +16,14 @@
 
 package com.freeswitch.netty.handler.ssl;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import com.freeswitch.netty.buffer.ChannelBuffer;
+import com.freeswitch.netty.buffer.ChannelBuffers;
+import com.freeswitch.netty.handler.codec.base64.Base64;
+import com.freeswitch.netty.logging.InternalLogger;
+import com.freeswitch.netty.logging.InternalLoggerFactory;
+import com.freeswitch.netty.util.CharsetUtil;
+
+import java.io.*;
 import java.security.KeyException;
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
@@ -30,110 +32,103 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.freeswitch.netty.buffer.ChannelBuffer;
-import com.freeswitch.netty.buffer.ChannelBuffers;
-import com.freeswitch.netty.handler.codec.base64.Base64;
-import com.freeswitch.netty.logging.InternalLogger;
-import com.freeswitch.netty.logging.InternalLoggerFactory;
-import com.freeswitch.netty.util.CharsetUtil;
-
 /**
  * Reads a PEM file and converts it into a list of DERs so that they are
  * imported into a {@link KeyStore} easily.
  */
 final class PemReader {
 
-	private static final InternalLogger logger = InternalLoggerFactory.getInstance(PemReader.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(PemReader.class);
 
-	private static final Pattern CERT_PATTERN = Pattern.compile(
-			"-+BEGIN\\s+.*CERTIFICATE[^-]*-+(?:\\s|\\r|\\n)+" + // Header
-					"([a-z0-9+/=\\r\\n]+)" + // Base64 text
-					"-+END\\s+.*CERTIFICATE[^-]*-+", // Footer
-			Pattern.CASE_INSENSITIVE);
-	private static final Pattern KEY_PATTERN = Pattern.compile(
-			"-+BEGIN\\s+.*PRIVATE\\s+KEY[^-]*-+(?:\\s|\\r|\\n)+" + // Header
-					"([a-z0-9+/=\\r\\n]+)" + // Base64 text
-					"-+END\\s+.*PRIVATE\\s+KEY[^-]*-+", // Footer
-			Pattern.CASE_INSENSITIVE);
+    private static final Pattern CERT_PATTERN = Pattern.compile(
+            "-+BEGIN\\s+.*CERTIFICATE[^-]*-+(?:\\s|\\r|\\n)+" + // Header
+                    "([a-z0-9+/=\\r\\n]+)" + // Base64 text
+                    "-+END\\s+.*CERTIFICATE[^-]*-+", // Footer
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern KEY_PATTERN = Pattern.compile(
+            "-+BEGIN\\s+.*PRIVATE\\s+KEY[^-]*-+(?:\\s|\\r|\\n)+" + // Header
+                    "([a-z0-9+/=\\r\\n]+)" + // Base64 text
+                    "-+END\\s+.*PRIVATE\\s+KEY[^-]*-+", // Footer
+            Pattern.CASE_INSENSITIVE);
 
-	static ChannelBuffer[] readCertificates(File file) throws CertificateException {
-		String content;
-		try {
-			content = readContent(file);
-		} catch (IOException e) {
-			throw new CertificateException("failed to read a file: " + file, e);
-		}
+    private PemReader() {
+    }
 
-		List<ChannelBuffer> certs = new ArrayList<ChannelBuffer>();
-		Matcher m = CERT_PATTERN.matcher(content);
-		int start = 0;
-		for (;;) {
-			if (!m.find(start)) {
-				break;
-			}
+    static ChannelBuffer[] readCertificates(File file) throws CertificateException {
+        String content;
+        try {
+            content = readContent(file);
+        } catch (IOException e) {
+            throw new CertificateException("failed to read a file: " + file, e);
+        }
 
-			certs.add(Base64.decode(ChannelBuffers.copiedBuffer(m.group(1), CharsetUtil.US_ASCII)));
-			start = m.end();
-		}
+        List<ChannelBuffer> certs = new ArrayList<ChannelBuffer>();
+        Matcher m = CERT_PATTERN.matcher(content);
+        int start = 0;
+        for (; ; ) {
+            if (!m.find(start)) {
+                break;
+            }
 
-		if (certs.isEmpty()) {
-			throw new CertificateException("found no certificates: " + file);
-		}
+            certs.add(Base64.decode(ChannelBuffers.copiedBuffer(m.group(1), CharsetUtil.US_ASCII)));
+            start = m.end();
+        }
 
-		return certs.toArray(new ChannelBuffer[certs.size()]);
-	}
+        if (certs.isEmpty()) {
+            throw new CertificateException("found no certificates: " + file);
+        }
 
-	static ChannelBuffer readPrivateKey(File file) throws KeyException {
-		String content;
-		try {
-			content = readContent(file);
-		} catch (IOException e) {
-			throw new KeyException("failed to read a file: " + file, e);
-		}
+        return certs.toArray(new ChannelBuffer[certs.size()]);
+    }
 
-		Matcher m = KEY_PATTERN.matcher(content);
-		if (!m.find()) {
-			throw new KeyException("found no private key: " + file);
-		}
+    static ChannelBuffer readPrivateKey(File file) throws KeyException {
+        String content;
+        try {
+            content = readContent(file);
+        } catch (IOException e) {
+            throw new KeyException("failed to read a file: " + file, e);
+        }
 
-		return Base64.decode(ChannelBuffers.copiedBuffer(m.group(1), CharsetUtil.US_ASCII));
-	}
+        Matcher m = KEY_PATTERN.matcher(content);
+        if (!m.find()) {
+            throw new KeyException("found no private key: " + file);
+        }
 
-	private static String readContent(File file) throws IOException {
-		InputStream in = new FileInputStream(file);
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		try {
-			byte[] buf = new byte[8192];
-			for (;;) {
-				int ret = in.read(buf);
-				if (ret < 0) {
-					break;
-				}
-				out.write(buf, 0, ret);
-			}
-			return out.toString(CharsetUtil.US_ASCII.name());
-		} finally {
-			safeClose(in);
-			safeClose(out);
-		}
-	}
+        return Base64.decode(ChannelBuffers.copiedBuffer(m.group(1), CharsetUtil.US_ASCII));
+    }
 
-	private static void safeClose(InputStream in) {
-		try {
-			in.close();
-		} catch (IOException e) {
-			logger.warn("Failed to close a stream.", e);
-		}
-	}
+    private static String readContent(File file) throws IOException {
+        InputStream in = new FileInputStream(file);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            byte[] buf = new byte[8192];
+            for (; ; ) {
+                int ret = in.read(buf);
+                if (ret < 0) {
+                    break;
+                }
+                out.write(buf, 0, ret);
+            }
+            return out.toString(CharsetUtil.US_ASCII.name());
+        } finally {
+            safeClose(in);
+            safeClose(out);
+        }
+    }
 
-	private static void safeClose(OutputStream out) {
-		try {
-			out.close();
-		} catch (IOException e) {
-			logger.warn("Failed to close a stream.", e);
-		}
-	}
+    private static void safeClose(InputStream in) {
+        try {
+            in.close();
+        } catch (IOException e) {
+            logger.warn("Failed to close a stream.", e);
+        }
+    }
 
-	private PemReader() {
-	}
+    private static void safeClose(OutputStream out) {
+        try {
+            out.close();
+        } catch (IOException e) {
+            logger.warn("Failed to close a stream.", e);
+        }
+    }
 }

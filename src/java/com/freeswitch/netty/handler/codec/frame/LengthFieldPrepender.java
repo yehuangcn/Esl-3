@@ -15,16 +15,16 @@
  */
 package com.freeswitch.netty.handler.codec.frame;
 
-import static com.freeswitch.netty.buffer.ChannelBuffers.wrappedBuffer;
-
-import java.nio.ByteOrder;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
 import com.freeswitch.netty.buffer.ChannelBufferFactory;
 import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelHandlerContext;
 import com.freeswitch.netty.channel.ChannelHandler.Sharable;
+import com.freeswitch.netty.channel.ChannelHandlerContext;
 import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
+
+import java.nio.ByteOrder;
+
+import static com.freeswitch.netty.buffer.ChannelBuffers.wrappedBuffer;
 
 /**
  * An encoder that prepends the length of the message. The length value is
@@ -34,25 +34,25 @@ import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
  * <p>
  * For server, <tt>{@link LengthFieldPrepender}(2)</tt> will encode the
  * following 12-bytes string:
- * 
+ * <p>
  * <pre>
  * +----------------+
  * | "HELLO, WORLD" |
  * +----------------+
  * </pre>
- * 
+ * <p>
  * into the following:
- * 
+ * <p>
  * <pre>
  * +--------+----------------+
  * + 0x000C | "HELLO, WORLD" |
  * +--------+----------------+
  * </pre>
- * 
+ * <p>
  * If you turned on the {@code lengthIncludesLengthFieldLength} flag in the
  * constructor, the encoded data would look like the following (12 (original
  * data) + 2 (prepended data) = 14 (0xE)):
- * 
+ * <p>
  * <pre>
  * +--------+----------------+
  * + 0x000E | "HELLO, WORLD" |
@@ -62,83 +62,76 @@ import com.freeswitch.netty.handler.codec.oneone.OneToOneEncoder;
 @Sharable
 public class LengthFieldPrepender extends OneToOneEncoder {
 
-	private final int lengthFieldLength;
-	private final boolean lengthIncludesLengthFieldLength;
+    private final int lengthFieldLength;
+    private final boolean lengthIncludesLengthFieldLength;
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param lengthFieldLength
-	 *            the length of the prepended length field. Only 1, 2, 3, 4, and
-	 *            8 are allowed.
-	 *
-	 * @throws IllegalArgumentException
-	 *             if {@code lengthFieldLength} is not 1, 2, 3, 4, or 8
-	 */
-	public LengthFieldPrepender(int lengthFieldLength) {
-		this(lengthFieldLength, false);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param lengthFieldLength the length of the prepended length field. Only 1, 2, 3, 4, and
+     *                          8 are allowed.
+     * @throws IllegalArgumentException if {@code lengthFieldLength} is not 1, 2, 3, 4, or 8
+     */
+    public LengthFieldPrepender(int lengthFieldLength) {
+        this(lengthFieldLength, false);
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param lengthFieldLength
-	 *            the length of the prepended length field. Only 1, 2, 3, 4, and
-	 *            8 are allowed.
-	 * @param lengthIncludesLengthFieldLength
-	 *            if {@code true}, the length of the prepended length field is
-	 *            added to the value of the prepended length field.
-	 *
-	 * @throws IllegalArgumentException
-	 *             if {@code lengthFieldLength} is not 1, 2, 3, 4, or 8
-	 */
-	public LengthFieldPrepender(int lengthFieldLength, boolean lengthIncludesLengthFieldLength) {
-		if (lengthFieldLength != 1 && lengthFieldLength != 2 && lengthFieldLength != 3 && lengthFieldLength != 4 && lengthFieldLength != 8) {
-			throw new IllegalArgumentException("lengthFieldLength must be either 1, 2, 3, 4, or 8: " + lengthFieldLength);
-		}
+    /**
+     * Creates a new instance.
+     *
+     * @param lengthFieldLength               the length of the prepended length field. Only 1, 2, 3, 4, and
+     *                                        8 are allowed.
+     * @param lengthIncludesLengthFieldLength if {@code true}, the length of the prepended length field is
+     *                                        added to the value of the prepended length field.
+     * @throws IllegalArgumentException if {@code lengthFieldLength} is not 1, 2, 3, 4, or 8
+     */
+    public LengthFieldPrepender(int lengthFieldLength, boolean lengthIncludesLengthFieldLength) {
+        if (lengthFieldLength != 1 && lengthFieldLength != 2 && lengthFieldLength != 3 && lengthFieldLength != 4 && lengthFieldLength != 8) {
+            throw new IllegalArgumentException("lengthFieldLength must be either 1, 2, 3, 4, or 8: " + lengthFieldLength);
+        }
 
-		this.lengthFieldLength = lengthFieldLength;
-		this.lengthIncludesLengthFieldLength = lengthIncludesLengthFieldLength;
-	}
+        this.lengthFieldLength = lengthFieldLength;
+        this.lengthIncludesLengthFieldLength = lengthIncludesLengthFieldLength;
+    }
 
-	@Override
-	protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
-		if (!(msg instanceof ChannelBuffer)) {
-			return msg;
-		}
+    @Override
+    protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
+        if (!(msg instanceof ChannelBuffer)) {
+            return msg;
+        }
 
-		ChannelBuffer body = (ChannelBuffer) msg;
-		ChannelBuffer header = channel.getConfig().getBufferFactory().getBuffer(body.order(), lengthFieldLength);
+        ChannelBuffer body = (ChannelBuffer) msg;
+        ChannelBuffer header = channel.getConfig().getBufferFactory().getBuffer(body.order(), lengthFieldLength);
 
-		int length = lengthIncludesLengthFieldLength ? body.readableBytes() + lengthFieldLength : body.readableBytes();
-		switch (lengthFieldLength) {
-		case 1:
-			if (length >= 256) {
-				throw new IllegalArgumentException("length does not fit into a byte: " + length);
-			}
-			header.writeByte((byte) length);
-			break;
-		case 2:
-			if (length >= 65536) {
-				throw new IllegalArgumentException("length does not fit into a short integer: " + length);
-			}
-			header.writeShort((short) length);
-			break;
-		case 3:
-			if (length >= 16777216) {
-				throw new IllegalArgumentException("length does not fit into a medium integer: " + length);
-			}
-			header.writeMedium(length);
-			break;
-		case 4:
-			header.writeInt(length);
-			break;
-		case 8:
-			header.writeLong(length);
-			break;
-		default:
-			throw new Error("should not reach here");
-		}
-		return wrappedBuffer(header, body);
-	}
+        int length = lengthIncludesLengthFieldLength ? body.readableBytes() + lengthFieldLength : body.readableBytes();
+        switch (lengthFieldLength) {
+            case 1:
+                if (length >= 256) {
+                    throw new IllegalArgumentException("length does not fit into a byte: " + length);
+                }
+                header.writeByte((byte) length);
+                break;
+            case 2:
+                if (length >= 65536) {
+                    throw new IllegalArgumentException("length does not fit into a short integer: " + length);
+                }
+                header.writeShort((short) length);
+                break;
+            case 3:
+                if (length >= 16777216) {
+                    throw new IllegalArgumentException("length does not fit into a medium integer: " + length);
+                }
+                header.writeMedium(length);
+                break;
+            case 4:
+                header.writeInt(length);
+                break;
+            case 8:
+                header.writeLong(length);
+                break;
+            default:
+                throw new Error("should not reach here");
+        }
+        return wrappedBuffer(header, body);
+    }
 }

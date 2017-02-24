@@ -23,8 +23,8 @@ import com.freeswitch.netty.channel.ServerChannelFactory;
  * A {@link ChannelFactory} which creates a {@link ServerSocketChannel}.
  *
  * @apiviz.has org.jboss.netty.channel.socket.ServerSocketChannel oneway - -
- *             creates
+ * creates
  */
 public interface ServerSocketChannelFactory extends ServerChannelFactory {
-	ServerSocketChannel newChannel(ChannelPipeline pipeline);
+    ServerSocketChannel newChannel(ChannelPipeline pipeline);
 }

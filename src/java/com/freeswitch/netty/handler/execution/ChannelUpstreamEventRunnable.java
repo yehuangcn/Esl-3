@@ -15,10 +15,10 @@
  */
 package com.freeswitch.netty.handler.execution;
 
-import java.util.concurrent.Executor;
-
 import com.freeswitch.netty.channel.ChannelEvent;
 import com.freeswitch.netty.channel.ChannelHandlerContext;
+
+import java.util.concurrent.Executor;
 
 /**
  * A {@link ChannelEventRunnable} which sends the specified {@link ChannelEvent}
@@ -27,19 +27,19 @@ import com.freeswitch.netty.channel.ChannelHandlerContext;
  */
 public class ChannelUpstreamEventRunnable extends ChannelEventRunnable {
 
-	/**
-	 * Creates a {@link Runnable} which sends the specified {@link ChannelEvent}
-	 * upstream via the specified {@link ChannelHandlerContext}.
-	 */
-	public ChannelUpstreamEventRunnable(ChannelHandlerContext ctx, ChannelEvent e, Executor executor) {
-		super(ctx, e, executor);
-	}
+    /**
+     * Creates a {@link Runnable} which sends the specified {@link ChannelEvent}
+     * upstream via the specified {@link ChannelHandlerContext}.
+     */
+    public ChannelUpstreamEventRunnable(ChannelHandlerContext ctx, ChannelEvent e, Executor executor) {
+        super(ctx, e, executor);
+    }
 
-	/**
-	 * Sends the event upstream.
-	 */
-	@Override
-	protected void doRun() {
-		ctx.sendUpstream(e);
-	}
+    /**
+     * Sends the event upstream.
+     */
+    @Override
+    protected void doRun() {
+        ctx.sendUpstream(e);
+    }
 }

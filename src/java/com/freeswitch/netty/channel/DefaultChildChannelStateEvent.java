@@ -22,42 +22,42 @@ import static com.freeswitch.netty.channel.Channels.succeededFuture;
  */
 public class DefaultChildChannelStateEvent implements ChildChannelStateEvent {
 
-	private final Channel parentChannel;
-	private final Channel childChannel;
+    private final Channel parentChannel;
+    private final Channel childChannel;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public DefaultChildChannelStateEvent(Channel parentChannel, Channel childChannel) {
-		if (parentChannel == null) {
-			throw new NullPointerException("parentChannel");
-		}
-		if (childChannel == null) {
-			throw new NullPointerException("childChannel");
-		}
-		this.parentChannel = parentChannel;
-		this.childChannel = childChannel;
-	}
+    /**
+     * Creates a new instance.
+     */
+    public DefaultChildChannelStateEvent(Channel parentChannel, Channel childChannel) {
+        if (parentChannel == null) {
+            throw new NullPointerException("parentChannel");
+        }
+        if (childChannel == null) {
+            throw new NullPointerException("childChannel");
+        }
+        this.parentChannel = parentChannel;
+        this.childChannel = childChannel;
+    }
 
-	public Channel getChannel() {
-		return parentChannel;
-	}
+    public Channel getChannel() {
+        return parentChannel;
+    }
 
-	public ChannelFuture getFuture() {
-		return succeededFuture(getChannel());
-	}
+    public ChannelFuture getFuture() {
+        return succeededFuture(getChannel());
+    }
 
-	public Channel getChildChannel() {
-		return childChannel;
-	}
+    public Channel getChildChannel() {
+        return childChannel;
+    }
 
-	@Override
-	public String toString() {
-		String channelString = getChannel().toString();
-		StringBuilder buf = new StringBuilder(channelString.length() + 32);
-		buf.append(channelString);
-		buf.append(getChildChannel().isOpen() ? " CHILD_OPEN: " : " CHILD_CLOSED: ");
-		buf.append(getChildChannel().getId());
-		return buf.toString();
-	}
+    @Override
+    public String toString() {
+        String channelString = getChannel().toString();
+        StringBuilder buf = new StringBuilder(channelString.length() + 32);
+        buf.append(channelString);
+        buf.append(getChildChannel().isOpen() ? " CHILD_OPEN: " : " CHILD_CLOSED: ");
+        buf.append(getChildChannel().getId());
+        return buf.toString();
+    }
 }

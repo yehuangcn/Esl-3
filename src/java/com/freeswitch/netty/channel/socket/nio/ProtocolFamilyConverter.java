@@ -15,35 +15,33 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
+import com.freeswitch.netty.channel.socket.InternetProtocolFamily;
+
 import java.net.ProtocolFamily;
 import java.net.StandardProtocolFamily;
 
-import com.freeswitch.netty.channel.socket.InternetProtocolFamily;
-
 /**
  * Helper class which convert the {@link InternetProtocolFamily}.
- *
- *
  */
 final class ProtocolFamilyConverter {
 
-	private ProtocolFamilyConverter() {
-		// Utility class
-	}
+    private ProtocolFamilyConverter() {
+        // Utility class
+    }
 
-	/**
-	 * Convert the {@link InternetProtocolFamily}. This MUST only be called on
-	 * jdk version >= 7.
-	 */
-	public static ProtocolFamily convert(InternetProtocolFamily family) {
-		switch (family) {
-		case IPv4:
-			return StandardProtocolFamily.INET;
+    /**
+     * Convert the {@link InternetProtocolFamily}. This MUST only be called on
+     * jdk version >= 7.
+     */
+    public static ProtocolFamily convert(InternetProtocolFamily family) {
+        switch (family) {
+            case IPv4:
+                return StandardProtocolFamily.INET;
 
-		case IPv6:
-			return StandardProtocolFamily.INET6;
-		default:
-			throw new IllegalArgumentException();
-		}
-	}
+            case IPv6:
+                return StandardProtocolFamily.INET6;
+            default:
+                throw new IllegalArgumentException();
+        }
+    }
 }

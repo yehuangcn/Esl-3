@@ -16,6 +16,13 @@
 
 package com.freeswitch.netty.handler.ssl.util;
 
+import com.freeswitch.netty.buffer.ChannelBuffers;
+import com.freeswitch.netty.util.internal.EmptyArrays;
+
+import javax.net.ssl.ManagerFactoryParameters;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -26,14 +33,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
-
-import javax.net.ssl.ManagerFactoryParameters;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
-
-import com.freeswitch.netty.buffer.ChannelBuffers;
-import com.freeswitch.netty.util.internal.EmptyArrays;
 
 /**
  * An {@link TrustManagerFactory} that trusts an X.509 certificate whose SHA1
@@ -46,7 +45,7 @@ import com.freeswitch.netty.util.internal.EmptyArrays;
  * The SHA1 checksum of an X.509 certificate is calculated from its DER encoded
  * format. You can get the fingerprint of an X.509 certificate using the
  * {@code openssl} command. For server:
- * 
+ * <p>
  * <pre>
  * $ openssl x509 -fingerprint -sha1 -in my_certificate.crt
  * SHA1 Fingerprint=4E:85:10:55:BC:7B:12:08:D1:EA:0A:12:C9:72:EE:F3:AA:B2:C7:CB
@@ -66,146 +65,141 @@ import com.freeswitch.netty.util.internal.EmptyArrays;
  */
 public final class FingerprintTrustManagerFactory extends SimpleTrustManagerFactory {
 
-	private static final Pattern FINGERPRINT_PATTERN = Pattern.compile("^[0-9a-fA-F:]+$");
-	private static final Pattern FINGERPRINT_STRIP_PATTERN = Pattern.compile(":");
-	private static final int SHA1_BYTE_LEN = 20;
-	private static final int SHA1_HEX_LEN = SHA1_BYTE_LEN * 2;
+    private static final Pattern FINGERPRINT_PATTERN = Pattern.compile("^[0-9a-fA-F:]+$");
+    private static final Pattern FINGERPRINT_STRIP_PATTERN = Pattern.compile(":");
+    private static final int SHA1_BYTE_LEN = 20;
+    private static final int SHA1_HEX_LEN = SHA1_BYTE_LEN * 2;
 
-	private static final ThreadLocal<MessageDigest> tlmd = new ThreadLocal<MessageDigest>() {
-		@Override
-		protected MessageDigest initialValue() {
-			try {
-				return MessageDigest.getInstance("SHA1");
-			} catch (NoSuchAlgorithmException e) {
-				// All Java implementation must have SHA1 digest algorithm.
-				throw new Error(e);
-			}
-		}
-	};
+    private static final ThreadLocal<MessageDigest> tlmd = new ThreadLocal<MessageDigest>() {
+        @Override
+        protected MessageDigest initialValue() {
+            try {
+                return MessageDigest.getInstance("SHA1");
+            } catch (NoSuchAlgorithmException e) {
+                // All Java implementation must have SHA1 digest algorithm.
+                throw new Error(e);
+            }
+        }
+    };
+    private final byte[][] fingerprints;
+    private final TrustManager tm = new X509TrustManager() {
 
-	private final TrustManager tm = new X509TrustManager() {
+        public void checkClientTrusted(X509Certificate[] chain, String s) throws CertificateException {
+            checkTrusted("client", chain);
+        }
 
-		public void checkClientTrusted(X509Certificate[] chain, String s) throws CertificateException {
-			checkTrusted("client", chain);
-		}
+        public void checkServerTrusted(X509Certificate[] chain, String s) throws CertificateException {
+            checkTrusted("server", chain);
+        }
 
-		public void checkServerTrusted(X509Certificate[] chain, String s) throws CertificateException {
-			checkTrusted("server", chain);
-		}
+        private void checkTrusted(String type, X509Certificate[] chain) throws CertificateException {
+            X509Certificate cert = chain[0];
+            byte[] fingerprint = fingerprint(cert);
+            boolean found = false;
+            for (byte[] allowedFingerprint : fingerprints) {
+                if (Arrays.equals(fingerprint, allowedFingerprint)) {
+                    found = true;
+                    break;
+                }
+            }
 
-		private void checkTrusted(String type, X509Certificate[] chain) throws CertificateException {
-			X509Certificate cert = chain[0];
-			byte[] fingerprint = fingerprint(cert);
-			boolean found = false;
-			for (byte[] allowedFingerprint : fingerprints) {
-				if (Arrays.equals(fingerprint, allowedFingerprint)) {
-					found = true;
-					break;
-				}
-			}
+            if (!found) {
+                throw new CertificateException(type + " certificate with unknown fingerprint: " + cert.getSubjectDN());
+            }
+        }
 
-			if (!found) {
-				throw new CertificateException(type + " certificate with unknown fingerprint: " + cert.getSubjectDN());
-			}
-		}
+        private byte[] fingerprint(X509Certificate cert) throws CertificateEncodingException {
+            MessageDigest md = tlmd.get();
+            md.reset();
+            return md.digest(cert.getEncoded());
+        }
 
-		private byte[] fingerprint(X509Certificate cert) throws CertificateEncodingException {
-			MessageDigest md = tlmd.get();
-			md.reset();
-			return md.digest(cert.getEncoded());
-		}
+        public X509Certificate[] getAcceptedIssuers() {
+            return EmptyArrays.EMPTY_X509_CERTIFICATES;
+        }
+    };
 
-		public X509Certificate[] getAcceptedIssuers() {
-			return EmptyArrays.EMPTY_X509_CERTIFICATES;
-		}
-	};
+    /**
+     * Creates a new instance.
+     *
+     * @param fingerprints a list of SHA1 fingerprints in heaxdecimal form
+     */
+    public FingerprintTrustManagerFactory(Iterable<String> fingerprints) {
+        this(toFingerprintArray(fingerprints));
+    }
 
-	private final byte[][] fingerprints;
+    /**
+     * Creates a new instance.
+     *
+     * @param fingerprints a list of SHA1 fingerprints in heaxdecimal form
+     */
+    public FingerprintTrustManagerFactory(String... fingerprints) {
+        this(toFingerprintArray(Arrays.asList(fingerprints)));
+    }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param fingerprints
-	 *            a list of SHA1 fingerprints in heaxdecimal form
-	 */
-	public FingerprintTrustManagerFactory(Iterable<String> fingerprints) {
-		this(toFingerprintArray(fingerprints));
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param fingerprints a list of SHA1 fingerprints
+     */
+    public FingerprintTrustManagerFactory(byte[]... fingerprints) {
+        if (fingerprints == null) {
+            throw new NullPointerException("fingerprints");
+        }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param fingerprints
-	 *            a list of SHA1 fingerprints in heaxdecimal form
-	 */
-	public FingerprintTrustManagerFactory(String... fingerprints) {
-		this(toFingerprintArray(Arrays.asList(fingerprints)));
-	}
+        List<byte[]> list = new ArrayList<byte[]>();
+        for (byte[] f : fingerprints) {
+            if (f == null) {
+                break;
+            }
+            if (f.length != SHA1_BYTE_LEN) {
+                throw new IllegalArgumentException("malformed fingerprint: " + ChannelBuffers.hexDump(ChannelBuffers.wrappedBuffer(f)) + " (expected: SHA1)");
+            }
+            list.add(f.clone());
+        }
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param fingerprints
-	 *            a list of SHA1 fingerprints
-	 */
-	public FingerprintTrustManagerFactory(byte[]... fingerprints) {
-		if (fingerprints == null) {
-			throw new NullPointerException("fingerprints");
-		}
+        this.fingerprints = list.toArray(new byte[list.size()][]);
+    }
 
-		List<byte[]> list = new ArrayList<byte[]>();
-		for (byte[] f : fingerprints) {
-			if (f == null) {
-				break;
-			}
-			if (f.length != SHA1_BYTE_LEN) {
-				throw new IllegalArgumentException("malformed fingerprint: " + ChannelBuffers.hexDump(ChannelBuffers.wrappedBuffer(f)) + " (expected: SHA1)");
-			}
-			list.add(f.clone());
-		}
+    private static byte[][] toFingerprintArray(Iterable<String> fingerprints) {
+        if (fingerprints == null) {
+            throw new NullPointerException("fingerprints");
+        }
 
-		this.fingerprints = list.toArray(new byte[list.size()][]);
-	}
+        List<byte[]> list = new ArrayList<byte[]>();
+        for (String f : fingerprints) {
+            if (f == null) {
+                break;
+            }
 
-	private static byte[][] toFingerprintArray(Iterable<String> fingerprints) {
-		if (fingerprints == null) {
-			throw new NullPointerException("fingerprints");
-		}
+            if (!FINGERPRINT_PATTERN.matcher(f).matches()) {
+                throw new IllegalArgumentException("malformed fingerprint: " + f);
+            }
+            f = FINGERPRINT_STRIP_PATTERN.matcher(f).replaceAll("");
+            if (f.length() != SHA1_HEX_LEN) {
+                throw new IllegalArgumentException("malformed fingerprint: " + f + " (expected: SHA1)");
+            }
 
-		List<byte[]> list = new ArrayList<byte[]>();
-		for (String f : fingerprints) {
-			if (f == null) {
-				break;
-			}
+            byte[] farr = new byte[SHA1_BYTE_LEN];
+            for (int i = 0; i < farr.length; i++) {
+                int strIdx = i << 1;
+                farr[i] = (byte) Integer.parseInt(f.substring(strIdx, strIdx + 2), 16);
+            }
+        }
 
-			if (!FINGERPRINT_PATTERN.matcher(f).matches()) {
-				throw new IllegalArgumentException("malformed fingerprint: " + f);
-			}
-			f = FINGERPRINT_STRIP_PATTERN.matcher(f).replaceAll("");
-			if (f.length() != SHA1_HEX_LEN) {
-				throw new IllegalArgumentException("malformed fingerprint: " + f + " (expected: SHA1)");
-			}
+        return list.toArray(new byte[list.size()][]);
+    }
 
-			byte[] farr = new byte[SHA1_BYTE_LEN];
-			for (int i = 0; i < farr.length; i++) {
-				int strIdx = i << 1;
-				farr[i] = (byte) Integer.parseInt(f.substring(strIdx, strIdx + 2), 16);
-			}
-		}
+    @Override
+    protected void engineInit(KeyStore keyStore) throws Exception {
+    }
 
-		return list.toArray(new byte[list.size()][]);
-	}
+    @Override
+    protected void engineInit(ManagerFactoryParameters managerFactoryParameters) throws Exception {
+    }
 
-	@Override
-	protected void engineInit(KeyStore keyStore) throws Exception {
-	}
-
-	@Override
-	protected void engineInit(ManagerFactoryParameters managerFactoryParameters) throws Exception {
-	}
-
-	@Override
-	protected TrustManager[] engineGetTrustManagers() {
-		return new TrustManager[] { tm };
-	}
+    @Override
+    protected TrustManager[] engineGetTrustManagers() {
+        return new TrustManager[]{tm};
+    }
 }

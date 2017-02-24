@@ -26,13 +26,12 @@ import java.util.EventListener;
  */
 public interface ChannelGroupFutureListener extends EventListener {
 
-	/**
-	 * Invoked when all I/O operations associated with the
-	 * {@link ChannelGroupFuture} have been completed.
-	 *
-	 * @param future
-	 *            The source {@link ChannelGroupFuture} which called this
-	 *            callback.
-	 */
-	void operationComplete(ChannelGroupFuture future) throws Exception;
+    /**
+     * Invoked when all I/O operations associated with the
+     * {@link ChannelGroupFuture} have been completed.
+     *
+     * @param future The source {@link ChannelGroupFuture} which called this
+     *               callback.
+     */
+    void operationComplete(ChannelGroupFuture future) throws Exception;
 }

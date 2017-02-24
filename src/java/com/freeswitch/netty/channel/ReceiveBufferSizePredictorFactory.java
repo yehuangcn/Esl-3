@@ -19,12 +19,12 @@ package com.freeswitch.netty.channel;
  * Creates a new {@link ReceiveBufferSizePredictor}.
  *
  * @apiviz.has org.jboss.netty.channel.ReceiveBufferSizePredictor oneway - -
- *             creates
+ * creates
  */
 public interface ReceiveBufferSizePredictorFactory {
 
-	/**
-	 * Returns a newly created {@link ReceiveBufferSizePredictor}.
-	 */
-	ReceiveBufferSizePredictor getPredictor() throws Exception;
+    /**
+     * Returns a newly created {@link ReceiveBufferSizePredictor}.
+     */
+    ReceiveBufferSizePredictor getPredictor() throws Exception;
 }

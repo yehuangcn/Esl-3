@@ -21,11 +21,11 @@ package com.freeswitch.netty.logging;
  * Netty should use. The default factory is {@link JdkLoggerFactory}. You can
  * change it to your preferred logging framework before other Netty classes are
  * loaded:
- * 
+ * <p>
  * <pre>
  * {@link InternalLoggerFactory}.setDefaultFactory(new {@link Log4JLoggerFactory}());
  * </pre>
- * 
+ * <p>
  * Please note that the new default factory is effective only for the classes
  * which were loaded after the default factory is changed. Therefore,
  * {@link #setDefaultFactory(InternalLoggerFactory)} should be called as early
@@ -35,42 +35,42 @@ package com.freeswitch.netty.logging;
  * @apiviz.has org.jboss.netty.logging.InternalLogger oneway - - creates
  */
 public abstract class InternalLoggerFactory {
-	private static volatile InternalLoggerFactory defaultFactory = new JdkLoggerFactory();
+    private static volatile InternalLoggerFactory defaultFactory = new JdkLoggerFactory();
 
-	/**
-	 * Returns the default factory. The initial default factory is
-	 * {@link JdkLoggerFactory}.
-	 */
-	public static InternalLoggerFactory getDefaultFactory() {
-		return defaultFactory;
-	}
+    /**
+     * Returns the default factory. The initial default factory is
+     * {@link JdkLoggerFactory}.
+     */
+    public static InternalLoggerFactory getDefaultFactory() {
+        return defaultFactory;
+    }
 
-	/**
-	 * Changes the default factory.
-	 */
-	public static void setDefaultFactory(InternalLoggerFactory defaultFactory) {
-		if (defaultFactory == null) {
-			throw new NullPointerException("defaultFactory");
-		}
-		InternalLoggerFactory.defaultFactory = defaultFactory;
-	}
+    /**
+     * Changes the default factory.
+     */
+    public static void setDefaultFactory(InternalLoggerFactory defaultFactory) {
+        if (defaultFactory == null) {
+            throw new NullPointerException("defaultFactory");
+        }
+        InternalLoggerFactory.defaultFactory = defaultFactory;
+    }
 
-	/**
-	 * Creates a new logger instance with the name of the specified class.
-	 */
-	public static InternalLogger getInstance(Class<?> clazz) {
-		return getInstance(clazz.getName());
-	}
+    /**
+     * Creates a new logger instance with the name of the specified class.
+     */
+    public static InternalLogger getInstance(Class<?> clazz) {
+        return getInstance(clazz.getName());
+    }
 
-	/**
-	 * Creates a new logger instance with the specified name.
-	 */
-	public static InternalLogger getInstance(String name) {
-		return getDefaultFactory().newInstance(name);
-	}
+    /**
+     * Creates a new logger instance with the specified name.
+     */
+    public static InternalLogger getInstance(String name) {
+        return getDefaultFactory().newInstance(name);
+    }
 
-	/**
-	 * Creates a new logger instance with the specified name.
-	 */
-	public abstract InternalLogger newInstance(String name);
+    /**
+     * Creates a new logger instance with the specified name.
+     */
+    public abstract InternalLogger newInstance(String name);
 }

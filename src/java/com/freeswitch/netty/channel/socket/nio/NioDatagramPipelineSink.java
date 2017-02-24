@@ -15,22 +15,12 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import static com.freeswitch.netty.channel.Channels.fireChannelBound;
-import static com.freeswitch.netty.channel.Channels.fireChannelClosed;
-import static com.freeswitch.netty.channel.Channels.fireChannelConnected;
-import static com.freeswitch.netty.channel.Channels.fireChannelUnbound;
-import static com.freeswitch.netty.channel.Channels.fireExceptionCaught;
+import com.freeswitch.netty.channel.*;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executor;
 
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelFutureListener;
-import com.freeswitch.netty.channel.ChannelPipeline;
-import com.freeswitch.netty.channel.ChannelState;
-import com.freeswitch.netty.channel.ChannelStateEvent;
-import com.freeswitch.netty.channel.MessageEvent;
+import static com.freeswitch.netty.channel.Channels.*;
 
 /**
  * Receives downstream events from a {@link ChannelPipeline}. It contains an
@@ -38,157 +28,153 @@ import com.freeswitch.netty.channel.MessageEvent;
  */
 class NioDatagramPipelineSink extends AbstractNioChannelSink {
 
-	private final WorkerPool<NioDatagramWorker> workerPool;
+    private final WorkerPool<NioDatagramWorker> workerPool;
 
-	/**
-	 * Creates a new {@link NioDatagramPipelineSink} with a the number of
-	 * {@link NioDatagramWorker}s specified in workerCount. The
-	 * {@link NioDatagramWorker}s take care of reading and writing for the
-	 * {@link NioDatagramChannel}.
-	 *
-	 * @param workerExecutor
-	 *            the {@link Executor} that will run the
-	 *            {@link NioDatagramWorker}s for this sink
-	 * @param workerCount
-	 *            the number of {@link NioDatagramWorker}s for this sink
-	 */
-	NioDatagramPipelineSink(final WorkerPool<NioDatagramWorker> workerPool) {
-		this.workerPool = workerPool;
-	}
+    /**
+     * Creates a new {@link NioDatagramPipelineSink} with a the number of
+     * {@link NioDatagramWorker}s specified in workerCount. The
+     * {@link NioDatagramWorker}s take care of reading and writing for the
+     * {@link NioDatagramChannel}.
+     *
+     * @param workerExecutor the {@link Executor} that will run the
+     *                       {@link NioDatagramWorker}s for this sink
+     * @param workerCount    the number of {@link NioDatagramWorker}s for this sink
+     */
+    NioDatagramPipelineSink(final WorkerPool<NioDatagramWorker> workerPool) {
+        this.workerPool = workerPool;
+    }
 
-	/**
-	 * Handle downstream event.
-	 *
-	 * @param pipeline
-	 *            the {@link ChannelPipeline} that passes down the downstream
-	 *            event.
-	 * @param e
-	 *            The downstream event.
-	 */
-	public void eventSunk(final ChannelPipeline pipeline, final ChannelEvent e) throws Exception {
-		final NioDatagramChannel channel = (NioDatagramChannel) e.getChannel();
-		final ChannelFuture future = e.getFuture();
-		if (e instanceof ChannelStateEvent) {
-			final ChannelStateEvent stateEvent = (ChannelStateEvent) e;
-			final ChannelState state = stateEvent.getState();
-			final Object value = stateEvent.getValue();
-			switch (state) {
-			case OPEN:
-				if (Boolean.FALSE.equals(value)) {
-					channel.worker.close(channel, future);
-				}
-				break;
-			case BOUND:
-				if (value != null) {
-					bind(channel, future, (InetSocketAddress) value);
-				} else {
-					channel.worker.close(channel, future);
-				}
-				break;
-			case CONNECTED:
-				if (value != null) {
-					connect(channel, future, (InetSocketAddress) value);
-				} else {
-					NioDatagramWorker.disconnect(channel, future);
-				}
-				break;
-			case INTEREST_OPS:
-				channel.worker.setInterestOps(channel, future, ((Integer) value).intValue());
-				break;
-			}
-		} else if (e instanceof MessageEvent) {
-			final MessageEvent event = (MessageEvent) e;
-			final boolean offered = channel.writeBufferQueue.offer(event);
-			assert offered;
-			channel.worker.writeFromUserCode(channel);
-		}
-	}
+    private static void close(NioDatagramChannel channel, ChannelFuture future) {
+        try {
+            channel.getDatagramChannel().socket().close();
+            if (channel.setClosed()) {
+                future.setSuccess();
+                if (channel.isBound()) {
+                    fireChannelUnbound(channel);
+                }
+                fireChannelClosed(channel);
+            } else {
+                future.setSuccess();
+            }
+        } catch (final Throwable t) {
+            future.setFailure(t);
+            fireExceptionCaught(channel, t);
+        }
+    }
 
-	private static void close(NioDatagramChannel channel, ChannelFuture future) {
-		try {
-			channel.getDatagramChannel().socket().close();
-			if (channel.setClosed()) {
-				future.setSuccess();
-				if (channel.isBound()) {
-					fireChannelUnbound(channel);
-				}
-				fireChannelClosed(channel);
-			} else {
-				future.setSuccess();
-			}
-		} catch (final Throwable t) {
-			future.setFailure(t);
-			fireExceptionCaught(channel, t);
-		}
-	}
+    /**
+     * Will bind the DatagramSocket to the passed-in address. Every call bind
+     * will spawn a new thread using the that basically in turn
+     */
+    private static void bind(final NioDatagramChannel channel, final ChannelFuture future, final InetSocketAddress address) {
+        boolean bound = false;
+        boolean started = false;
+        try {
+            // First bind the DatagramSocket the specified port.
+            channel.getDatagramChannel().socket().bind(address);
+            bound = true;
 
-	/**
-	 * Will bind the DatagramSocket to the passed-in address. Every call bind
-	 * will spawn a new thread using the that basically in turn
-	 */
-	private static void bind(final NioDatagramChannel channel, final ChannelFuture future, final InetSocketAddress address) {
-		boolean bound = false;
-		boolean started = false;
-		try {
-			// First bind the DatagramSocket the specified port.
-			channel.getDatagramChannel().socket().bind(address);
-			bound = true;
+            future.setSuccess();
+            fireChannelBound(channel, address);
 
-			future.setSuccess();
-			fireChannelBound(channel, address);
+            channel.worker.register(channel, null);
+            started = true;
+        } catch (final Throwable t) {
+            future.setFailure(t);
+            fireExceptionCaught(channel, t);
+        } finally {
+            if (!started && bound) {
+                close(channel, future);
+            }
+        }
+    }
 
-			channel.worker.register(channel, null);
-			started = true;
-		} catch (final Throwable t) {
-			future.setFailure(t);
-			fireExceptionCaught(channel, t);
-		} finally {
-			if (!started && bound) {
-				close(channel, future);
-			}
-		}
-	}
+    private static void connect(NioDatagramChannel channel, ChannelFuture future, InetSocketAddress remoteAddress) {
 
-	private static void connect(NioDatagramChannel channel, ChannelFuture future, InetSocketAddress remoteAddress) {
+        boolean bound = channel.isBound();
+        boolean connected = false;
+        boolean workerStarted = false;
 
-		boolean bound = channel.isBound();
-		boolean connected = false;
-		boolean workerStarted = false;
+        future.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
 
-		future.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+        // Clear the cached address so that the next getRemoteAddress() call
+        // updates the cache.
+        channel.remoteAddress = null;
 
-		// Clear the cached address so that the next getRemoteAddress() call
-		// updates the cache.
-		channel.remoteAddress = null;
+        try {
+            channel.getDatagramChannel().connect(remoteAddress);
+            connected = true;
 
-		try {
-			channel.getDatagramChannel().connect(remoteAddress);
-			connected = true;
+            // Fire events.
+            future.setSuccess();
+            if (!bound) {
+                fireChannelBound(channel, channel.getLocalAddress());
+            }
+            fireChannelConnected(channel, channel.getRemoteAddress());
 
-			// Fire events.
-			future.setSuccess();
-			if (!bound) {
-				fireChannelBound(channel, channel.getLocalAddress());
-			}
-			fireChannelConnected(channel, channel.getRemoteAddress());
+            if (!bound) {
+                channel.worker.register(channel, future);
+            }
 
-			if (!bound) {
-				channel.worker.register(channel, future);
-			}
+            workerStarted = true;
+        } catch (Throwable t) {
+            future.setFailure(t);
+            fireExceptionCaught(channel, t);
+        } finally {
+            if (connected && !workerStarted) {
+                channel.worker.close(channel, future);
+            }
+        }
+    }
 
-			workerStarted = true;
-		} catch (Throwable t) {
-			future.setFailure(t);
-			fireExceptionCaught(channel, t);
-		} finally {
-			if (connected && !workerStarted) {
-				channel.worker.close(channel, future);
-			}
-		}
-	}
+    /**
+     * Handle downstream event.
+     *
+     * @param pipeline the {@link ChannelPipeline} that passes down the downstream
+     *                 event.
+     * @param e        The downstream event.
+     */
+    public void eventSunk(final ChannelPipeline pipeline, final ChannelEvent e) throws Exception {
+        final NioDatagramChannel channel = (NioDatagramChannel) e.getChannel();
+        final ChannelFuture future = e.getFuture();
+        if (e instanceof ChannelStateEvent) {
+            final ChannelStateEvent stateEvent = (ChannelStateEvent) e;
+            final ChannelState state = stateEvent.getState();
+            final Object value = stateEvent.getValue();
+            switch (state) {
+                case OPEN:
+                    if (Boolean.FALSE.equals(value)) {
+                        channel.worker.close(channel, future);
+                    }
+                    break;
+                case BOUND:
+                    if (value != null) {
+                        bind(channel, future, (InetSocketAddress) value);
+                    } else {
+                        channel.worker.close(channel, future);
+                    }
+                    break;
+                case CONNECTED:
+                    if (value != null) {
+                        connect(channel, future, (InetSocketAddress) value);
+                    } else {
+                        NioDatagramWorker.disconnect(channel, future);
+                    }
+                    break;
+                case INTEREST_OPS:
+                    channel.worker.setInterestOps(channel, future, ((Integer) value).intValue());
+                    break;
+            }
+        } else if (e instanceof MessageEvent) {
+            final MessageEvent event = (MessageEvent) e;
+            final boolean offered = channel.writeBufferQueue.offer(event);
+            assert offered;
+            channel.worker.writeFromUserCode(channel);
+        }
+    }
 
-	NioDatagramWorker nextWorker() {
-		return workerPool.nextWorker();
-	}
+    NioDatagramWorker nextWorker() {
+        return workerPool.nextWorker();
+    }
 
 }

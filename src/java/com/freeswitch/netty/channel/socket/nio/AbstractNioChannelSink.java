@@ -16,34 +16,30 @@
 
 package com.freeswitch.netty.channel.socket.nio;
 
-import com.freeswitch.netty.channel.AbstractChannelSink;
-import com.freeswitch.netty.channel.Channel;
-import com.freeswitch.netty.channel.ChannelEvent;
-import com.freeswitch.netty.channel.ChannelFuture;
-import com.freeswitch.netty.channel.ChannelPipeline;
+import com.freeswitch.netty.channel.*;
 import com.freeswitch.netty.channel.socket.ChannelRunnableWrapper;
 
 public abstract class AbstractNioChannelSink extends AbstractChannelSink {
 
-	@Override
-	public ChannelFuture execute(ChannelPipeline pipeline, final Runnable task) {
-		Channel ch = pipeline.getChannel();
-		if (ch instanceof AbstractNioChannel<?>) {
-			AbstractNioChannel<?> channel = (AbstractNioChannel<?>) ch;
-			ChannelRunnableWrapper wrapper = new ChannelRunnableWrapper(pipeline.getChannel(), task);
-			channel.worker.executeInIoThread(wrapper);
-			return wrapper;
-		}
-		return super.execute(pipeline, task);
-	}
+    @Override
+    public ChannelFuture execute(ChannelPipeline pipeline, final Runnable task) {
+        Channel ch = pipeline.getChannel();
+        if (ch instanceof AbstractNioChannel<?>) {
+            AbstractNioChannel<?> channel = (AbstractNioChannel<?>) ch;
+            ChannelRunnableWrapper wrapper = new ChannelRunnableWrapper(pipeline.getChannel(), task);
+            channel.worker.executeInIoThread(wrapper);
+            return wrapper;
+        }
+        return super.execute(pipeline, task);
+    }
 
-	@Override
-	protected boolean isFireExceptionCaughtLater(ChannelEvent event, Throwable actualCause) {
-		Channel channel = event.getChannel();
-		boolean fireLater = false;
-		if (channel instanceof AbstractNioChannel<?>) {
-			fireLater = !AbstractNioWorker.isIoThread((AbstractNioChannel<?>) channel);
-		}
-		return fireLater;
-	}
+    @Override
+    protected boolean isFireExceptionCaughtLater(ChannelEvent event, Throwable actualCause) {
+        Channel channel = event.getChannel();
+        boolean fireLater = false;
+        if (channel instanceof AbstractNioChannel<?>) {
+            fireLater = !AbstractNioWorker.isIoThread((AbstractNioChannel<?>) channel);
+        }
+        return fireLater;
+    }
 }

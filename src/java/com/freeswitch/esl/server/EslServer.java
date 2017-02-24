@@ -15,12 +15,6 @@
  */
 package com.freeswitch.esl.server;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.Executors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.freeswitch.netty.bootstrap.ServerBootstrap;
 import com.freeswitch.netty.channel.Channel;
 import com.freeswitch.netty.channel.ChannelFactory;
@@ -28,6 +22,11 @@ import com.freeswitch.netty.channel.group.ChannelGroup;
 import com.freeswitch.netty.channel.group.ChannelGroupFuture;
 import com.freeswitch.netty.channel.group.DefaultChannelGroup;
 import com.freeswitch.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
 
 /**
  * Entry point to run a socket client that a running FreeSWITCH Event Socket
@@ -40,40 +39,42 @@ import com.freeswitch.netty.channel.socket.nio.NioServerSocketChannelFactory;
  * <p>
  * See <a href=
  * "http://wiki.freeswitch.org/wiki/Mod_event_socket">http://wiki.freeswitch.org/wiki/Mod_event_socket</a>
- * 
+ *
  * @author david varnes
  */
-public class SocketClient {
-	private final Logger log = LoggerFactory.getLogger(this.getClass());
+public class EslServer {
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-	private final ChannelGroup allChannels = new DefaultChannelGroup("esl-socket-client");
+    private final ChannelGroup allChannels = new DefaultChannelGroup("esl-socket-client");
 
-	private final int port;
-	private final ChannelFactory channelFactory;
-	private final AbstractOutboundPipelineFactory pipelineFactory;
+    private final String name;
+    private final int port;
+    private final ChannelFactory channelFactory;
+    private final AbstractEslServerPipelineFactory pipelineFactory;
 
-	public SocketClient(int port, AbstractOutboundPipelineFactory pipelineFactory) {
-		this.port = port;
-		this.pipelineFactory = pipelineFactory;
-		this.channelFactory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool());
-	}
+    public EslServer(String name, int port, AbstractEslServerPipelineFactory pipelineFactory) {
+        this.name = name;
+        this.port = port;
+        this.pipelineFactory = pipelineFactory;
+        this.channelFactory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool());
+    }
 
-	public void start() {
-		ServerBootstrap bootstrap = new ServerBootstrap(channelFactory);
+    public void start() {
+        ServerBootstrap bootstrap = new ServerBootstrap(channelFactory);
 
-		bootstrap.setPipelineFactory(pipelineFactory);
-		bootstrap.setOption("child.tcpNoDelay", true);
-		bootstrap.setOption("child.keepAlive", true);
+        bootstrap.setPipelineFactory(pipelineFactory);
+        bootstrap.setOption("child.tcpNoDelay", true);
+        bootstrap.setOption("child.keepAlive", true);
 
-		Channel serverChannel = bootstrap.bind(new InetSocketAddress(port));
-		allChannels.add(serverChannel);
-		log.info("SocketClient waiting for connections on port [{}] ...", port);
-	}
+        Channel serverChannel = bootstrap.bind(new InetSocketAddress(port));
+        allChannels.add(serverChannel);
+        log.info("EslServer[{}] waiting for connections on port [{}] ...", this.name, port);
+    }
 
-	public void stop() {
-		ChannelGroupFuture future = allChannels.close();
-		future.awaitUninterruptibly();
-		channelFactory.releaseExternalResources();
-		log.info("SocketClient stopped");
-	}
+    public void stop() {
+        ChannelGroupFuture future = allChannels.close();
+        future.awaitUninterruptibly();
+        channelFactory.releaseExternalResources();
+        log.info("EslServer[{}] stopped", this.name);
+    }
 }

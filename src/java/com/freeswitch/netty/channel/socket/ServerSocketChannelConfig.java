@@ -15,20 +15,20 @@
  */
 package com.freeswitch.netty.channel.socket;
 
+import com.freeswitch.netty.channel.ChannelConfig;
+
 import java.net.ServerSocket;
 import java.net.StandardSocketOptions;
 
-import com.freeswitch.netty.channel.ChannelConfig;
-
 /**
  * A {@link ChannelConfig} for a {@link ServerSocketChannel}.
- *
+ * <p>
  * <h3>Available options</h3>
- *
+ * <p>
  * In addition to the options provided by {@link ChannelConfig},
  * {@link ServerSocketChannelConfig} allows the following options in the option
  * map:
- *
+ * <p>
  * <table border="1" cellspacing="0" cellpadding="6">
  * <tr>
  * <th>Name</th>
@@ -50,41 +50,41 @@ import com.freeswitch.netty.channel.ChannelConfig;
  */
 public interface ServerSocketChannelConfig extends ChannelConfig {
 
-	/**
-	 * Gets the backlog value to specify when the channel binds to a local
-	 * address.
-	 */
-	int getBacklog();
+    /**
+     * Gets the backlog value to specify when the channel binds to a local
+     * address.
+     */
+    int getBacklog();
 
-	/**
-	 * Sets the backlog value to specify when the channel binds to a local
-	 * address.
-	 */
-	void setBacklog(int backlog);
+    /**
+     * Sets the backlog value to specify when the channel binds to a local
+     * address.
+     */
+    void setBacklog(int backlog);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_REUSEADDR} option.
-	 */
-	boolean isReuseAddress();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_REUSEADDR} option.
+     */
+    boolean isReuseAddress();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_REUSEADDR} option.
-	 */
-	void setReuseAddress(boolean reuseAddress);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_REUSEADDR} option.
+     */
+    void setReuseAddress(boolean reuseAddress);
 
-	/**
-	 * Gets the {@link StandardSocketOptions#SO_RCVBUF} option.
-	 */
-	int getReceiveBufferSize();
+    /**
+     * Gets the {@link StandardSocketOptions#SO_RCVBUF} option.
+     */
+    int getReceiveBufferSize();
 
-	/**
-	 * Sets the {@link StandardSocketOptions#SO_RCVBUF} option.
-	 */
-	void setReceiveBufferSize(int receiveBufferSize);
+    /**
+     * Sets the {@link StandardSocketOptions#SO_RCVBUF} option.
+     */
+    void setReceiveBufferSize(int receiveBufferSize);
 
-	/**
-	 * Sets the performance preferences as specified in
-	 * {@link ServerSocket#setPerformancePreferences(int, int, int)}.
-	 */
-	void setPerformancePreferences(int connectionTime, int latency, int bandwidth);
+    /**
+     * Sets the performance preferences as specified in
+     * {@link ServerSocket#setPerformancePreferences(int, int, int)}.
+     */
+    void setPerformancePreferences(int connectionTime, int latency, int bandwidth);
 }

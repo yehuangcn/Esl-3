@@ -21,32 +21,32 @@ import java.util.concurrent.Executor;
  */
 public final class DeadLockProofWorker {
 
-	/**
-	 * An <em>internal use only</em> thread-local variable that tells the
-	 * {@link Executor} that this worker acquired a worker thread from.
-	 */
-	public static final ThreadLocal<Executor> PARENT = new ThreadLocal<Executor>();
+    /**
+     * An <em>internal use only</em> thread-local variable that tells the
+     * {@link Executor} that this worker acquired a worker thread from.
+     */
+    public static final ThreadLocal<Executor> PARENT = new ThreadLocal<Executor>();
 
-	public static void start(final Executor parent, final Runnable runnable) {
-		if (parent == null) {
-			throw new NullPointerException("parent");
-		}
-		if (runnable == null) {
-			throw new NullPointerException("runnable");
-		}
+    private DeadLockProofWorker() {
+    }
 
-		parent.execute(new Runnable() {
-			public void run() {
-				PARENT.set(parent);
-				try {
-					runnable.run();
-				} finally {
-					PARENT.remove();
-				}
-			}
-		});
-	}
+    public static void start(final Executor parent, final Runnable runnable) {
+        if (parent == null) {
+            throw new NullPointerException("parent");
+        }
+        if (runnable == null) {
+            throw new NullPointerException("runnable");
+        }
 
-	private DeadLockProofWorker() {
-	}
+        parent.execute(new Runnable() {
+            public void run() {
+                PARENT.set(parent);
+                try {
+                    runnable.run();
+                } finally {
+                    PARENT.remove();
+                }
+            }
+        });
+    }
 }

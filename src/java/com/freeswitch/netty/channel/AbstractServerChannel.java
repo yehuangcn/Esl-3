@@ -32,57 +32,54 @@ import java.net.SocketAddress;
  */
 public abstract class AbstractServerChannel extends AbstractChannel implements ServerChannel {
 
-	/**
-	 * Creates a new instance.
-	 *
-	 * @param factory
-	 *            the factory which created this channel
-	 * @param pipeline
-	 *            the pipeline which is going to be attached to this channel
-	 * @param sink
-	 *            the sink which will receive downstream events from the
-	 *            pipeline and send upstream events to the pipeline
-	 */
-	protected AbstractServerChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
-		super(null, factory, pipeline, sink);
-	}
+    /**
+     * Creates a new instance.
+     *
+     * @param factory  the factory which created this channel
+     * @param pipeline the pipeline which is going to be attached to this channel
+     * @param sink     the sink which will receive downstream events from the
+     *                 pipeline and send upstream events to the pipeline
+     */
+    protected AbstractServerChannel(ChannelFactory factory, ChannelPipeline pipeline, ChannelSink sink) {
+        super(null, factory, pipeline, sink);
+    }
 
-	@Override
-	public ChannelFuture connect(SocketAddress remoteAddress) {
-		return getUnsupportedOperationFuture();
-	}
+    @Override
+    public ChannelFuture connect(SocketAddress remoteAddress) {
+        return getUnsupportedOperationFuture();
+    }
 
-	@Override
-	public ChannelFuture disconnect() {
-		return getUnsupportedOperationFuture();
-	}
+    @Override
+    public ChannelFuture disconnect() {
+        return getUnsupportedOperationFuture();
+    }
 
-	@Override
-	public int getInterestOps() {
-		return OP_NONE;
-	}
+    @Override
+    public int getInterestOps() {
+        return OP_NONE;
+    }
 
-	@Override
-	public ChannelFuture setInterestOps(int interestOps) {
-		return getUnsupportedOperationFuture();
-	}
+    @Override
+    public ChannelFuture setInterestOps(int interestOps) {
+        return getUnsupportedOperationFuture();
+    }
 
-	@Override
-	protected void setInternalInterestOps(int interestOps) {
-		// Ignore.
-	}
+    @Override
+    protected void setInternalInterestOps(int interestOps) {
+        // Ignore.
+    }
 
-	@Override
-	public ChannelFuture write(Object message) {
-		return getUnsupportedOperationFuture();
-	}
+    @Override
+    public ChannelFuture write(Object message) {
+        return getUnsupportedOperationFuture();
+    }
 
-	@Override
-	public ChannelFuture write(Object message, SocketAddress remoteAddress) {
-		return getUnsupportedOperationFuture();
-	}
+    @Override
+    public ChannelFuture write(Object message, SocketAddress remoteAddress) {
+        return getUnsupportedOperationFuture();
+    }
 
-	public boolean isConnected() {
-		return false;
-	}
+    public boolean isConnected() {
+        return false;
+    }
 }

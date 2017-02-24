@@ -15,72 +15,72 @@
  */
 package com.freeswitch.netty.channel;
 
-import java.util.Map;
-import java.util.Map.Entry;
-
 import com.freeswitch.netty.buffer.ChannelBufferFactory;
 import com.freeswitch.netty.buffer.HeapChannelBufferFactory;
 import com.freeswitch.netty.channel.socket.SocketChannelConfig;
 import com.freeswitch.netty.util.internal.ConversionUtil;
+
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * The default {@link SocketChannelConfig} implementation.
  */
 public class DefaultChannelConfig implements ChannelConfig {
 
-	private volatile ChannelBufferFactory bufferFactory = HeapChannelBufferFactory.getInstance();
-	private volatile int connectTimeoutMillis = 10000; // 10 seconds
+    private volatile ChannelBufferFactory bufferFactory = HeapChannelBufferFactory.getInstance();
+    private volatile int connectTimeoutMillis = 10000; // 10 seconds
 
-	public void setOptions(Map<String, Object> options) {
-		for (Entry<String, Object> e : options.entrySet()) {
-			setOption(e.getKey(), e.getValue());
-		}
-	}
+    public void setOptions(Map<String, Object> options) {
+        for (Entry<String, Object> e : options.entrySet()) {
+            setOption(e.getKey(), e.getValue());
+        }
+    }
 
-	public boolean setOption(String key, Object value) {
-		if (key == null) {
-			throw new NullPointerException("key");
-		}
+    public boolean setOption(String key, Object value) {
+        if (key == null) {
+            throw new NullPointerException("key");
+        }
 
-		if ("pipelineFactory".equals(key)) {
-			setPipelineFactory((ChannelPipelineFactory) value);
-		} else if ("connectTimeoutMillis".equals(key)) {
-			setConnectTimeoutMillis(ConversionUtil.toInt(value));
-		} else if ("bufferFactory".equals(key)) {
-			setBufferFactory((ChannelBufferFactory) value);
-		} else {
-			return false;
-		}
-		return true;
-	}
+        if ("pipelineFactory".equals(key)) {
+            setPipelineFactory((ChannelPipelineFactory) value);
+        } else if ("connectTimeoutMillis".equals(key)) {
+            setConnectTimeoutMillis(ConversionUtil.toInt(value));
+        } else if ("bufferFactory".equals(key)) {
+            setBufferFactory((ChannelBufferFactory) value);
+        } else {
+            return false;
+        }
+        return true;
+    }
 
-	public int getConnectTimeoutMillis() {
-		return connectTimeoutMillis;
-	}
+    public int getConnectTimeoutMillis() {
+        return connectTimeoutMillis;
+    }
 
-	public ChannelBufferFactory getBufferFactory() {
-		return bufferFactory;
-	}
+    public void setConnectTimeoutMillis(int connectTimeoutMillis) {
+        if (connectTimeoutMillis < 0) {
+            throw new IllegalArgumentException("connectTimeoutMillis: " + connectTimeoutMillis);
+        }
+        this.connectTimeoutMillis = connectTimeoutMillis;
+    }
 
-	public void setBufferFactory(ChannelBufferFactory bufferFactory) {
-		if (bufferFactory == null) {
-			throw new NullPointerException("bufferFactory");
-		}
-		this.bufferFactory = bufferFactory;
-	}
+    public ChannelBufferFactory getBufferFactory() {
+        return bufferFactory;
+    }
 
-	public ChannelPipelineFactory getPipelineFactory() {
-		return null;
-	}
+    public void setBufferFactory(ChannelBufferFactory bufferFactory) {
+        if (bufferFactory == null) {
+            throw new NullPointerException("bufferFactory");
+        }
+        this.bufferFactory = bufferFactory;
+    }
 
-	public void setConnectTimeoutMillis(int connectTimeoutMillis) {
-		if (connectTimeoutMillis < 0) {
-			throw new IllegalArgumentException("connectTimeoutMillis: " + connectTimeoutMillis);
-		}
-		this.connectTimeoutMillis = connectTimeoutMillis;
-	}
+    public ChannelPipelineFactory getPipelineFactory() {
+        return null;
+    }
 
-	public void setPipelineFactory(ChannelPipelineFactory pipelineFactory) {
-		// Unused
-	}
+    public void setPipelineFactory(ChannelPipelineFactory pipelineFactory) {
+        // Unused
+    }
 }

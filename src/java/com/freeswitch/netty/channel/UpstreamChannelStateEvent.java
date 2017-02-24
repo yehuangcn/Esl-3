@@ -22,80 +22,80 @@ import static com.freeswitch.netty.channel.Channels.succeededFuture;
  */
 public class UpstreamChannelStateEvent implements ChannelStateEvent {
 
-	private final Channel channel;
-	private final ChannelState state;
-	private final Object value;
+    private final Channel channel;
+    private final ChannelState state;
+    private final Object value;
 
-	/**
-	 * Creates a new instance.
-	 */
-	public UpstreamChannelStateEvent(Channel channel, ChannelState state, Object value) {
+    /**
+     * Creates a new instance.
+     */
+    public UpstreamChannelStateEvent(Channel channel, ChannelState state, Object value) {
 
-		if (channel == null) {
-			throw new NullPointerException("channel");
-		}
-		if (state == null) {
-			throw new NullPointerException("state");
-		}
+        if (channel == null) {
+            throw new NullPointerException("channel");
+        }
+        if (state == null) {
+            throw new NullPointerException("state");
+        }
 
-		this.channel = channel;
-		this.state = state;
-		this.value = value;
-	}
+        this.channel = channel;
+        this.state = state;
+        this.value = value;
+    }
 
-	public Channel getChannel() {
-		return channel;
-	}
+    public Channel getChannel() {
+        return channel;
+    }
 
-	public ChannelFuture getFuture() {
-		return succeededFuture(getChannel());
-	}
+    public ChannelFuture getFuture() {
+        return succeededFuture(getChannel());
+    }
 
-	public ChannelState getState() {
-		return state;
-	}
+    public ChannelState getState() {
+        return state;
+    }
 
-	public Object getValue() {
-		return value;
-	}
+    public Object getValue() {
+        return value;
+    }
 
-	@Override
-	public String toString() {
-		String channelString = getChannel().toString();
-		StringBuilder buf = new StringBuilder(channelString.length() + 64);
-		buf.append(channelString);
-		switch (getState()) {
-		case OPEN:
-			if (Boolean.TRUE.equals(getValue())) {
-				buf.append(" OPEN");
-			} else {
-				buf.append(" CLOSED");
-			}
-			break;
-		case BOUND:
-			if (getValue() != null) {
-				buf.append(" BOUND: ");
-				buf.append(getValue());
-			} else {
-				buf.append(" UNBOUND");
-			}
-			break;
-		case CONNECTED:
-			if (getValue() != null) {
-				buf.append(" CONNECTED: ");
-				buf.append(getValue());
-			} else {
-				buf.append(" DISCONNECTED");
-			}
-			break;
-		case INTEREST_OPS:
-			buf.append(" INTEREST_CHANGED");
-			break;
-		default:
-			buf.append(getState().name());
-			buf.append(": ");
-			buf.append(getValue());
-		}
-		return buf.toString();
-	}
+    @Override
+    public String toString() {
+        String channelString = getChannel().toString();
+        StringBuilder buf = new StringBuilder(channelString.length() + 64);
+        buf.append(channelString);
+        switch (getState()) {
+            case OPEN:
+                if (Boolean.TRUE.equals(getValue())) {
+                    buf.append(" OPEN");
+                } else {
+                    buf.append(" CLOSED");
+                }
+                break;
+            case BOUND:
+                if (getValue() != null) {
+                    buf.append(" BOUND: ");
+                    buf.append(getValue());
+                } else {
+                    buf.append(" UNBOUND");
+                }
+                break;
+            case CONNECTED:
+                if (getValue() != null) {
+                    buf.append(" CONNECTED: ");
+                    buf.append(getValue());
+                } else {
+                    buf.append(" DISCONNECTED");
+                }
+                break;
+            case INTEREST_OPS:
+                buf.append(" INTEREST_CHANGED");
+                break;
+            default:
+                buf.append(getState().name());
+                buf.append(": ");
+                buf.append(getValue());
+        }
+        return buf.toString();
+    }
 }

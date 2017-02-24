@@ -22,7 +22,7 @@ import com.freeswitch.netty.handler.codec.frame.TooLongFrameException;
 /**
  * Decodes {@link ChannelBuffer}s into {@link HttpResponse}s and
  * {@link HttpChunk}s.
- *
+ * <p>
  * <h3>Parameters that prevents excessive memory consumption</h3>
  * <table border="1">
  * <tr>
@@ -53,7 +53,7 @@ import com.freeswitch.netty.handler.codec.frame.TooLongFrameException;
  * this decoder in the {@link ChannelPipeline}.</td>
  * </tr>
  * </table>
- *
+ * <p>
  * <h3>Decoding a response for a <tt>HEAD</tt> request</h3>
  * <p>
  * Unlike other HTTP requests, the successful response of a <tt>HEAD</tt>
@@ -69,7 +69,7 @@ import com.freeswitch.netty.handler.codec.frame.TooLongFrameException;
  * additional state management to handle the responses for <tt>HEAD</tt>
  * requests correctly.
  * </p>
- *
+ * <p>
  * <h3>Decoding a response for a <tt>CONNECT</tt> request</h3>
  * <p>
  * You also need to do additional state management to handle the response of a
@@ -86,28 +86,28 @@ import com.freeswitch.netty.handler.codec.frame.TooLongFrameException;
  */
 public class HttpResponseDecoder extends HttpMessageDecoder {
 
-	/**
-	 * Creates a new instance with the default
-	 * {@code maxInitialLineLength (4096}}, {@code maxHeaderSize (8192)}, and
-	 * {@code maxChunkSize (8192)}.
-	 */
-	public HttpResponseDecoder() {
-	}
+    /**
+     * Creates a new instance with the default
+     * {@code maxInitialLineLength (4096}}, {@code maxHeaderSize (8192)}, and
+     * {@code maxChunkSize (8192)}.
+     */
+    public HttpResponseDecoder() {
+    }
 
-	/**
-	 * Creates a new instance with the specified parameters.
-	 */
-	public HttpResponseDecoder(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize) {
-		super(maxInitialLineLength, maxHeaderSize, maxChunkSize);
-	}
+    /**
+     * Creates a new instance with the specified parameters.
+     */
+    public HttpResponseDecoder(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize) {
+        super(maxInitialLineLength, maxHeaderSize, maxChunkSize);
+    }
 
-	@Override
-	protected HttpMessage createMessage(String[] initialLine) {
-		return new DefaultHttpResponse(HttpVersion.valueOf(initialLine[0]), new HttpResponseStatus(Integer.valueOf(initialLine[1]), initialLine[2]));
-	}
+    @Override
+    protected HttpMessage createMessage(String[] initialLine) {
+        return new DefaultHttpResponse(HttpVersion.valueOf(initialLine[0]), new HttpResponseStatus(Integer.valueOf(initialLine[1]), initialLine[2]));
+    }
 
-	@Override
-	protected boolean isDecodingRequest() {
-		return false;
-	}
+    @Override
+    protected boolean isDecodingRequest() {
+        return false;
+    }
 }

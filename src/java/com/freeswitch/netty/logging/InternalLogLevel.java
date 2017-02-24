@@ -19,20 +19,20 @@ package com.freeswitch.netty.logging;
  * The log level that {@link InternalLogger} can log at.
  */
 public enum InternalLogLevel {
-	/**
-	 * 'DEBUG' log level.
-	 */
-	DEBUG,
-	/**
-	 * 'INFO' log level.
-	 */
-	INFO,
-	/**
-	 * 'WARN' log level.
-	 */
-	WARN,
-	/**
-	 * 'ERROR' log level.
-	 */
-	ERROR
+    /**
+     * 'DEBUG' log level.
+     */
+    DEBUG,
+    /**
+     * 'INFO' log level.
+     */
+    INFO,
+    /**
+     * 'WARN' log level.
+     */
+    WARN,
+    /**
+     * 'ERROR' log level.
+     */
+    ERROR
 }

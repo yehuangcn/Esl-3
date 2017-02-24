@@ -23,11 +23,11 @@ package com.freeswitch.netty.util;
  */
 public interface ObjectSizeEstimator {
 
-	/**
-	 * Returns the estimated size of the specified object in bytes.
-	 *
-	 * @return a positive integer which represents the size of the specified
-	 *         object in bytes
-	 */
-	int estimateSize(Object o);
+    /**
+     * Returns the estimated size of the specified object in bytes.
+     *
+     * @return a positive integer which represents the size of the specified
+     * object in bytes
+     */
+    int estimateSize(Object o);
 }

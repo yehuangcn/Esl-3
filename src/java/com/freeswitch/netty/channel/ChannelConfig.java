@@ -15,14 +15,14 @@
  */
 package com.freeswitch.netty.channel;
 
-import java.nio.ByteOrder;
-import java.util.Map;
-
 import com.freeswitch.netty.buffer.ChannelBuffer;
 import com.freeswitch.netty.buffer.ChannelBufferFactory;
 import com.freeswitch.netty.buffer.HeapChannelBufferFactory;
 import com.freeswitch.netty.channel.socket.SocketChannelConfig;
 import com.freeswitch.netty.channel.socket.nio.NioSocketChannelConfig;
+
+import java.nio.ByteOrder;
+import java.util.Map;
 
 /**
  * A set of configuration properties of a {@link Channel}.
@@ -30,22 +30,22 @@ import com.freeswitch.netty.channel.socket.nio.NioSocketChannelConfig;
  * Please down-cast to more specific configuration type such as
  * {@link SocketChannelConfig} or use {@link #setOptions(Map)} to set the
  * transport-specific properties:
- * 
+ * <p>
  * <pre>
  * {@link Channel} ch = ...;
  * {@link SocketChannelConfig} cfg = <strong>({@link SocketChannelConfig}) ch.getConfig();</strong>
  * cfg.setTcpNoDelay(false);
  * </pre>
- *
+ * <p>
  * <h3>Option map</h3>
- *
+ * <p>
  * An option map property is a dynamic write-only property which allows the
  * configuration of a {@link Channel} without down-casting its associated
  * {@link ChannelConfig}. To update an option map, please call
  * {@link #setOptions(Map)}.
  * <p>
  * All {@link ChannelConfig} has the following options:
- *
+ * <p>
  * <table border="1" cellspacing="0" cellpadding="6">
  * <tr>
  * <th>Name</th>
@@ -72,85 +72,83 @@ import com.freeswitch.netty.channel.socket.nio.NioSocketChannelConfig;
  *
  * @apiviz.has org.jboss.netty.channel.ChannelPipelineFactory
  * @apiviz.composedOf org.jboss.netty.channel.ReceiveBufferSizePredictor
- *
  * @apiviz.excludeSubtypes
  */
 public interface ChannelConfig {
 
-	/**
-	 * Sets the configuration properties from the specified {@link Map}.
-	 */
-	void setOptions(Map<String, Object> options);
+    /**
+     * Sets the configuration properties from the specified {@link Map}.
+     */
+    void setOptions(Map<String, Object> options);
 
-	/**
-	 * Sets a configuration property with the specified name and value. To
-	 * override this method properly, you must call the super class:
-	 * 
-	 * <pre>
-	 * public boolean setOption(String name, Object value) {
-	 *     if (super.setOption(name, value)) {
-	 *         return true;
-	 *     }
-	 *
-	 *     if (name.equals("additionalOption")) {
-	 *         ....
-	 *         return true;
-	 *     }
-	 *
-	 *     return false;
-	 * }
-	 * </pre>
-	 *
-	 * @return {@code true} if and only if the property has been set
-	 */
-	boolean setOption(String name, Object value);
+    /**
+     * Sets a configuration property with the specified name and value. To
+     * override this method properly, you must call the super class:
+     * <p>
+     * <pre>
+     * public boolean setOption(String name, Object value) {
+     *     if (super.setOption(name, value)) {
+     *         return true;
+     *     }
+     *
+     *     if (name.equals("additionalOption")) {
+     *         ....
+     *         return true;
+     *     }
+     *
+     *     return false;
+     * }
+     * </pre>
+     *
+     * @return {@code true} if and only if the property has been set
+     */
+    boolean setOption(String name, Object value);
 
-	/**
-	 * Returns the default {@link ChannelBufferFactory} used to create a new
-	 * {@link ChannelBuffer}. The default is {@link HeapChannelBufferFactory}.
-	 * You can specify a different factory to change the default
-	 * {@link ByteOrder} for server.
-	 */
-	ChannelBufferFactory getBufferFactory();
+    /**
+     * Returns the default {@link ChannelBufferFactory} used to create a new
+     * {@link ChannelBuffer}. The default is {@link HeapChannelBufferFactory}.
+     * You can specify a different factory to change the default
+     * {@link ByteOrder} for server.
+     */
+    ChannelBufferFactory getBufferFactory();
 
-	/**
-	 * Sets the default {@link ChannelBufferFactory} used to create a new
-	 * {@link ChannelBuffer}. The default is {@link HeapChannelBufferFactory}.
-	 * You can specify a different factory to change the default
-	 * {@link ByteOrder} for server.
-	 */
-	void setBufferFactory(ChannelBufferFactory bufferFactory);
+    /**
+     * Sets the default {@link ChannelBufferFactory} used to create a new
+     * {@link ChannelBuffer}. The default is {@link HeapChannelBufferFactory}.
+     * You can specify a different factory to change the default
+     * {@link ByteOrder} for server.
+     */
+    void setBufferFactory(ChannelBufferFactory bufferFactory);
 
-	/**
-	 * Returns the {@link ChannelPipelineFactory} which will be used when a
-	 * child channel is created. If the {@link Channel} does not create a child
-	 * channel, this property is not used at all, and therefore will be ignored.
-	 */
-	ChannelPipelineFactory getPipelineFactory();
+    /**
+     * Returns the {@link ChannelPipelineFactory} which will be used when a
+     * child channel is created. If the {@link Channel} does not create a child
+     * channel, this property is not used at all, and therefore will be ignored.
+     */
+    ChannelPipelineFactory getPipelineFactory();
 
-	/**
-	 * Sets the {@link ChannelPipelineFactory} which will be used when a child
-	 * channel is created. If the {@link Channel} does not create a child
-	 * channel, this property is not used at all, and therefore will be ignored.
-	 */
-	void setPipelineFactory(ChannelPipelineFactory pipelineFactory);
+    /**
+     * Sets the {@link ChannelPipelineFactory} which will be used when a child
+     * channel is created. If the {@link Channel} does not create a child
+     * channel, this property is not used at all, and therefore will be ignored.
+     */
+    void setPipelineFactory(ChannelPipelineFactory pipelineFactory);
 
-	/**
-	 * Returns the connect timeout of the channel in milliseconds. If the
-	 * {@link Channel} does not support connect operation, this property is not
-	 * used at all, and therefore will be ignored.
-	 *
-	 * @return the connect timeout in milliseconds. {@code 0} if disabled.
-	 */
-	int getConnectTimeoutMillis();
+    /**
+     * Returns the connect timeout of the channel in milliseconds. If the
+     * {@link Channel} does not support connect operation, this property is not
+     * used at all, and therefore will be ignored.
+     *
+     * @return the connect timeout in milliseconds. {@code 0} if disabled.
+     */
+    int getConnectTimeoutMillis();
 
-	/**
-	 * Sets the connect timeout of the channel in milliseconds. If the
-	 * {@link Channel} does not support connect operation, this property is not
-	 * used at all, and therefore will be ignored.
-	 *
-	 * @param connectTimeoutMillis
-	 *            the connect timeout in milliseconds. {@code 0} to disable.
-	 */
-	void setConnectTimeoutMillis(int connectTimeoutMillis);
+    /**
+     * Sets the connect timeout of the channel in milliseconds. If the
+     * {@link Channel} does not support connect operation, this property is not
+     * used at all, and therefore will be ignored.
+     *
+     * @param connectTimeoutMillis the connect timeout in milliseconds. {@code 0} to disable.
+     */
+    void setConnectTimeoutMillis(int connectTimeoutMillis);
 }

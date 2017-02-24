@@ -15,69 +15,69 @@
  */
 package com.freeswitch.netty.channel.socket.nio;
 
-import java.nio.ByteBuffer;
-
 import com.freeswitch.netty.util.ExternalResourceReleasable;
 import com.freeswitch.netty.util.internal.ByteBufferUtil;
 
+import java.nio.ByteBuffer;
+
 final class SocketReceiveBufferAllocator implements ExternalResourceReleasable {
 
-	private ByteBuffer buf;
-	private int exceedCount;
-	private final int maxExceedCount;
-	private final int percentual;
+    private final int maxExceedCount;
+    private final int percentual;
+    private ByteBuffer buf;
+    private int exceedCount;
 
-	SocketReceiveBufferAllocator() {
-		this(16, 80);
-	}
+    SocketReceiveBufferAllocator() {
+        this(16, 80);
+    }
 
-	SocketReceiveBufferAllocator(int maxExceedCount, int percentual) {
-		this.maxExceedCount = maxExceedCount;
-		this.percentual = percentual;
-	}
+    SocketReceiveBufferAllocator(int maxExceedCount, int percentual) {
+        this.maxExceedCount = maxExceedCount;
+        this.percentual = percentual;
+    }
 
-	ByteBuffer get(int size) {
-		if (buf == null) {
-			return newBuffer(size);
-		}
-		if (buf.capacity() < size) {
-			return newBuffer(size);
-		}
-		if (buf.capacity() * percentual / 100 > size) {
-			if (++exceedCount == maxExceedCount) {
-				return newBuffer(size);
-			} else {
-				buf.clear();
-			}
-		} else {
-			exceedCount = 0;
-			buf.clear();
-		}
-		return buf;
-	}
+    private static int normalizeCapacity(int capacity) {
+        // Normalize to multiple of 1024
+        int q = capacity >>> 10;
+        int r = capacity & 1023;
+        if (r != 0) {
+            q++;
+        }
+        return q << 10;
+    }
 
-	private ByteBuffer newBuffer(int size) {
-		if (buf != null) {
-			exceedCount = 0;
-			ByteBufferUtil.destroy(buf);
-		}
-		buf = ByteBuffer.allocateDirect(normalizeCapacity(size));
-		return buf;
-	}
+    ByteBuffer get(int size) {
+        if (buf == null) {
+            return newBuffer(size);
+        }
+        if (buf.capacity() < size) {
+            return newBuffer(size);
+        }
+        if (buf.capacity() * percentual / 100 > size) {
+            if (++exceedCount == maxExceedCount) {
+                return newBuffer(size);
+            } else {
+                buf.clear();
+            }
+        } else {
+            exceedCount = 0;
+            buf.clear();
+        }
+        return buf;
+    }
 
-	private static int normalizeCapacity(int capacity) {
-		// Normalize to multiple of 1024
-		int q = capacity >>> 10;
-		int r = capacity & 1023;
-		if (r != 0) {
-			q++;
-		}
-		return q << 10;
-	}
+    private ByteBuffer newBuffer(int size) {
+        if (buf != null) {
+            exceedCount = 0;
+            ByteBufferUtil.destroy(buf);
+        }
+        buf = ByteBuffer.allocateDirect(normalizeCapacity(size));
+        return buf;
+    }
 
-	public void releaseExternalResources() {
-		if (buf != null) {
-			ByteBufferUtil.destroy(buf);
-		}
-	}
+    public void releaseExternalResources() {
+        if (buf != null) {
+            ByteBufferUtil.destroy(buf);
+        }
+    }
 }

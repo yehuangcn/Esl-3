@@ -27,13 +27,13 @@ import java.net.SocketAddress;
  */
 public interface MessageEvent extends ChannelEvent {
 
-	/**
-	 * Returns the message.
-	 */
-	Object getMessage();
+    /**
+     * Returns the message.
+     */
+    Object getMessage();
 
-	/**
-	 * Returns the remote address of the message.
-	 */
-	SocketAddress getRemoteAddress();
+    /**
+     * Returns the remote address of the message.
+     */
+    SocketAddress getRemoteAddress();
 }

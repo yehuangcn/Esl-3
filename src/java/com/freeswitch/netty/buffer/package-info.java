@@ -17,7 +17,7 @@
 /**
  * Abstraction of a byte buffer - the fundamental data structure to represent a
  * low-level binary and text message.
- *
+ * <p>
  * Netty uses its own buffer API instead of NIO {@link java.nio.ByteBuffer} to
  * represent a sequence of bytes. This approach has significant advantage over
  * using {@link java.nio.ByteBuffer}. Netty's new buffer type,
@@ -32,9 +32,9 @@
  * <li>There's no need to call the {@code flip()} method anymore.</li>
  * <li>It is often faster than {@link java.nio.ByteBuffer}.</li>
  * </ul>
- *
+ * <p>
  * <h3>Extensibility</h3>
- *
+ * <p>
  * {@link com.freeswitch.netty.buffer.ChannelBuffer} has rich set of operations
  * optimized for rapid protocol implementation. For server,
  * {@link com.freeswitch.netty.buffer.ChannelBuffer} provides various operations for
@@ -43,9 +43,9 @@
  * convenient accessors. The custom buffer type still implements
  * {@link com.freeswitch.netty.buffer.ChannelBuffer} interface rather than
  * introducing an incompatible type.
- *
+ * <p>
  * <h3>Transparent Zero Copy</h3>
- *
+ * <p>
  * To lift up the performance of a network application to the extreme, you need
  * to reduce the number of memory copy operation. You might have a set of
  * buffers that could be sliced and combined to compose a whole message. Netty
@@ -54,13 +54,13 @@
  * message could be composed of two parts; header and body. In a modularized
  * application, the two parts could be produced by different modules and
  * assembled later when the message is sent out.
- * 
+ * <p>
  * <pre>
  * +--------+----------+
  * | header |   body   |
  * +--------+----------+
  * </pre>
- * 
+ * <p>
  * If {@link java.nio.ByteBuffer} were used, you would have to create a new big
  * buffer and copy the two parts into the new buffer. Alternatively, you can
  * perform a gathering write operation in NIO, but it restricts you to represent
@@ -68,16 +68,16 @@
  * than a single buffer, breaking the abstraction and introducing complicated
  * state management. Moreover, it's of no use if you are not going to read or
  * write from an NIO channel.
- * 
+ * <p>
  * <pre>
  * // The composite type is incompatible with the component type.
  * ByteBuffer[] message = new ByteBuffer[] { header, body };
  * </pre>
- * 
+ * <p>
  * By contrast, {@link com.freeswitch.netty.buffer.ChannelBuffer} does not have such
  * caveats because it is fully extensible and has a built-in composite buffer
  * type.
- * 
+ * <p>
  * <pre>
  * // The composite type is compatible with the component type.
  * ChannelBuffer message = ChannelBuffers.wrappedBuffer(header, body);
@@ -92,9 +92,9 @@
  * // unsigned integer being read here is located across body and footer.
  * messageWithFooter.getUnsignedInt(messageWithFooter.readableBytes() - footer.readableBytes() - 1);
  * </pre>
- *
+ * <p>
  * <h3>Automatic Capacity Extension</h3>
- *
+ * <p>
  * Many protocols define variable length messages, which means there's no way to
  * determine the length of a message until you construct the message or it is
  * difficult and inconvenient to calculate the length precisely. It is just like
@@ -103,7 +103,7 @@
  * demand. Netty allows you to do the same via a <em>dynamic</em> buffer which
  * is created by the
  * {@link com.freeswitch.netty.buffer.ChannelBuffers#dynamicBuffer()} method.
- * 
+ * <p>
  * <pre>
  * // A new dynamic buffer is created. Internally, the actual buffer is created
  * // lazily to avoid potentially wasted memory space.
@@ -121,9 +121,9 @@
  * // internal buffer is reallocated automatically with a larger capacity.
  * b.writeByte('5');
  * </pre>
- *
+ * <p>
  * <h3>Better Performance</h3>
- *
+ * <p>
  * Most frequently used buffer implementation of
  * {@link com.freeswitch.netty.buffer.ChannelBuffer} is a very thin wrapper of a byte
  * array (i.e. {@code byte[]}). Unlike {@link java.nio.ByteBuffer}, it has no

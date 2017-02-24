@@ -21,5 +21,5 @@ package com.freeswitch.netty.handler.codec.replay;
  * there's no state to manage.
  */
 public enum VoidEnum {
-	// No state is defined.
+    // No state is defined.
 }

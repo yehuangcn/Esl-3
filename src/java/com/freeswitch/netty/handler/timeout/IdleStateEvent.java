@@ -21,18 +21,18 @@ import com.freeswitch.netty.channel.ChannelEvent;
 /**
  * A {@link ChannelEvent} that is triggered when a {@link Channel} has been idle
  * for a while.
- * 
+ *
  * @apiviz.landmark
  * @apiviz.has org.jboss.netty.handler.timeout.IdleState oneway - -
  */
 public interface IdleStateEvent extends ChannelEvent {
-	/**
-	 * Returns the detailed idle state.
-	 */
-	IdleState getState();
+    /**
+     * Returns the detailed idle state.
+     */
+    IdleState getState();
 
-	/**
-	 * Returns the last time when I/O occurred in milliseconds.
-	 */
-	long getLastActivityTimeMillis();
+    /**
+     * Returns the last time when I/O occurred in milliseconds.
+     */
+    long getLastActivityTimeMillis();
 }

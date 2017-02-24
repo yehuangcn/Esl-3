@@ -21,13 +21,13 @@ import com.freeswitch.netty.channel.socket.DatagramChannelConfig;
 
 /**
  * A {@link DatagramChannelConfig} for a NIO TCP/IP {@link DatagramChannel}.
- *
+ * <p>
  * <h3>Available options</h3>
- *
+ * <p>
  * In addition to the options provided by {@link ChannelConfig} and
  * {@link DatagramChannelConfig}, {@link NioDatagramChannelConfig} allows the
  * following options in the option map:
- *
+ * <p>
  * <table border="1" cellspacing="0" cellpadding="6">
  * <tr>
  * <th>Name</th>
@@ -49,5 +49,5 @@ import com.freeswitch.netty.channel.socket.DatagramChannelConfig;
  * </table>
  */
 public interface NioDatagramChannelConfig extends DatagramChannelConfig, NioChannelConfig {
-	// Tag interface
+    // Tag interface
 }

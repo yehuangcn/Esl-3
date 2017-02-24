@@ -22,37 +22,35 @@ import com.freeswitch.netty.util.ExternalResourceReleasable;
  * This implementation of a {@link WorkerPool} should be used if you plan to
  * share a {@link WorkerPool} between different Factories. You will need to call
  * {@link #destroy()} by your own once you want to release any resources of it.
- *
- *
  */
 public final class ShareableWorkerPool<E extends Worker> implements WorkerPool<E> {
 
-	private final WorkerPool<E> wrapped;
+    private final WorkerPool<E> wrapped;
 
-	public ShareableWorkerPool(WorkerPool<E> wrapped) {
-		this.wrapped = wrapped;
-	}
+    public ShareableWorkerPool(WorkerPool<E> wrapped) {
+        this.wrapped = wrapped;
+    }
 
-	public E nextWorker() {
-		return wrapped.nextWorker();
-	}
+    public E nextWorker() {
+        return wrapped.nextWorker();
+    }
 
-	public void rebuildSelectors() {
-		wrapped.rebuildSelectors();
-	}
+    public void rebuildSelectors() {
+        wrapped.rebuildSelectors();
+    }
 
-	/**
-	 * Destroy the {@link ShareableWorkerPool} and release all resources. After
-	 * this is called its not usable anymore
-	 */
-	public void destroy() {
-		wrapped.shutdown();
-		if (wrapped instanceof ExternalResourceReleasable) {
-			((ExternalResourceReleasable) wrapped).releaseExternalResources();
-		}
-	}
+    /**
+     * Destroy the {@link ShareableWorkerPool} and release all resources. After
+     * this is called its not usable anymore
+     */
+    public void destroy() {
+        wrapped.shutdown();
+        if (wrapped instanceof ExternalResourceReleasable) {
+            ((ExternalResourceReleasable) wrapped).releaseExternalResources();
+        }
+    }
 
-	public void shutdown() {
-		// do nothing
-	}
+    public void shutdown() {
+        // do nothing
+    }
 }
