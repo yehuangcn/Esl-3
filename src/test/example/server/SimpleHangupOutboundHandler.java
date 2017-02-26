@@ -46,7 +46,7 @@ public class SimpleHangupOutboundHandler extends AbstractEslServerHandler {
             log.info("=======================  = = = = = = = = = = =  =============================");
 
             // now hangup the call
-            hangupCall(ctx.getChannel());
+           hangupCall(ctx.getChannel());
         } else {
             throw new IllegalStateException("Unexpected event after connect: [" + event.getEventName() + ']');
         }
